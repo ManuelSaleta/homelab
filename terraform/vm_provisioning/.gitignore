@@ -1,6 +1,8 @@
 # Local secret variable assignments (Contains your live API tokens)
 *.tfvars
 *.tfvars.json
+*.pkrvars.hcl
+*.tfvars.hcl
 
 # Local Terraform execution cache and plugin binaries
 .terraform/
@@ -13,3 +15,10 @@
 # Crash logs and developer overrides
 crash.log
 *.tfplan
+
+# IDE and editor specific files
+.vscode/
+.idea/
+
+# Ignore the directory where ISO images are downloaded for VM provisioning
+downloaded_iso_path/
