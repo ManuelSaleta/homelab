@@ -9,13 +9,11 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
 
     Terraform Layer: Consumes the golden template image to dynamically map resource pools, provision virtual hardware topology, inject custom network maps, and initialize automatic cluster nodes registration.
 
-📂 Repository Blueprint
-Plaintext
+```text
 vm_provisioning/
 ├── packer-k3s/                  # Dedicated directory for baking the base OS image
 │   ├── http/
-│   │   └── user-data            # Ubuntu Template Subiquity Autoinstall configuration
-│   │   └── meta-data            # Empty file, no file extension but it is required by Cloud-Init
+│   │   └── user-data            # Unattended Ubuntu Subiquity Autoinstall configuration
 │   ├── Makefile                 # Packer-specific build pipeline automation commands
 │   ├── packer.pkrvars.hcl       # Variable values specifically loaded into the Packer engine
 │   ├── README.md                # Packer module technical documentation
@@ -25,7 +23,8 @@ vm_provisioning/
 ├── README.md                    # Master project documentation and architecture manual
 ├── terraform.tfvars.hcl         # Shared HCL schema values file
 ├── variables.tf                 # Strict structural schema declarations for Terraform input contracts
-└── workers.tf                   # Automated worker-node scaling array loops & cloud-init snippets                   # Universal command routing matrix for lifecycle operations
+└── workers.tf                   # Automated worker-node scaling array loops & cloud-init snippets
+```
 
 📋 Prerequisites & Workstation Setup
 
