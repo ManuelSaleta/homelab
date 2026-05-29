@@ -68,6 +68,10 @@ source "proxmox-iso" "k3s_template" {
   http_directory    = "http"
   http_bind_address = var.http_bind_address_ip # This should be the IP of the machine running Packer, reachable by the Proxmox host and the VM during build.
 
+  # Boot command sequence to automate the installation process using the autoinstall config served by the HTTP server.
+  # This sequence sends keystrokes to the VM console to select the appropriate boot options and point to the autoinstall config. The {{ .HTTPIP }} and {{ .HTTPPort }} placeholders are dynamically replaced by Packer with the actual IP and port of the HTTP server.
+  # The autoinstall config will be served from http://<packer_host_ip>:8688/user-data during the build, and the boot command tells the installer to fetch it from there.
+  # Extremely time, and syntactically sensitive. BE CAREFUL TOUCHING THIS.
   boot_command = [
     "<esc><wait3>",
     "c<wait3>",
