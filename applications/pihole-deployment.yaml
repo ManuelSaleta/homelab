@@ -6,36 +6,35 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pihole
+  name: pihole-dns-server
   namespace: networking
   labels:
-    app: pihole
+    app.kubernetes.io/name: pihole
+    app.kubernetes.io/component: core-dns
+    app.kubernetes.io/part-of: network-services
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: Recreate # Required: Prevents port 53 locking constraints during container recycling
   selector:
     matchLabels:
-      app: pihole
+      app: pihole-dns-server
   template:
     metadata:
       labels:
-        app: pihole
+        app: pihole-dns-server
     spec:
-      nodeName: k3s-worker-01 # Keeps it pinned to your primary worker
       containers:
-        - name: pihole
+        - name: pihole-ftl-engine
           image: pihole/pihole:latest
+          imagePullPolicy: IfNotPresent
           env:
             - name: TZ
               value: "America/New_York"
-            - name: WEBPASSWORD
+            - name: FTLCONF_webserver_api_password
               value: "AdminHomelabPass123"
-            - name: FTLCONF_LOCAL_IPV4
-              value: "192.168.50.242"
-            # Modern configuration overrides for the FTL engine:
             - name: FTLCONF_dns_listeningMode
-              value: "all"
+              value: "all" # Directs FTL to accept queries routed from wider LAN subnets
             - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;8.8.8.8"
           ports:
@@ -46,7 +45,7 @@ spec:
               name: dns-tcp
               protocol: TCP
             - containerPort: 80
-              name: pihole-http
+              name: admin-http
               protocol: TCP
           resources:
             requests:
@@ -56,44 +55,35 @@ spec:
               memory: "512Mi"
               cpu: "500m"
           volumeMounts:
-            - name: pihole-config
+            - name: pihole-persistent-config
               mountPath: /etc/pihole
-            - name: pihole-dnsmasq
-              mountPath: /etc/dnsmasq.d
       volumes:
-        # Maps storage directly to physical paths on k3s-worker-01
-        - name: pihole-config
+        - name: pihole-persistent-config
           hostPath:
             path: /var/data/pihole/config
             type: DirectoryOrCreate
-        - name: pihole-dnsmasq
-          hostPath:
-            path: /var/data/pihole/dnsmasq
-            type: DirectoryOrCreate
----
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: pihole-service
+  name: pihole-loadbalancer-service
   namespace: networking
   annotations:
-    # One IP address to rule them all
-    metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
+    metallb.universe.tf/loadBalancerIPs: "192.168.50.242" # Gotta figure out how to automate this IP assignment in the future
 spec:
   type: LoadBalancer
   selector:
-    app: pihole
+    app: pihole-dns-server
   ports:
     - port: 53
       targetPort: 53
       protocol: UDP
-      name: dns-udp
+      name: inbound-dns-udp
     - port: 53
       targetPort: 53
       protocol: TCP
-      name: dns-tcp
+      name: inbound-dns-tcp
     - port: 80
       targetPort: 80
       protocol: TCP
-      name: web-http
+      name: inbound-web-http

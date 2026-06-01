@@ -137,6 +137,10 @@ k3s-worker-01    Ready    <none>          19m    v1.35.5+k3s1   192.168.50.210  
 k3s-worker-02    Ready    <none>          3m4s   v1.35.5+k3s1   192.168.50.211   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
 ```
 
+> [!important]
+> The Internal IP oc the CONTROL node; has to be the IP found in the .config file, exported from that same node;
+> otherwise your local workstation will not find it.
+
 #### Force Service Sync & Restart
 
 If the installation script skips execution because no core binary changes were detected, force `systemd` to parse the new environment variables manually:
@@ -148,7 +152,6 @@ sudo systemctl restart k3s-agent
 ```
 
 ---
-
 
 ### 2. Post-Deployment Verification & Debugging Loop
 
