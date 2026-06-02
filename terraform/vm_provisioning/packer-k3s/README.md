@@ -23,7 +23,7 @@ The pipeline is completely automated through the local `Makefile`. When executin
 
 Execute these targets from the root folder directory to run validation or initialization steps:
 
-```bash
+```zsh
 # Fetch and compile the Proxmox builder plugin dependencies
 make init
 

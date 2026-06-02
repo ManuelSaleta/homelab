@@ -39,7 +39,7 @@ Follow these precise steps from your administrative workstation to cleanly purge
 
 Ensure that all old, standalone service blocks, deprecated selectors, and lingering namespaces are fully cleared from the cluster API to prevent orchestration collisions.
 
-```bash
+```zsh
 # Delete the old standalone service endpoints
 kubectl delete svc pihole-dns pihole-web pihole-service -n networking --ignore-not-found
 
@@ -54,7 +54,7 @@ Bash
 
 # Run this on the target worker node to clear out old legacy config blocks
 
-```bash
+```zsh
     sudo rm -rf /var/data/pihole/config/_.conf /var/data/pihole/config/_.toml
 ```
 
@@ -62,7 +62,7 @@ Bash
 
 Deploy the manifest file directly from your local control station:
 
-```Bash
+```zsh
     kubectl apply -f pihole-deployment.yaml
 ```
 
@@ -74,7 +74,7 @@ Deploy the manifest file directly from your local control station:
 
 Verify that the service has successfully shed its <pending> state and claims the target IP address assigned by MetalLB:
 
-```bash
+```zsh
 kubectl get svc -n networking -w
 ```
 
@@ -97,7 +97,7 @@ Status must return NOERROR.
 
     The query round-trip time should resolve quickly (under 15ms locally).
 
-```bash
+```zsh
    $ dig @192.168.50.242 google.com
 ```
 
@@ -105,6 +105,6 @@ Status must return NOERROR.
 
 To execute manual configuration modifications—such as manually setting or resetting the administrative web panel access password—tunnel directly into the application space across the network interface:
 
-```bash
+```zsh
 kubectl exec -it -n networking deployment/pihole-dns-server -- pihole setpassword
 ```

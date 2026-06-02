@@ -3,7 +3,7 @@
 Since k3s is bare-metal; we will need a load balancer...
 From your workstation do:
 
-```bash
+```zsh
 # Create the namespace and deploy the components
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
 ```
@@ -43,7 +43,7 @@ validatingwebhookconfiguration.admissionregistration.k8s.io/metallb-webhook-conf
 
 From the directoy apply it to the cluster:
 
-```bash
+```zsh
 kubectl apply -f metallb-config.yaml
 ```
 
