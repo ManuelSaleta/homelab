@@ -10,25 +10,43 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
     Terraform Layer: Consumes the golden template image to dynamically map resource pools, provision virtual hardware topology, inject custom network maps, and initialize automatic cluster nodes registration.
 
 ```text
-vm_provisioning/
-├── packer-k3s/                  # Dedicated directory for baking the base OS image
-│   ├── http/
-│   │   └── user-data            # Unattended Ubuntu Subiquity Autoinstall configuration
-│   ├── Makefile                 # Packer-specific build pipeline automation commands
-│   ├── packer.pkrvars.hcl       # Variable values specifically loaded into the Packer engine
-│   ├── README.md                # Packer module technical documentation
-│   └── ubuntu-vm-k3s.pkr.hcl    # Core Packer HCL automation recipe for Template 777
-├── main.tf                      # Core Proxmox Provider & K3s Control Plane VM declaration
-├── Makefile                     # Root command routing matrix for total cluster lifecycle
-├── README.md                    # Master project documentation and architecture manual
-├── terraform.tfvars.hcl         # Shared HCL schema values file
-├── variables.tf                 # Strict structural schema declarations for Terraform input contracts
-└── workers.tf                   # Automated worker-node scaling array loops & cloud-init snippets
+├── applications
+│   ├── pihole-deployment.yaml
+│   ├── README.md
+│   └── TODOS.txt
+├── docker
+│   └── container-provisioning
+│       ├── docker-compose.yaml
+│       ├── Makefile
+│       └── README.md
+├── kubernetes
+│   ├── load-balancer
+│   │   └── metallb-config.yaml
+│   └── README.md
+├── README.md
+├── terraform
+│   └── vm_provisioning
+│       ├── main.tf
+│       ├── Makefile
+│       ├── packer-k3s
+│       │   ├── http
+│       │   │   ├── meta-data
+│       │   │   └── user-data
+│       │   ├── Makefile
+│       │   ├── README.md
+│       │   └── ubuntu-vm-k3s.pkr.hcl
+│       ├── README.md
+│       ├── terraform.tfstate.backup
+│       ├── terraform.tfvars
+│       ├── terraform.tfvars.hcl
+│       ├── variables.tf
+│       └── workers.tf
 ```
 
 📋 Prerequisites & Workstation Setup
 
 Before initiating a template compilation or applying an infrastructure block layer, your underlying environment must fulfill the following technical baselines:
+
 1. Mandatory Local Workstation Tools
 
 Ensure your execution host has the standard infrastructure toolsets installed and available in its tracking path:
@@ -44,6 +62,7 @@ Ensure your execution host has the standard infrastructure toolsets installed an
 Bash
 
 # Example for Fedora Linux workstations
+
 sudo dnf install -y packer terraform make openssh-clients
 
 2. Proxmox Hypervisor Storage Targets
@@ -64,10 +83,9 @@ The deployment sequence relies completely on secure public key verification loop
 
     Start and bind your local runtime environment agent so Terraform can tap into the communication loop seamlessly over the SSH channel:
 
-Bash
+```zsh
+    eval $(ssh-agent -s)
+    ssh-add ~/.ssh/id_ed25519
+```
 
-eval $(ssh-agent -s)
-ssh-add ~/.ssh/id_ed25519
-
-    [!IMPORTANT]
-    To prevent accidental leaks of private network gateways, cloud tokens, and cluster keys to public spaces, NEVER commit your local terraform.tfvars file. Keep your private variables isolated locally; the underlying .gitignore block is configured to filter out structural *.tfvars extensions cleanly.
+> [!IMPORTANT] To prevent accidental leaks of private network gateways, cloud tokens, and cluster keys to public spaces, NEVER commit your local terraform.tfvars file. Keep your private variables isolated locally; the underlying .gitignore block is configured to filter out structural \*.tfvars extensions cleanly.

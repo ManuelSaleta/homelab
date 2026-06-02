@@ -1,0 +1,17 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: homelab-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.50.240-192.168.50.250 # Change this range to match your network topology
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: homelab-advertisement
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - homelab-pool

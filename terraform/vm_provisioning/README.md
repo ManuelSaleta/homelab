@@ -29,7 +29,7 @@ Automated Proxmox IaC repository to provision a lightweight K3s Kubernetes clust
 
 Run commands from the root directory to manage the cluster lifecycle:
 
-```bash
+```zsh
 # Initialize and validate configuration
 make init
 make validate
@@ -74,7 +74,7 @@ Every time the `k3s-control-01` manager VM is destroyed and recreated, it mints 
 
 #### Extract the New Token (Run on Manager)
 
-```bash
+```zsh
 sudo cat /var/lib/rancher/k3s/server/node-token
 
 ```
@@ -83,8 +83,20 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 
 SSH into your worker node and run the registration command wrapper. Ensure you substitute the correct token value and target node hostname matching your topography:
 
-```bash
-# Example for k3s-worker-01
+```zsh
+# 1. Check service status on manager node
+sudo systemctl status k3s
+
+# 2. If disabled, enable it
+sudo systemctl enable k3s.service
+
+# 3. Get K3s token
+# (This is the token value you will copy back to your Fedora workstation's terraform.tfvars file so your actual worker VMs can connect).
+sudo cat /var/lib/rancher/k3s/server/node-token
+```
+
+```zsh
+# Head over to your worker nodes; paste the following with the above token, and the IP of your manager VM.
 curl -sfL https://get.k3s.io | \
   K3S_URL="https://192.168.50.72:6443" \
   K3S_TOKEN="YOUR_FRESHLY_EXTRACTED_SERVER_TOKEN" \
@@ -93,11 +105,47 @@ curl -sfL https://get.k3s.io | \
 
 ```
 
+```zsh
+# Check the status of the k3s instance from the control node. (whiled ssh'd into that control-01)
+# Check service health
+sudo systemctl status k3s
+
+# Check if port 6443 is actively bound
+sudo ss -tlnp | grep 6443
+```
+
+### Troubleshooting
+
+If everything is working from your control node, you should see.
+
+```zsh
+gman@k3s-control-01:~$ sudo k3s kubectl get nodes
+NAME             STATUS   ROLES           AGE   VERSION
+k3s-control-01   Ready    control-plane   24m   v1.35.5+k3s1
+k3s-worker-01    Ready    <none>          16m   v1.35.5+k3s1
+k3s-worker-02    Ready    <none>          15s   v1.35.5+k3s1
+```
+
+Now from your workstation, if you copied over the .config files, updated the IP.
+You should see something like this. The manager/control plane and the workers.
+
+```zsh
+➜  ~ kubectl get nodes -o wide
+NAME             STATUS   ROLES           AGE    VERSION        INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+k3s-control-01   Ready    control-plane   27m    v1.35.5+k3s1   192.168.50.184   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
+k3s-worker-01    Ready    <none>          19m    v1.35.5+k3s1   192.168.50.210   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
+k3s-worker-02    Ready    <none>          3m4s   v1.35.5+k3s1   192.168.50.211   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
+```
+
+> [!important]
+> The Internal IP oc the CONTROL node; has to be the IP found in the .config file, exported from that same node;
+> otherwise your local workstation will not find it.
+
 #### Force Service Sync & Restart
 
 If the installation script skips execution because no core binary changes were detected, force `systemd` to parse the new environment variables manually:
 
-```bash
+```zsh
 sudo systemctl daemon-reload
 sudo systemctl restart k3s-agent
 
@@ -113,7 +161,7 @@ Once the cluster matrix reports a `Ready` state, execute this interactive loop f
 
 Watch the engine scale the deployment layers and download container image steps in real time:
 
-```bash
+```zsh
 kubectl get pods -w
 
 ```
@@ -124,10 +172,12 @@ _Press `Ctrl + C` to exit the live stream view once the status flags hit `Runnin
 
 Retrieve extended metadata to check pod-to-node routing assignments and target overlay networks:
 
-```bash
+```zsh
 kubectl get pods -o wide
 
 ```
+
+#### Additional commands.
 
 > 💡 **Networking Note:** Pod IP allocations (e.g., `10.42.0.X`) exist strictly within the cluster's internal overlay network fabric. Your local workstation cannot route traffic directly to these endpoints without an active proxy or Ingress gateway controller.
 
@@ -135,7 +185,7 @@ kubectl get pods -o wide
 
 Map a local network port on your workstation directly to an active container endpoint inside the target pod layer:
 
-```bash
+```zsh
 # Syntax: kubectl port-forward deployment/<NAME> <LOCAL_PORT>:<CONTAINER_PORT>
 kubectl port-forward deployment/internal-test 8080:80
 
@@ -147,7 +197,7 @@ _This process locks the terminal pane to keep the proxy network bridge alive. Le
 
 Open a new terminal tab or pane (`Ctrl + Shift + T`) on your workstation and interact with the application over the localhost bridge:
 
-```bash
+```zsh
 curl http://localhost:8080
 
 ```
@@ -161,7 +211,7 @@ Once your smoke tests or manual debugging sessions are complete, terminate the t
 1. Go back to your first terminal window and press `Ctrl + C` to tear down the port-forwarding proxy.
 2. Delete the test deployment components:
 
-```bash
+```zsh
 kubectl delete deployment internal-test
 
 ```
