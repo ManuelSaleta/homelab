@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dashboard
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: dashboard
+data:
+  settings.yaml: |
+    title: "Manny's Homelab"
+    background: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe"
+    cardBlur: sm
+  services.yaml: |
+    - Core Infrastructure:
+        - Pi-hole:
+            icon: pi-hole
+            href: http://192.168.50.242/admin
+            description: Cluster DNS & Ad-Shielding
+            widget:
+              type: pihole
+              url: http://192.168.50.242
+              password: AdminHomelabPass123
+    - Applications:
+        - Immich:
+            icon: immich
+            href: http://192.168.50.243
+            description: High Performance Photo Backups
+    - Management & Observation:
+        - Cluster Logging:
+            icon: grafana
+            href: http://192.168.50.244
+            description: Unified Loki Log Explorer
+  kubernetes.yaml: |
+    mode: cluster
+    showCount: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:latest
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "192.168.50.241,192.168.50.*" # Authorizes direct dashboard access
+          ports:
+            - containerPort: 3000
+              name: http
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config-volume
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config-volume
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: homepage-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage-loadbalancer
+  namespace: dashboard
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: "192.168.50.241"
+spec:
+  type: LoadBalancer
+  selector:
+    app: homepage
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
