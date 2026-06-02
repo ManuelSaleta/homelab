@@ -22,7 +22,8 @@ data:
             widget:
               type: pihole
               url: http://192.168.50.242
-              password: AdminHomelabPass123
+              version: 6
+              key: "AdminHomelabPass123"
     - Applications:
         - Immich:
             icon: immich
@@ -57,7 +58,7 @@ spec:
           image: ghcr.io/gethomepage/homepage:latest
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "192.168.50.241,192.168.50.*" # Authorizes direct dashboard access
+              value: "192.168.50.241,192.168.50.*"
           ports:
             - containerPort: 3000
               name: http
