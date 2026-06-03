@@ -43,6 +43,33 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
 │       └── workers.tf
 ```
 
+```text
+ 
+==========================================================================================
+                     [ LOCAL WORKSTATION: Fedora / Neovim / Zsh ]
+                                          │
+                                          │ (IaC Deployment: terraform apply)
+                                          ▼
+==========================================================================================
+ [ PROXMOX VE HYPERVISOR ("mothership") ] ── (Storage: local-lvm)
+   │
+   ├── [ INGRESS LAYER ]
+   │     └── LXC Container: "reverse-proxy" (IP: 192.168.50.240)
+   │           └── Native Traefik Service 
+   │                 │
+   │                 └───► (Watches K3s API server via Service Account Token) ──┐
+   │                                                                            │
+   └── [ COMPUTE LAYER ]                                                        │
+         └── K3s Kubernetes Cluster Nodes (e.g., 192.168.50.X)                  │
+               │                                                                │
+               ├── Control Plane & Worker Pods                                  │
+               │     ├── Core DNS / API Server  ◄───────────────────────────────┘
+               │     └── Applications (Nextcloud, Grafana, Dashboards, etc.)
+               │
+               └── Storage / Infrastructure Services (Pi-hole, Plex, etc.)
+==========================================================================================
+```
+
 📋 Prerequisites & Workstation Setup
 
 Before initiating a template compilation or applying an infrastructure block layer, your underlying environment must fulfill the following technical baselines:
