@@ -3,16 +3,6 @@ kind: Namespace
 metadata:
   name: networking
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pihole-dnsmasq-config
-  namespace: networking
-data:
-  # 🛠️ This tells the DNS engine: Route the root domain and all subdomains to the proxy IP
-  99-wildcard.conf: |
-    address=/freesalty.com/192.168.50.240
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,7 +15,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate # Required: Prevents port 53 locking constraints during container recycling
+    type: Recreate
   selector:
     matchLabels:
       app: pihole-dns-server
@@ -44,9 +34,14 @@ spec:
             - name: FTLCONF_webserver_api_password
               value: "AdminHomelabPass123"
             - name: FTLCONF_dns_listeningMode
-              value: "all" # Directs FTL to accept queries routed from wider LAN subnets
+              value: "all"
             - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;8.8.8.8"
+            - name: FTLCONF_misc_dnsmasq_lines
+              value: "address=/freesalty.com/192.168.50.240"
+            # 🛠️ FIX: Tells Pi-hole v6 to permit API calls from your domain names
+            - name: FTLCONF_webserver_cors_allowedHosts
+              value: "pihole.freesalty.com,freesalty.com"
           ports:
             - containerPort: 53
               name: dns-udp
@@ -67,19 +62,11 @@ spec:
           volumeMounts:
             - name: pihole-persistent-config
               mountPath: /etc/pihole
-            # 📂 Mounting the wildcard file into the dnsmasq.d directory
-            - name: dnsmasq-config-volume
-              mountPath: /etc/dnsmasq.d/99-wildcard.conf
-              subPath: 99-wildcard.conf
       volumes:
         - name: pihole-persistent-config
           hostPath:
             path: /var/data/pihole/config
             type: DirectoryOrCreate
-        # 📂 Creating the volume sourced from our ConfigMap above
-        - name: dnsmasq-config-volume
-          configMap:
-            name: pihole-dnsmasq-config
 ---
 apiVersion: v1
 kind: Service

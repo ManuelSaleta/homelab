@@ -17,23 +17,23 @@ data:
     - Core Infrastructure:
         - Pi-hole:
             icon: pi-hole
-            href: http://192.168.50.242/admin
+            href: http://pihole.freesalty.com/admin
             description: Cluster DNS & Ad-Shielding
             widget:
               type: pihole
-              url: http://192.168.50.242
+              url: http://pihole.freesalty.com
               version: 6
               key: "AdminHomelabPass123"
     - Applications:
         - Immich:
             icon: immich
-            href: http://192.168.50.243
-            description: High Performance Photo Backups
+            href: http://immich.freesalty.com
+            description: High Performance Photo Backups (Pending Hardware)
     - Management & Observation:
         - Cluster Logging:
             icon: grafana
-            href: http://192.168.50.244
-            description: Unified Loki Log Explorer
+            href: http://grafana.freesalty.com
+            description: Unified Loki Log Explorer (Pending Hardware)
   kubernetes.yaml: |
     mode: cluster
     showCount: true
@@ -53,12 +53,22 @@ spec:
       labels:
         app: homepage
     spec:
+      # 🛠️ NETWORKING FIX: Forces the pod to route DNS queries through your Pi-hole container first
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - 192.168.50.242 # Your Pi-hole LoadBalancer IP
+          - 1.1.1.1 # Cloudflare fallback if Pi-hole is recycling
+        searches:
+          - dashboard.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "192.168.50.241,192.168.50.*"
+              value: "192.168.50.241,192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
           ports:
             - containerPort: 3000
               name: http
