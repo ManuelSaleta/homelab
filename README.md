@@ -15,7 +15,7 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
 │   ├── README.md
 │   └── TODOS.txt
 ├── docker
-│   └── container-provisioning
+│   └── container-provisioning                                           #EMPTY FOR NOW
 │       ├── docker-compose.yaml
 │       ├── Makefile
 │       └── README.md
@@ -25,7 +25,7 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
 │   └── README.md
 ├── README.md
 ├── terraform
-│   └── vm_provisioning
+│   └── vm_provisioning                                                 #
 │       ├── main.tf
 │       ├── Makefile
 │       ├── packer-k3s
@@ -44,18 +44,18 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
 ```
 
 ```text
- 
+
 ==========================================================================================
                      [ LOCAL WORKSTATION: Fedora / Neovim / Zsh ]
                                           │
-                                          │ (IaC Deployment: terraform apply)
+                                          │ (IaC Deployment: terraform apply + packer)
                                           ▼
 ==========================================================================================
  [ PROXMOX VE HYPERVISOR ("mothership") ] ── (Storage: local-lvm)
    │
    ├── [ INGRESS LAYER ]
    │     └── LXC Container: "reverse-proxy" (IP: 192.168.50.240)
-   │           └── Native Traefik Service 
+   │           └── Native Traefik Service
    │                 │
    │                 └───► (Watches K3s API server via Service Account Token) ──┐
    │                                                                            │
