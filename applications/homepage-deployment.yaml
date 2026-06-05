@@ -53,12 +53,12 @@ spec:
       labels:
         app: homepage
     spec:
-      # 🛠️ NETWORKING FIX: Forces the pod to route DNS queries through your Pi-hole container first
+      # Keep your custom dnsConfig so Homepage resolves freesalty.com via Pi-hole
       dnsPolicy: "None"
       dnsConfig:
         nameservers:
-          - 192.168.50.242 # Your Pi-hole LoadBalancer IP
-          - 1.1.1.1 # Cloudflare fallback if Pi-hole is recycling
+          - 192.168.50.242
+          - 1.1.1.1
         searches:
           - dashboard.svc.cluster.local
           - svc.cluster.local
@@ -68,7 +68,7 @@ spec:
           image: ghcr.io/gethomepage/homepage:latest
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "192.168.50.241,192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
+              value: "192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
           ports:
             - containerPort: 3000
               name: http
@@ -90,15 +90,33 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: homepage-loadbalancer
+  name: homepage-service
   namespace: dashboard
-  annotations:
-    metallb.universe.tf/loadBalancerIPs: "192.168.50.241"
 spec:
-  type: LoadBalancer
+  type: ClusterIP # 🛠️ Private internal routing only now
   selector:
     app: homepage
   ports:
     - port: 80
       targetPort: 3000
       protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homepage-ingress
+  namespace: dashboard
+  annotations:
+    kubernetes.io/ingress.class: traefik # 🚀 Routes this directly to K3s Traefik
+spec:
+  rules:
+    - host: homepage.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage-service
+                port:
+                  number: 80

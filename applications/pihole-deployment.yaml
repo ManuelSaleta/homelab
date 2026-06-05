@@ -39,7 +39,6 @@ spec:
               value: "1.1.1.1;8.8.8.8"
             - name: FTLCONF_misc_dnsmasq_lines
               value: "address=/freesalty.com/192.168.50.240"
-            # 🛠️ FIX: Tells Pi-hole v6 to permit API calls from your domain names
             - name: FTLCONF_webserver_cors_allowedHosts
               value: "pihole.freesalty.com,freesalty.com"
           ports:
@@ -76,7 +75,7 @@ metadata:
   annotations:
     metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
 spec:
-  type: LoadBalancer
+  type: LoadBalancer # Kept as LoadBalancer so your devices can use 192.168.50.242 for port 53 DNS traffic
   selector:
     app: pihole-dns-server
   ports:
@@ -92,3 +91,23 @@ spec:
       targetPort: 80
       protocol: TCP
       name: inbound-web-http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pihole-ingress
+  namespace: networking
+  annotations:
+    kubernetes.io/ingress.class: traefik # 🚀 Routes HTTP web traffic via K3s Traefik
+spec:
+  rules:
+    - host: pihole.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pihole-loadbalancer-service
+                port:
+                  number: 80
