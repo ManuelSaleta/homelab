@@ -81,6 +81,29 @@ kubectl create secret generic cloudflare-tunnel-secret \
 
 ---
 
+## Worker Nodes K3 Authorization
+
+Open file location with:
+
+```bash
+sudo nano /etc/systemd/system/k3s-agent.service.env
+```
+
+Find the Control K3S_TOKEN, and K3S_URL here. If the IP of K3S_URL does not point back to the internal IP of the Control Node.
+The workers will fail to communicate.
+
+### How to Check Worker Nodes:
+
+```bash
+# Check the status on the worker node
+sudo systemctl status k3s-agent
+
+# If it is failed, or if it says active but metrics are broken, restart it:
+sudo systemctl restart k3s-agent
+```
+
+---
+
 ### Setting up a load balancer
 
 Since k3s is bare-metal; we will need a load balancer...

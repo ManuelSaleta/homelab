@@ -132,7 +132,7 @@ You should see something like this. The manager/control plane and the workers.
 ````bash
 ➜  ~ kubectl get nodes -o wide
 NAME             STATUS   ROLES           AGE    VERSION        INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
-k3s-control-01   Ready    control-plane   27m    v1.35.5+k3s1   192.168.50.184   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
+k3s-control-01   Ready    control-plane   27m    v1.35.5+k3s1   192.168.50.185   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
 k3s-worker-01    Ready    <none>          19m    v1.35.5+k3s1   192.168.50.210   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
 k3s-worker-02    Ready    <none>          3m4s   v1.35.5+k3s1   192.168.50.211   <none>        Ubuntu 24.04.4 LTS   6.8.0-117-generic   containerd://2.2.3-k3s1
 ```
