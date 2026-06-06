@@ -15,7 +15,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate # Required: Prevents port 53 locking constraints during container recycling
+    type: Recreate
   selector:
     matchLabels:
       app: pihole-dns-server
@@ -34,9 +34,15 @@ spec:
             - name: FTLCONF_webserver_api_password
               value: "AdminHomelabPass123"
             - name: FTLCONF_dns_listeningMode
-              value: "all" # Directs FTL to accept queries routed from wider LAN subnets
+              value: "all"
             - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;8.8.8.8"
+            # 🎯 Points all local wildcard queries for your domain back to Traefik Edge Proxy
+            - name: FTLCONF_misc_dnsmasq_lines
+              value: "address=/freesalty.com/192.168.50.240"
+            - name: FTLCONF_webserver_cors_allowedHosts
+              value: "pihole.freesalty.com,freesalty.com"
+              # FTLCONF environment variables are documented here: https://docs.pi-hole.net/ftldns/configuration/environment-variables/
           ports:
             - containerPort: 53
               name: dns-udp
@@ -69,7 +75,8 @@ metadata:
   name: pihole-loadbalancer-service
   namespace: networking
   annotations:
-    metallb.universe.tf/loadBalancerIPs: "192.168.50.242" # Gotta figure out how to automate this IP assignment in the future
+    # 💥 MetalLB hooks up here to give bare-metal LAN access strictly for your DNS query traffic!
+    metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
 spec:
   type: LoadBalancer
   selector:
@@ -86,4 +93,23 @@ spec:
     - port: 80
       targetPort: 80
       protocol: TCP
-      name: inbound-web-http
+      name: web # 🎯 Shortened to satisfy the Kubernetes 15-character name limitation
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pihole-ingress
+  namespace: networking
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: pihole.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pihole-loadbalancer-service
+                port:
+                  name: web # 🎯 Securely maps to the shortened Service port identifier

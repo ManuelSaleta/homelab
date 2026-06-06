@@ -17,23 +17,23 @@ data:
     - Core Infrastructure:
         - Pi-hole:
             icon: pi-hole
-            href: http://192.168.50.242/admin
+            href: http://pihole.freesalty.com/admin
             description: Cluster DNS & Ad-Shielding
             widget:
               type: pihole
-              url: http://192.168.50.242
+              url: http://pihole.freesalty.com
               version: 6
               key: "AdminHomelabPass123"
     - Applications:
         - Immich:
             icon: immich
-            href: http://192.168.50.243
-            description: High Performance Photo Backups
+            href: http://immich.freesalty.com
+            description: High Performance Photo Backups (Pending Hardware)
     - Management & Observation:
         - Cluster Logging:
             icon: grafana
-            href: http://192.168.50.244
-            description: Unified Loki Log Explorer
+            href: http://grafana.freesalty.com
+            description: Unified Loki Log Explorer (Pending Hardware)
   kubernetes.yaml: |
     mode: cluster
     showCount: true
@@ -53,12 +53,21 @@ spec:
       labels:
         app: homepage
     spec:
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - 192.168.50.242
+          - 1.1.1.1
+        searches:
+          - dashboard.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
           env:
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "192.168.50.241,192.168.50.*"
+              value: "192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
           ports:
             - containerPort: 3000
               name: http
@@ -80,15 +89,32 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: homepage-loadbalancer
+  name: homepage-service
   namespace: dashboard
-  annotations:
-    metallb.universe.tf/loadBalancerIPs: "192.168.50.241"
 spec:
-  type: LoadBalancer
+  type: ClusterIP # Keep private behind Traefik
   selector:
     app: homepage
   ports:
     - port: 80
       targetPort: 3000
       protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homepage-ingress
+  namespace: dashboard
+spec:
+  ingressClassName: traefik # 🛠️ Modern explicitly matched ingress classification spec
+  rules:
+    - host: homepage.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage-service
+                port:
+                  number: 80
