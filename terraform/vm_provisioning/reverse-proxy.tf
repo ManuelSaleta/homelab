@@ -30,6 +30,17 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
     }
   }
 
+  # 🛠️ FIX: Explicitly define the interface map and attach it to your virtual bridge
+  network_interface {
+    name   = "eth0"
+    bridge = "vmbr0" # <-- This connects the LXC to your actual home network switch!
+  }
+
+  # 🛠️ FIX: Enable nesting for Systemd 255 compatibility
+  features {
+    nesting = true
+  }
+
   cpu { cores = 1 }
 
   memory {
@@ -47,8 +58,27 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
     template_file_id = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
   }
 
+  # 1. Shared SSH Connection Strategy
+  # Placed here so all downstream provisioners automatically inherit these credentials.
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = file("~/.ssh/id_ed25519")
+    host        = "192.168.50.240"
+    timeout     = "3m" # ⏳ Instructs Terraform to patiently retry connection for up to 3 mins
+  }
 
-  # File Provisioner: Ship the externalized configurations to the node tmp space
+  # 2. Pre-Flight Connection Boot-Strapper
+  # This forces Terraform to wait until the OS initializes its interfaces 
+  # and the SSH daemon is fully listening before any files are copied.
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'LXC Container network interface detected online.'",
+      "until systemctl is-active --quiet ssh || [ -f /var/run/sshd.pid ]; do echo 'Waiting for OpenSSH server to initialize...'; sleep 3; done"
+    ]
+  }
+
+  # 3. File Provisioners: Ship the configurations safely now that SSH is responsive
   provisioner "file" {
     content     = file("${path.module}/configs/traefik.yml")
     destination = "/tmp/traefik.yml"
@@ -59,19 +89,9 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
     destination = "/tmp/traefik.service"
   }
 
-  # SSH Connection Strategy (Uses root to execute the initial setup script)
-  connection {
-    type        = "ssh"
-    user        = "root"
-    private_key = file("~/.ssh/id_ed25519")
-    host        = "192.168.50.240"
-  }
-
-  # Software Bootstrapping
+  # 4. Software Bootstrapping
   provisioner "remote-exec" {
     inline = [
-      "sleep 10",
-
       # 1. Dynamically create the fleet standard user
       "id -u gman &>/dev/null || useradd -m -s /bin/bash gman",
       "echo 'gman ALL=(ALL) NOPASSWD:ALL' | tee /etc/sudoers.d/gman",
@@ -85,7 +105,7 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
 
       # 3. Proceed with system core package installation
       "apt-get update",
-      "apt-get install -y curl ca-certificates",
+      "apt-get install -y curl ca-certificates openssh-server",
 
       # 4. Download and Install standalone Traefik binary
       "curl -sL https://github.com/traefik/traefik/releases/download/v3.0.1/traefik_v3.0.1_linux_amd64.tar.gz | tar xz",
@@ -97,6 +117,10 @@ resource "proxmox_virtual_environment_container" "reverse_proxy" {
       "mkdir -p /var/log/traefik",
       "mv /tmp/traefik.yml /etc/traefik/traefik.yml",
       "mv /tmp/traefik.service /etc/systemd/system/traefik.service",
+
+      # 🔐 FIX: Dynamically download the public cluster CA cert directly from the K3s control node API over the network
+      "curl -k https://192.168.50.185:6443/cacert > /etc/traefik/k3s-ca.crt",
+
       "touch /etc/traefik/acme.json",
       "chmod 600 /etc/traefik/acme.json",
 

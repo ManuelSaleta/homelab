@@ -53,7 +53,6 @@ spec:
       labels:
         app: homepage
     spec:
-      # Keep your custom dnsConfig so Homepage resolves freesalty.com via Pi-hole
       dnsPolicy: "None"
       dnsConfig:
         nameservers:
@@ -93,7 +92,7 @@ metadata:
   name: homepage-service
   namespace: dashboard
 spec:
-  type: ClusterIP # 🛠️ Private internal routing only now
+  type: ClusterIP # Keep private behind Traefik
   selector:
     app: homepage
   ports:
@@ -106,9 +105,8 @@ kind: Ingress
 metadata:
   name: homepage-ingress
   namespace: dashboard
-  annotations:
-    kubernetes.io/ingress.class: traefik # 🚀 Routes this directly to K3s Traefik
 spec:
+  ingressClassName: traefik # 🛠️ Modern explicitly matched ingress classification spec
   rules:
     - host: homepage.freesalty.com
       http:

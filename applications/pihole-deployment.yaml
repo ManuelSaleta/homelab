@@ -75,7 +75,7 @@ metadata:
   annotations:
     metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
 spec:
-  type: LoadBalancer # Kept as LoadBalancer so your devices can use 192.168.50.242 for port 53 DNS traffic
+  type: LoadBalancer
   selector:
     app: pihole-dns-server
   ports:
@@ -97,9 +97,8 @@ kind: Ingress
 metadata:
   name: pihole-ingress
   namespace: networking
-  annotations:
-    kubernetes.io/ingress.class: traefik # 🚀 Routes HTTP web traffic via K3s Traefik
 spec:
+  ingressClassName: traefik # 🛠️ Modern explicitly matched ingress classification spec
   rules:
     - host: pihole.freesalty.com
       http:

@@ -17,3 +17,12 @@ subjects:
   - kind: ServiceAccount
     name: traefik-external-ingress
     namespace: kube-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: traefik-external-ingress-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: "traefik-external-ingress" # 🔗 Links it directly to your SA
+type: kubernetes.io/service-account-token
