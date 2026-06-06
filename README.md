@@ -9,39 +9,51 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
 
     Terraform Layer: Consumes the golden template image to dynamically map resource pools, provision virtual hardware topology, inject custom network maps, and initialize automatic cluster nodes registration.
 
+````text
+## 📂 Repository Topology
+
+This workspace is structured to enforce a strict separation of concerns across our self-hosted infrastructure lifecycle, breaking down workloads from bare-metal template generation up to containerized application orchestration.
+
 ```text
-├── applications
-│   ├── pihole-deployment.yaml
+.
+├── README.md                           # Global Homelab
+│
+├── terraform/
+│   ├── TODOs.txt
+│   └── vm_provisioning/
+│       ├── main.tf                     # Proxmox VM Provider Template (Control Node)
+│       ├── workers.tf                  # Cluster Scale Architecture (Worker Nodes)
+│       ├── variables.tf                # Parameter Boundaries
+│       ├── terraform.tfvars            # Bare-Metal Environment Secret Variables
+│       ├── Makefile                    # Automation Hooks (`make apply`, `make plan`)
+│       │
+│       └── packer-k3s/                 # Automated OS Image-Baking Paradigm
+│           ├── ubuntu-vm-k3s.pkr.hcl   # Packer Image Configuration (Bakes K3s Runtime + SHH)
+│           ├── packer.pkrvars.hcl      # Packer Target Definitions
+│           └── http/
+│               ├── user-data           # Cloud-Init Automated Automation Configuration
+│               └── meta-data           # Cloud-Init Target Spec
+│
+├── kubernetes/                         # Cluster Core System Network Configurations
 │   ├── README.md
-│   └── TODOS.txt
-├── docker
-│   └── container-provisioning                                           #EMPTY FOR NOW
-│       ├── docker-compose.yaml
-│       ├── Makefile
-│       └── README.md
-├── kubernetes
-│   ├── load-balancer
-│   │   └── metallb-config.yaml
-│   └── README.md
-├── README.md
-├── terraform
-│   └── vm_provisioning                                                 #
-│       ├── main.tf
-│       ├── Makefile
-│       ├── packer-k3s
-│       │   ├── http
-│       │   │   ├── meta-data
-│       │   │   └── user-data
-│       │   ├── Makefile
-│       │   ├── README.md
-│       │   └── ubuntu-vm-k3s.pkr.hcl
-│       ├── README.md
-│       ├── terraform.tfstate.backup
-│       ├── terraform.tfvars
-│       ├── terraform.tfvars.hcl
-│       ├── variables.tf
-│       └── workers.tf
-```
+│   ├── TODO_expose_kube_dashboard.txt
+│   └── load-balancer/
+│       └── metallb-config.yaml         # Bare-Metal Layer-2 Core Network Pool (.240-.250)
+│
+├── applications/                       # Declarative K3s Application Layer (GitOps-Ready)
+│   ├── README.md
+│   ├── TODOS.txt
+│   ├── cloudflared-tunnel.yaml         # Cloudflare Edge Gateway Outbound Daemon
+│   ├── pihole-deployment.yaml          # Cluster DNS, Ad-Blocking, & Local Split-Horizon Routing
+│   ├── homepage-deployment.yaml        # Main Landing Infrastructure Command Dashboard
+│   └── grafana-exposure.yaml           # Metrics Visual Logging Pipeline
+│
+└── docker/                             # Isolated Legacy Container Standalone Sandboxes
+    └── container-provisioning/
+        ├── docker-compose.yaml
+        ├── Makefile
+        └── README.md                   # Automation Hooks (`make apply`, `make plan`)
+````
 
 ```text
 
@@ -54,8 +66,8 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
  [ PROXMOX VE HYPERVISOR ("mothership") ] ── (Storage: local-lvm)
    │
    ├── [ INGRESS LAYER ]
-   │     └── LXC Container: "reverse-proxy" (IP: 192.168.50.240)
-   │           └── Native Traefik Service
+   │     └── CloudFlare Secure Tunnel W/ Public Host records
+   │           └── Native Traefik Service (IP: 192.168.50.240) + CloudFlareSecureToken
    │                 │
    │                 └───► (Watches K3s API server via Service Account Token) ──┐
    │                                                                            │
@@ -64,7 +76,7 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
                │                                                                │
                ├── Control Plane & Worker Pods                                  │
                │     ├── Core DNS / API Server  ◄───────────────────────────────┘
-               │     └── Applications (Nextcloud, Grafana, Dashboards, etc.)
+               │     └── Applications (Grafana, Homelab Dashboard, etc.)
                │
                └── Storage / Infrastructure Services (Pi-hole, Plex, etc.)
 ==========================================================================================
@@ -82,19 +94,25 @@ Ensure your execution host has the standard infrastructure toolsets installed an
 
     Terraform (v1.7+)
 
+    Kubectl
+
     GNU Make (Standard shell scripting execution matrix)
 
     OpenSSH Client (With an active backend authentication agent)
 
 Bash
 
-# Example for Fedora Linux workstations
+# Example for Linux workstations
 
+> [!IMPORTANT] This targets a Fedora/RHL flavor. Adjust accordingly
+
+```bash
 sudo dnf install -y packer terraform make openssh-clients
+```
 
 2. Proxmox Hypervisor Storage Targets
 
-Your targeted Proxmox host system must have the standard storage allocations configured to map the volume requests initialized by the HCL code:
+The targeted Proxmox host system must have the standard storage allocations configured to map the volume requests initialized by the HCL code:
 
     local: Must house the vanilla Ubuntu live-server installer ISO (local:iso/ubuntu-24.04.4-live-server-amd64.iso).
 
@@ -110,9 +128,69 @@ The deployment sequence relies completely on secure public key verification loop
 
     Start and bind your local runtime environment agent so Terraform can tap into the communication loop seamlessly over the SSH channel:
 
-```zsh
+```bash
     eval $(ssh-agent -s)
     ssh-add ~/.ssh/id_ed25519
 ```
 
-> [!IMPORTANT] To prevent accidental leaks of private network gateways, cloud tokens, and cluster keys to public spaces, NEVER commit your local terraform.tfvars file. Keep your private variables isolated locally; the underlying .gitignore block is configured to filter out structural \*.tfvars extensions cleanly.
+> [!important] To prevent accidental leaks of private network gateways, cloud tokens, and cluster keys to public spaces, NEVER commit your local terraform.tfvars file. Keep your private variables isolated locally; the underlying .gitignore block is configured to filter out structural \*.tfvars extensions cleanly.
+
+# 🏴‍☠️ Proxmox VE Command-Line Toolkit (`qm` & `pct`)
+
+When managing the underlying virtualization layer for the cluster nodes directly on the Proxmox host (`mothership`) In my case, use these native CLI utilities.
+
+## 🖥️ Virtual Machine Management (ProxMox) (`qm`)
+
+These commands control your KVM/QEMU Virtual Machines (like your K3s control-plane and worker nodes).
+
+```bash
+# Core Lifecycle Controls
+qm start <vmid>          # Power on a specific VM (e.g., qm start 100)
+qm shutdown <vmid>       # Gracefully shut down a VM via ACPI/Guest Agent
+qm stop <vmid>           # Force kill power to a VM (hard reset)
+qm reboot <vmid>         # Bounce the VM state instantly
+
+# Auditing & State Mapping
+qm list                  # Print a complete matrix of all VMs, resource allocations, and statuses
+qm status <vmid>         # Get detailed runtime status of a single node
+qm config <vmid>         # Dump the entire hardware layout configuration file for a VM
+
+# Templates & Cloning (Automating cattle steps manually)
+qm template <vmid>       # Convert an existing VM into a golden read-only template
+qm clone <vmid> <newid>  # Create an instant linked or full clone from a template ID
+```
+
+### LXC Container Management
+
+```bash
+# Core Lifecycle Controls
+pct start <vmid>         # Power on an LXC container
+pct shutdown <vmid>      # Request a graceful initialization shutdown
+pct stop <vmid>          # Instantly kill an LXC runtime execution environment
+pct reboot <vmid>        # Cycle the container operating system
+
+# Configuration & Execution Hooks
+pct list                 # List all containers on the host node
+pct config <vmid>        # Read the environment resource definitions for an LXC
+pct exec <vmid> <cmd>    # Execute a command directly inside the container without SSH
+                         # Example: pct exec 999 apt-get update
+
+# Direct Container Shell Access
+pct enter <vmid>         # Drop straight into a root shell inside the running container
+```
+
+## 📡 Proxmox API Shell & Diagnostics (pvesh & pve)
+
+### Cluster & API Auditing
+
+```bash
+pvesh get /cluster/status   # Query the API directly to check cluster kesehatan
+pvesh get /nodes            # List all hardware hosts in the architecture
+pveversion -v               # Print detailed package versions for running services (kernel, pve-manager, qemu)
+```
+
+### Storage Volume Auditing
+
+```bash
+pvesm status                # Scan all storage backends (local, local-lvm) and read usage metrics
+```

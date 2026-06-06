@@ -37,6 +37,7 @@ spec:
               value: "all"
             - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;8.8.8.8"
+            # 🎯 Points all local wildcard queries for your domain back to Traefik Edge Proxy
             - name: FTLCONF_misc_dnsmasq_lines
               value: "address=/freesalty.com/192.168.50.240"
             - name: FTLCONF_webserver_cors_allowedHosts
@@ -73,6 +74,7 @@ metadata:
   name: pihole-loadbalancer-service
   namespace: networking
   annotations:
+    # 💥 MetalLB hooks up here to give bare-metal LAN access strictly for your DNS query traffic!
     metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
 spec:
   type: LoadBalancer
@@ -90,7 +92,7 @@ spec:
     - port: 80
       targetPort: 80
       protocol: TCP
-      name: inbound-web-http
+      name: web # 🎯 Shortened to satisfy the Kubernetes 15-character name limitation
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -98,7 +100,7 @@ metadata:
   name: pihole-ingress
   namespace: networking
 spec:
-  ingressClassName: traefik # 🛠️ Modern explicitly matched ingress classification spec
+  ingressClassName: traefik
   rules:
     - host: pihole.freesalty.com
       http:
@@ -109,4 +111,4 @@ spec:
               service:
                 name: pihole-loadbalancer-service
                 port:
-                  number: 80
+                  name: web # 🎯 Securely maps to the shortened Service port identifier

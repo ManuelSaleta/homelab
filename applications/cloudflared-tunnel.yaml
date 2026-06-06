@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared-tunnel
+  namespace: networking
+  labels:
+    app: cloudflared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
+            - --token
+            - "eyJhIjoiZjY1YjQ0YjkwYmZkNzhjMzQ1NWVmODAxNTcwMjkzYzkiLCJ0IjoiNTc4ZjRkY2QtNWMxMC00ZGIxLWJkYjgtNDE4YTdiODFiYTE4IiwicyI6Ik5XTm1Zak0xTW1FdFptSXlPQzAwTkRkaExUZ3hNRFl0TmpFNE1EazNNVGRtT0RBNCJ9" # 🔐 Paste your true extracted token here
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"

@@ -1,9 +1,82 @@
+## 🛠️ Kubernetes Command-Line Shortcuts
+
+This repository utilizes standard `kubectl` workflows for cluster operations. Drop these configurations directly into your local shell configuration file (e.g., `~/.zshrc` or `~/.bashrc`) to streamline daily administration tasks.
+
+### Core Auto-Completion
+
+Ensure your interactive shell auto-completes resources dynamically by sourcing the native engine:
+
+```bash
+# Inject native completion architecture
+source <(kubectl completion zsh)
+
+### Context & Cluster Topology:
+
+# Cluster Routing Switchers
+alias kcontext-MOTHERSHIP="kubectl config use-context default"
+alias kcurr-context="kubectl config get-contexts"
+
+# Global System Diagnostics
+alias kinfo="kubectl cluster-info"
+alias kver="kubectl version --client"
+alias knodes="kubectl get nodes -o wide"
+alias khealth="kubectl get componentstatuses"
+
+# Resource Lookups
+alias kall-net="kubectl get all -n networking"
+alias kpods="kubectl get pods -o wide"
+alias kdeployments="kubectl get deployment"
+alias ksvc="kubectl get svc --all-namespaces"
+alias kingress="kubectl get ingress --all-namespaces"
+
+# Ingress Controller Rules
+alias kwhitelist="kubectl get configmap -n ingress-nginx-internal ingress-nginx-controller -o jsonpath='{.data.whitelist-source-range}'"
+
+
+# Cluster Node Endpoint Extractors
+alias kips="kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type == \"InternalIP\")].address}'"
+alias kips-external="kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type == \"ExternalIP\")].address}'"
+
+# Real-Time Stream Tailing
+alias klogs="kubectl logs -f --tail=100"
+alias klogs-net="kubectl logs -f --tail=100 -n networking"
+
+# Interactive Pod Shell Drop-In
+alias kexec="kubectl exec -it"
+
+# Deployment Rollout Revisions Trace
+alias krev-pihole="kubectl rollout history deployment/pihole-dns-server -n networking"
+alias krev-tunnel="kubectl rollout history deployment/cloudflared-tunnel -n networking"
+
+# Local Proxy Management
+alias kproxy="kubectl proxy"
+alias kkill="pkill -9 -f 'kubectl proxy'"
+
+# Modern On-Demand Token Generator (Valid for 1 hour)
+alias ktoken="kubectl -n kubernetes-dashboard create token admin-user"
+
+```
+
+## Cluster Verification Quick Reference
+
+```bash
+    kubectl get svc -n kube-system
+```
+
+# Verify Split-Horizon Ingress Route Resolution:
+
+```bash
+    curl -I -H "Host: pihole.freesalty.com" [http://192.168.50.240/admin/](http://192.168.50.240/admin/)
+```
+
+---
+
 ### Setting up a load balancer
 
 Since k3s is bare-metal; we will need a load balancer...
 From your workstation do:
 
-```zsh
+```bash
 # Create the namespace and deploy the components
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
 ```
@@ -43,7 +116,7 @@ validatingwebhookconfiguration.admissionregistration.k8s.io/metallb-webhook-conf
 
 From the directoy apply it to the cluster:
 
-```zsh
+```bash
 kubectl apply -f metallb-config.yaml
 ```
 

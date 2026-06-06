@@ -23,7 +23,7 @@ The pipeline is completely automated through the local `Makefile`. When executin
 
 Execute these targets from the root folder directory to run validation or initialization steps:
 
-```zsh
+````bash
 # Fetch and compile the Proxmox builder plugin dependencies
 make init
 
@@ -132,3 +132,4 @@ The `boot_command` property simulates a human physically typing on a keyboard co
 
 - **The Importance of `<wait3>`:** Virtualization environments experience slight disk/CPU scheduling latencies while starting up on Proxmox. The embedded `<wait3>` directives act as defensive buffers, preventing Packer from typing commands faster than the VM's virtual keyboard buffer can receive them.
 - **Network Availability:** Because the kernel pulls the autoinstall files from an HTTP link _during_ this step, the VM's hardware abstraction layer must instantly receive a functional IP address from your local network gateway bridge via DHCP the second the network device turns on.
+````
