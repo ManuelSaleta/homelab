@@ -10,7 +10,7 @@ metadata:
   namespace: dashboard
 data:
   settings.yaml: |
-    title: "Manny's Homelab"
+    title: "Gman's Homelab"
     background: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe"
     cardBlur: sm
   services.yaml: |
