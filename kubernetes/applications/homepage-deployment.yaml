@@ -1,13 +1,8 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: dashboard
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: homepage-config
-  namespace: dashboard
+  namespace: networking # 🌐 Unified inside networking namespace
 data:
   settings.yaml: |
     title: "Gman's Homelab"
@@ -15,15 +10,15 @@ data:
     cardBlur: sm
   services.yaml: |
     - Core Infrastructure:
-        - Pi-hole:
+        - Pi-hole: # 🎯 Fixed indentation alignment here
             icon: pi-hole
             href: http://pihole.freesalty.com/admin
             description: Cluster DNS & Ad-Shielding
             widget:
               type: pihole
-              url: http://pihole.freesalty.com
+              url: http://192.168.50.242
               version: 6
-              key: "AdminHomelabPass123"
+              key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"
     - Applications:
         - Immich:
             icon: immich
@@ -42,7 +37,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: homepage
-  namespace: dashboard
+  namespace: networking # 🌐 Unified inside networking namespace
 spec:
   replicas: 1
   selector:
@@ -59,13 +54,19 @@ spec:
           - 192.168.50.242
           - 1.1.1.1
         searches:
-          - dashboard.svc.cluster.local
+          - networking.svc.cluster.local # 🔍 Updated local cluster search domains
           - svc.cluster.local
           - cluster.local
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
           env:
+            # 🔐 Successfully references your single, shared terraform secret!
+            - name: HOMEPAGE_VAR_PIHOLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-secret
+                  key: PIHOLE_PASSWORD
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: "192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
           ports:
@@ -90,9 +91,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: homepage-service
-  namespace: dashboard
+  namespace: networking # 🌐 Unified inside networking namespace
 spec:
-  type: ClusterIP # Keep private behind Traefik
+  type: ClusterIP
   selector:
     app: homepage
   ports:
@@ -104,9 +105,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: homepage-ingress
-  namespace: dashboard
+  namespace: networking # 🌐 Unified inside networking namespace
 spec:
-  ingressClassName: traefik # 🛠️ Modern explicitly matched ingress classification spec
+  ingressClassName: traefik
   rules:
     - host: homepage.freesalty.com
       http:
@@ -118,3 +119,16 @@ spec:
                 name: homepage-service
                 port:
                   number: 80
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homepage-cluster-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: networking

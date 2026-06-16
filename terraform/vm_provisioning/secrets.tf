@@ -36,7 +36,7 @@ resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
 resource "kubernetes_secret_v1" "pihole_secret" {
   metadata {
     name      = "pihole-secret"
-    namespace = "dashboard" # Matches your Homepage dashboard deployment namespace
+    namespace = "networking" # Matches your Homepage dashboard deployment namespace
   }
 
   type = "Opaque"
