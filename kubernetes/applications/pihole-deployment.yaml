@@ -31,8 +31,14 @@ spec:
           env:
             - name: TZ
               value: "America/New_York"
+
+            # 🎯 SECURED: Replaced hardcoded password with a dynamic reference to secrets.tf
             - name: FTLCONF_webserver_api_password
-              value: "AdminHomelabPass123"
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-secret
+                  key: PIHOLE_PASSWORD
+                # FTLCONF environment variables are documented here: https://docs.pi-hole.net/ftldns/configuration/environment-variables/
             - name: FTLCONF_dns_listeningMode
               value: "all"
             - name: FTLCONF_dns_upstreams
@@ -42,7 +48,6 @@ spec:
               value: "address=/freesalty.com/192.168.50.240"
             - name: FTLCONF_webserver_cors_allowedHosts
               value: "pihole.freesalty.com,freesalty.com"
-              # FTLCONF environment variables are documented here: https://docs.pi-hole.net/ftldns/configuration/environment-variables/
           ports:
             - containerPort: 53
               name: dns-udp

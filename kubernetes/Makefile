@@ -35,12 +35,14 @@ help:
 infra-up:
 	@echo "🚀 Deploying Cluster Infrastructure..."
 	kubectl apply -f $(INFRA_DIR)/metallb-config.yaml
+	kubectl apply -f $(INFRA_DIR)/tailscale-config.yaml
 	kubectl apply -f $(INFRA_DIR)/cloudflared-tunnel.yaml
 
 infra-down:
 	@echo "⚠️ Tearing down Core Infrastructure..."
 	kubectl delete -f $(INFRA_DIR)/cloudflared-tunnel.yaml --ignore-not-found
 	kubectl delete -f $(INFRA_DIR)/metallb-config.yaml --ignore-not-found
+	kubectl delete -f $(INFRA_DIR)/tailscale-config.yaml --ignore-not-found
 
 infra-status:
 	@echo "🔍 Checking Infrastructure Workloads..."

@@ -12,6 +12,11 @@ terraform {
       source  = "bpg/proxmox"
       version = "~> 0.106"
     }
+    # 🎯 ADDED: Official HashiCorp Kubernetes Provider definition
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.31"
+    }
   }
 }
 
@@ -30,6 +35,15 @@ provider "proxmox" {
   }
 }
 
+# 🎯 ADDED: Target your K3s cluster context directly using your local kubeconfig
+provider "kubernetes" {
+  config_path    = "~/.kube/config"
+  config_context = "default"
+}
+
+# ==============================================================================
+# 1. CLUSTER CONTROL PLANE MANAGEMENT
+# ==============================================================================
 resource "proxmox_virtual_environment_vm" "k3s_control" {
   name        = "k3s-control-01"
   description = "Lightweight K3s Kubernetes Control Node cloned from template 777"
@@ -85,11 +99,11 @@ resource "proxmox_virtual_environment_vm" "k3s_control" {
       keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
     }
 
-    # Since Packer already baked gman and your SSH keys into the template, 
-    # you can let the OS boot natively, or override network layouts here:
+    # 🎯 FORCE STATIC IP CONFIGURATION FOR THE MANAGER
     ip_config {
       ipv4 {
-        address = "dhcp" # Fetches a clean dynamic network footprint on boot
+        address = "${var.k3s_manager_ip}/24"
+        gateway = var.default_gateway_ip
       }
     }
   }
