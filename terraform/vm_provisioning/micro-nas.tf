@@ -38,12 +38,24 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - [ /dev/sdb, /mnt/obsidian-vault, "ext4", "defaults,nofail", "0", "2" ]
 
     runcmd:
-      # 1. Install the official Tailscale engine binary
+      # 1. Install Tailscale and Syncthing
       - curl -fsSL https://tailscale.com/install.sh | sh
+      - apt-get update && apt-get install -y syncthing
       
-      # 2. Force instant node provisioning into your private tailnet mesh
-      # --accept-dns=false prevents the overlay from hijacking your local cluster dns records
+      # 2. Configure Tailscale
       - tailscale up --authkey="${var.tailscale_auth_key}" --accept-dns=false
+      
+      # 3. Provision Syncthing for gman
+      # Creates the directory structure and enables the service for the non-root user
+      - mkdir -p /home/gman/.config/syncthing
+      - systemctl --user enable syncthing.service
+      - systemctl --user start syncthing.service
+      
+      # 4. Modify config to allow GUI access over the Tailscale network
+      # We wait a moment for the service to generate the initial config.xml
+      - sleep 5
+      - sed -i 's/127.0.0.1:8384/0.0.0.0:8384/' /home/gman/.config/syncthing/config.xml
+      - systemctl --user restart syncthing.service
     EOF
   }
 }
@@ -71,7 +83,7 @@ resource "proxmox_virtual_environment_vm" "micro_nas" {
   }
 
   memory {
-    dedicated = 1024 # 1 GB RAM is sufficient for a lightweight Tailscale node and file server
+    dedicated = 1536 # 1.5 GB RAM is sufficient for a lightweight Tailscale node and file server
   }
 
   network_device {
