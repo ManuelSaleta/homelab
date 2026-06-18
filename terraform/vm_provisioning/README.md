@@ -220,3 +220,75 @@ The Syncthing GUI is accessible through the Tailscale network.
 4. **Permissions:** The service is configured to run as the `gman` user. If you encounter "Permission Denied" errors, run `sudo chown -R gman:gman /mnt/obsidian-vault` on the NAS to align ownership.
 
 _Tip: Because this is configured as a `systemd --user` service, it will persist through reboots automatically without further configuration._
+
+## High Level Architectural Diagram
+
+```mermaid
+---
+config:
+  theme: mc
+  themeVariables:
+    fontFamily: ''
+    fontSize: 14px
+  layout: elk
+---
+flowchart TD
+    classDef k3s fill:#326ce5,stroke:#fff,color:#fff;
+    classDef cloudflare fill:#f38020,stroke:#fff,color:#fff;
+    classDef proxmox fill:#e46623,stroke:#fff,color:#fff;
+    classDef storage fill:#8d6e63,stroke:#fff,color:#fff;
+    classDef network fill:#4caf50,stroke:#fff,color:#fff;
+    classDef app fill:#607d8b,stroke:#fff,color:#fff;
+    classDef tailscale fill:#0055ff,stroke:#fff,color:#fff;
+    subgraph Proxmox_Mothership["fa:fa-server Proxmox Mothership Node"]
+        direction TB
+        micro_nas[("fa:fa-hdd micro-nas VM")]:::storage
+
+        subgraph K3s_Cluster["fa:fa-microchip K3s Cluster"]
+            direction LR
+            control["fa:fa-server control-01"]:::k3s
+            worker1["fa:fa-server worker-01"]:::k3s
+            worker2["fa:fa-server worker-02"]:::k3s
+        end
+        vm_template["fa:fa-copy k3s-vm-template"]:::proxmox
+    end
+
+    subgraph Local_LAN["fa:fa-network-wired Local Area Network"]
+        fedora["fa:fa-desktop Fedora Workstation"]:::network
+    end
+
+    subgraph Tailnet["fa:fa-shield-alt Tailscale Mesh"]
+        mac["fa:fa-laptop Mac (Remote)"]:::tailscale
+        nas_node[("fa:fa-sync Syncthing")]:::storage
+    end
+
+    subgraph K3s_Apps["fa:fa-cubes K3s Application Stack"]
+        Traefik["fa:fa-project-diagram Traefik"]:::app
+        MetalLB["fa:fa-balance-scale MetalLB"]:::app
+        Homepage["fa:fa-home Homepage"]:::app
+        PiHole["fa:fa-ad Pi-Hole"]:::app
+        Grafana["fa:fa-chart-line Grafana"]:::app
+    end
+
+
+    MetalLB --> Homepage & PiHole & Grafana
+    K3s_Cluster --- Traefik
+    K3s_Cluster@{ shape: rounded }
+    Proxmox_Mothership@{ shape: rounded }
+    Local_LAN@{ shape: rounded }
+    Tailnet@{ shape: rounded }
+    K3s_Apps@{ shape: rounded }
+    micro_nas@{ shape: stadium }
+    nas_node@{ shape: stadium }
+    control@{ shape: rounded }
+    worker1@{ shape: rounded }
+    worker2@{ shape: rounded }
+    Traefik@{ shape: rounded }
+    MetalLB@{ shape: rounded }
+    Homepage@{ shape: rounded }
+    PiHole@{ shape: rounded }
+    Grafana@{ shape: rounded }
+    fedora@{ shape: rounded }
+    mac@{ shape: rounded }
+    vm_template@{ shape: rounded }
+```
