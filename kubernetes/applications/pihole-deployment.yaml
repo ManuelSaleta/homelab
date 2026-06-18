@@ -7,7 +7,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pihole-dns-server
-  namespace: networking
+  namespace: networking # 🌐 Core engine stays rock-solid in networking
   labels:
     app.kubernetes.io/name: pihole
     app.kubernetes.io/component: core-dns
@@ -32,17 +32,18 @@ spec:
             - name: TZ
               value: "America/New_York"
             - name: FTLCONF_webserver_api_password
-              value: "AdminHomelabPass123"
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-secret # ✅ Safely looks up the local networking secret
+                  key: PIHOLE_PASSWORD
             - name: FTLCONF_dns_listeningMode
               value: "all"
             - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;8.8.8.8"
-            # 🎯 Points all local wildcard queries for your domain back to Traefik Edge Proxy
             - name: FTLCONF_misc_dnsmasq_lines
               value: "address=/freesalty.com/192.168.50.240"
             - name: FTLCONF_webserver_cors_allowedHosts
               value: "pihole.freesalty.com,freesalty.com"
-              # FTLCONF environment variables are documented here: https://docs.pi-hole.net/ftldns/configuration/environment-variables/
           ports:
             - containerPort: 53
               name: dns-udp
@@ -73,9 +74,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pihole-loadbalancer-service
-  namespace: networking
+  namespace: networking # 🌐 MetalLB binds inside the core networking tier
   annotations:
-    # 💥 MetalLB hooks up here to give bare-metal LAN access strictly for your DNS query traffic!
     metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
 spec:
   type: LoadBalancer
@@ -93,13 +93,13 @@ spec:
     - port: 80
       targetPort: 80
       protocol: TCP
-      name: web # 🎯 Shortened to satisfy the Kubernetes 15-character name limitation
+      name: web
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: pihole-ingress
-  namespace: networking
+  namespace: dashboard # 📊 The GUI routing block lives alongside Homepage
 spec:
   ingressClassName: traefik
   rules:
@@ -110,6 +110,8 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: pihole-loadbalancer-service
+                # 🎯 CROSS-NAMESPACE ROUTING TRICK:
+                # Pointing the ingress to the fully-qualified service destination across the border
+                name: pihole-dashboard-proxy
                 port:
-                  name: web # 🎯 Securely maps to the shortened Service port identifier
+                  name: web

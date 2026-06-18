@@ -22,7 +22,9 @@ This workspace is structured to enforce a strict separation of concerns across o
 │   └── vm_provisioning/
 │       ├── main.tf                     # Proxmox Provider & Control-Plane Allocation
 │       ├── workers.tf                  # Cluster Scale Architecture (Worker Nodes)
+│       ├── micro-nas.tf                # Tiny NAS file server (tailscale)
 │       ├── variables.tf                # Parameter Boundaries
+│       ├── secrets.tf                  # Secrets required by services, pihole, cloudflare, etc
 │       ├── terraform.tfvars            # Bare-Metal Environment Secret Variables
 │       ├── Makefile                    # Automation Hooks (`make apply`, `make plan`)
 │       │
