@@ -1,5 +1,0 @@
-1. Purchase domain
-2. Make proper diagrams
-3. Update all the readmes.
-4. Add pveam list of commands to readmes
-5. add kubectl list of commands to readmes
