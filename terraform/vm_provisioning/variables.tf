@@ -34,6 +34,25 @@ variable "cloudflare_tunnel_token" {
   sensitive   = true
 }
 
+variable "cloudflare_tunnel_id" {
+  type        = string
+  description = "Cloudflare Tunnel ID for the specific tunnel."
+  sensitive   = true
+}
+
+variable "cloudflare_account_id" {
+  type        = string
+  description = "Cloudflare Account ID associated with the tunnel."
+  sensitive   = true
+  
+}
+
+variable "cloudflare_api_token" {
+  type        = string
+  description = "Cloudflare API token for managing tunnels."
+  sensitive   = true
+}
+
 variable "tailscale_auth_key" {
   type        = string
   description = "Reusable or Ephemeral Tailscale Authentication Key for auto-joining the mesh"

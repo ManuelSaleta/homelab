@@ -25,6 +25,17 @@
         namespace: networking
         app: pihole-dns-server
         podSelector: app=pihole-dns-server
+    - Cloudflare-Tunnel:
+        icon: cloudflare.png
+        href: https://one.dash.cloudflare.com/
+        widget:
+          type: cloudflared
+          accountid: "{{HOMEPAGE_VAR_CF_ACCOUNT_ID}}"
+          tunnelid: "{{HOMEPAGE_VAR_CF_TUNNEL_ID}}"
+          key: "{{HOMEPAGE_VAR_CF_API_TOKEN}}"
+          fields:
+            - status
+            - origin_ip
     - micro-nas:
         icon: tailscale.png
         href: https://login.tailscale.com/admin/machines

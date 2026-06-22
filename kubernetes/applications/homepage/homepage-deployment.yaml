@@ -20,6 +20,21 @@ spec:
           env:
             - name: LOG_LEVEL
               value: debug
+            - name: HOMEPAGE_VAR_CF_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-secret
+                  key: CF_API_TOKEN
+            - name: HOMEPAGE_VAR_CF_TUNNEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-secret
+                  key: CF_TUNNEL_ID
+            - name: HOMEPAGE_VAR_CF_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-secret
+                  key: CF_ACCOUNT_ID
             - name: HOMEPAGE_VAR_PIHOLE_PASSWORD
               valueFrom:
                 secretKeyRef:
