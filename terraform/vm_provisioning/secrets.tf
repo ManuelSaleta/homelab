@@ -13,8 +13,10 @@ resource "kubernetes_secret_v1" "tailscale_secret" {
   type = "Opaque"
 
   data = {
-    TS_AUTHKEY = var.tailscale_auth_key
-    TS_APITOKEN = var.tailscale_api_token
+    TS_AUTHKEY    = var.tailscale_auth_key
+    TS_APITOKEN   = var.tailscale_api_token
+    TS_NAS_DEVICE_ID = var.tailscale_device_id_nas
+    TS_LAPTOP_DEVICE_ID = var.tailscale_device_id_mac
   }
 }
 

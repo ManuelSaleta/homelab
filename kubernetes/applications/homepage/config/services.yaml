@@ -30,7 +30,7 @@
         href: https://login.tailscale.com/admin/machines
         widget:
           type: tailscale
-          deviceid: nup1DNjvLH11CNTRL
+          deviceid: "{{HOMEPAGE_VAR_TAILSCALE_NAS_DEVICE_ID}}"
           key: "{{HOMEPAGE_VAR_TAILSCALE_API_KEY}}"
           label: "NAS Status"
           fields: [address, last_seen]
@@ -39,7 +39,7 @@
         href: https://login.tailscale.com/admin/machines
         widget:
           type: tailscale
-          deviceid: nLyQKXLfUq11CNTRL
+          deviceid: "{{HOMEPAGE_VAR_TAILSCALE_LAPTOP_DEVICE_ID}}"
           key: "{{HOMEPAGE_VAR_TAILSCALE_API_KEY}}"
           label: "Laptop Status"
           fields: [address, last_seen]

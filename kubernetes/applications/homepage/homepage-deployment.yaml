@@ -30,6 +30,16 @@ spec:
                 secretKeyRef:
                   name: tailscale-secret
                   key: TS_APITOKEN
+            - name: HOMEPAGE_VAR_TAILSCALE_NAS_DEVICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-secret
+                  key: TS_NAS_DEVICE_ID
+            - name: HOMEPAGE_VAR_TAILSCALE_LAPTOP_DEVICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-secret
+                  key: TS_LAPTOP_DEVICE_ID
             - name: HOMEPAGE_VAR_PIHOLE_API_KEY
               valueFrom:
                 secretKeyRef:

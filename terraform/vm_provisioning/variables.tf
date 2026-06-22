@@ -46,6 +46,20 @@ variable "tailscale_api_token" {
   sensitive   = true
 }
 
+variable "tailscale_device_id_nas" {
+  type        = string
+  description = "The Tailscale Device ID for the NAS VM, used to pull specific metadata for the homepage widget."
+  sensitive   = true
+
+}
+
+variable "tailscale_device_id_mac" {
+  type        = string
+  description = "The Tailscale Device ID for the Macbook Pro, used to pull specific metadata for the homepage widget."
+  sensitive   = true
+
+}
+
 variable "proxmox_template_vm_id" {
   type        = string
   description = "The VM ID of the Proxmox template to clone for worker nodes."
@@ -108,7 +122,7 @@ variable "pihole_admin_password" {
 }
 
 variable "pihole_api_key" {
-  type = string
+  type        = string
   description = "Api token to enable widget access"
 }
 
