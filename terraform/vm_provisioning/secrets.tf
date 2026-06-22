@@ -14,6 +14,7 @@ resource "kubernetes_secret_v1" "tailscale_secret" {
 
   data = {
     TS_AUTHKEY = var.tailscale_auth_key
+    TS_APITOKEN = var.tailscale_api_token
   }
 }
 
@@ -44,6 +45,22 @@ resource "kubernetes_secret_v1" "pihole_secret" {
   data = {
     # 🎯 Pulls your "AdminHomelabPass123" securely out of plain-text YAML
     PIHOLE_PASSWORD = var.pihole_admin_password
+    PIHOLE_API_KEY  = var.pihole_api_key
+  }
+}
+
+# 2. Core Infrastructure Secrets (e.g., Proxmox Homepage Widget Access)
+resource "kubernetes_secret_v1" "proxmox_secret" {
+  metadata {
+    name      = "proxmox-secret"
+    namespace = "networking" # Matches your Homepage dashboard deployment namespace
+  }
+
+  type = "Opaque"
+
+  data = {
+    # 🎯 Pulls your "AdminHomelabPass123" securely out of plain-text YAML
+    PROXMOX_WIDGET_PASSWORD = var.proxmox_vm_auditor_password
   }
 }
 

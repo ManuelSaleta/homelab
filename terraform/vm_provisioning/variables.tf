@@ -40,6 +40,12 @@ variable "tailscale_auth_key" {
   sensitive   = true
 }
 
+variable "tailscale_api_token" {
+  type        = string
+  description = "Tailscale API Token for pulling device metadata and displaying it on the homepage widget"
+  sensitive   = true
+}
+
 variable "proxmox_template_vm_id" {
   type        = string
   description = "The VM ID of the Proxmox template to clone for worker nodes."
@@ -98,5 +104,16 @@ variable "k3s_share_token" {
 variable "pihole_admin_password" {
   type        = string
   description = "Administrative override credential password for the Pi-hole cluster dashboard."
+  sensitive   = true
+}
+
+variable "pihole_api_key" {
+  type = string
+  description = "Api token to enable widget access"
+}
+
+variable "proxmox_vm_auditor_password" {
+  type        = string
+  description = "Password for the Proxmox VM auditor user. Will be used to power the Homepage Widgets that pull data from the Proxmox API."
   sensitive   = true
 }
