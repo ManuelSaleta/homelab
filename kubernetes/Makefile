@@ -46,7 +46,7 @@ infra-down:
 
 infra-status:
 	@echo "🔍 Checking Infrastructure Workloads..."
-	kubectl get pods,svc,endpointslices -n networking
+		
 
 
 # ==============================================================================

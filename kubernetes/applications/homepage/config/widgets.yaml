@@ -1,6 +1,20 @@
-- Cluster:
-  icon: proxmox.png
-  href: https://192.168.50.200:8006/
-  description: Home automation
-  proxmoxNode: mothership
-  proxmoxVMID: 101
+- kubernetes:
+    label: Cluster Management
+    cluster:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true
+      label: "Cluster"
+    nodes:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true
+- resources:
+    cpu: true
+    memory: true
+    network: default
+- search:
+    provider: duckduckgo
+    target: _blank
