@@ -103,7 +103,7 @@ variable "proxmox_host_ip" {
 variable "k3s_manager_ip" {
   type        = string
   description = "The IP address of the K3s control manager node for worker registration. Match this IP with the KUBECONFIG"
-  default     = "192.168.50.185" # 🎯 Formatted to point directly to your static manager node address
+  default     = "192.168.50.185" # 🎯 Formatted to point directly to the static manager node address
 }
 
 variable "default_gateway_ip" {

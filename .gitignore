@@ -1,4 +1,4 @@
-# Local secret variable assignments (Contains your live API tokens)
+# Local secret variable assignments (Contains the live API tokens)
 *.tfvars
 *.tfvars.json
 *.pkrvars.hcl

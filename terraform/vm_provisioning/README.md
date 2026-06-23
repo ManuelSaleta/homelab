@@ -38,13 +38,13 @@ make redeploy-workers   # Pipeline: Nukes everything -> Validates formatting -> 
 
 ### 1. Security Isolation
 
-Ensure you copy `terraform.tfvars.example` to `terraform.tfvars` locally and populate your real tokens and endpoints. The `.tfvars` format is ignored by Git to prevent leak risks on GitHub.
+Ensure you copy `terraform.tfvars.example` to `terraform.tfvars` locally and populate the real tokens and endpoints. The `.tfvars` format is ignored by Git to prevent leak risks on GitHub.
 
 ### 2. Cloud-Init Worker Hook
 
 Workers leverage a dynamic Cloud-Init configuration block (`proxmox_virtual_environment_file.k3s_worker_cloud_config`) to auto-register with the control plane upon boot. They pull the cluster join hash directly using `${var.k3s_share_token}` and connect to the manager API at port `6443`.
 
-Here is a streamlined, copy-paste friendly `README.md` section covering cluster token rotation, worker node initialization, and your standard pod validation workflow.
+Here is a streamlined, copy-paste friendly `README.md` section covering cluster token rotation, worker node initialization, and the standard pod validation workflow.
 
 ---
 
@@ -56,7 +56,7 @@ Here is a streamlined, copy-paste friendly `README.md` section covering cluster 
 
 ### 1. Token Rotation & Manual Worker Registration
 
-Every time the `k3s-control-01` manager VM is destroyed and recreated, it mints a **brand-new cluster token**. You must extract this token and provide it to your worker nodes.
+Every time the `k3s-control-01` manager VM is destroyed and recreated, it mints a **brand-new cluster token**. You must extract this token and provide it to the worker nodes.
 
 #### Extract the New Token (Run on Manager)
 
@@ -66,7 +66,7 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 
 #### Manual Join Execution (Run on Worker Nodes)
 
-SSH into your worker node and run the registration command wrapper. Ensure you substitute the correct token value and target node hostname matching your topography:
+SSH into the worker node and run the registration command wrapper. Ensure you substitute the correct token value and target node hostname matching the topography:
 
 ```bash
 # 1. Check service status on manager node
@@ -76,12 +76,12 @@ sudo systemctl status k3s
 sudo systemctl enable k3s.service
 
 # 3. Get K3s token
-# (This is the token value you will copy back to your Fedora workstation's terraform.tfvars file so your actual worker VMs can connect).
+# (This is the token value you will copy back to the Fedora workstation's terraform.tfvars file so the actual worker VMs can connect).
 sudo cat /var/lib/rancher/k3s/server/node-token
 ```
 
 ```bash
-# Head over to your worker nodes; paste the following with the above token, and the IP of your manager VM.
+# Head over to the worker nodes; paste the following with the above token, and the IP of the manager VM.
 curl -sfL https://get.k3s.io | \
   K3S_URL="https://192.168.50.72:6443" \
   K3S_TOKEN="YOUR_FRESHLY_EXTRACTED_SERVER_TOKEN" \
@@ -101,7 +101,7 @@ sudo ss -tlnp | grep 6443
 
 ### Troubleshooting
 
-If everything is working from your control node, you should see.
+If everything is working from the control node, you should see.
 
 ```bash
 gman@k3s-control-01:~$ sudo k3s kubectl get nodes
@@ -111,7 +111,7 @@ k3s-worker-01    Ready    <none>          16m   v1.35.5+k3s1
 k3s-worker-02    Ready    <none>          15s   v1.35.5+k3s1
 ```
 
-Now from your workstation, if you copied over the .config files, updated the IP.
+Now from the workstation, if you copied over the .config files, updated the IP.
 You should see something like this. The manager/control plane and the workers.
 
 ```bash
@@ -124,7 +124,7 @@ k3s-worker-02    Ready    <none>          3m4s   v1.35.5+k3s1   192.168.50.211  
 
 > [!important]
 > The Internal IP oc the CONTROL node; has to be the IP found in the .config file, exported from that same node;
-> otherwise your local workstation will not find it.
+> otherwise the local workstation will not find it.
 
 #### Force Service Sync & Restart
 
@@ -140,7 +140,7 @@ sudo systemctl restart k3s-agent
 
 ### 2. Post-Deployment Verification & Debugging Loop
 
-Once the cluster matrix reports a `Ready` state, execute this interactive loop from your local workstation terminal to verify network connectivity and pod scheduling runtime operations.
+Once the cluster matrix reports a `Ready` state, execute this interactive loop from the local workstation terminal to verify network connectivity and pod scheduling runtime operations.
 
 #### A. Monitor Lifecycle Status
 
@@ -163,11 +163,11 @@ kubectl get pods -o wide
 
 #### Additional commands.
 
-> 💡 **Networking Note:** Pod IP allocations (e.g., `10.42.0.X`) exist strictly within the cluster's internal overlay network fabric. Your local workstation cannot route traffic directly to these endpoints without an active proxy or Ingress gateway controller.
+> 💡 **Networking Note:** Pod IP allocations (e.g., `10.42.0.X`) exist strictly within the cluster's internal overlay network fabric. the local workstation cannot route traffic directly to these endpoints without an active proxy or Ingress gateway controller.
 
 #### C. Establish a Secure Tunnel (Port-Forwarding)
 
-Map a local network port on your workstation directly to an active container endpoint inside the target pod layer:
+Map a local network port on the workstation directly to an active container endpoint inside the target pod layer:
 
 ```bash
 # Syntax: kubectl port-forward deployment/<NAME> <LOCAL_PORT>:<CONTAINER_PORT>
@@ -179,20 +179,20 @@ _This process locks the terminal pane to keep the proxy network bridge alive. Le
 
 #### D. Interact with the Cluster API (New Terminal Window)
 
-Open a new terminal tab or pane (`Ctrl + Shift + T`) on your workstation and interact with the application over the localhost bridge:
+Open a new terminal tab or pane (`Ctrl + Shift + T`) on the workstation and interact with the application over the localhost bridge:
 
 ```bash
 curl http://localhost:8080
 
 ```
 
-_Alternatively, verify visual elements by routing your web browser to `http://localhost:8080`._
+_Alternatively, verify visual elements by routing the web browser to `http://localhost:8080`._
 
 #### E. Clean Up Resources
 
-Once your smoke tests or manual debugging sessions are complete, terminate the test resources to free up internal compute overhead on your Proxmox pool:
+Once the smoke tests or manual debugging sessions are complete, terminate the test resources to free up internal compute overhead on the Proxmox pool:
 
-1. Go back to your first terminal window and press `Ctrl + C` to tear down the port-forwarding proxy.
+1. Go back to the first terminal window and press `Ctrl + C` to tear down the port-forwarding proxy.
 2. Delete the test deployment components:
 
 ```bash
@@ -207,15 +207,15 @@ micro-nas.tf template automatically provisions: `TailScale` & `Syncthing` servic
 
 The Syncthing GUI is accessible through the Tailscale network.
 
-1. **Find your NAS IP:** Run `tailscale ip -4` on the `micro-nas` or check your Tailscale admin(preferred) console.
-2. **Open the GUI:** Navigate to `http://[YOUR-TAILSCALE-IP]:8384` in your browser.
+1. **Find the NAS IP:** Run `tailscale ip -4` on the `micro-nas` or check the Tailscale admin(preferred) console.
+2. **Open the GUI:** Navigate to `http://[the-TAILSCALE-IP]:8384` in the browser.
 
 ### Configuring the Sync
 
-1. **Add Remote Device:** On your local machine (e.g., Mac), install Syncthing. Copy your Device ID from `Actions > Show ID` on the NAS and add it to your other clients (Laptops, other PCs, Friends PC), and vice-versa.
+1. **Add Remote Device:** On the local machine (e.g., Mac), install Syncthing. Copy the Device ID from `Actions > Show ID` on the NAS and add it to the other clients (Laptops, other PCs, Friends PC), and vice-versa.
 2. **Create the Folder:**
    - On the NAS, add a custom folder, set permissions. Or Use the default Sync/ Folder place items in there.
-   - On your local machine, pick your local Folder.
+   - On the local machine, pick the local Folder.
 3. **Important Note:** Ensure "Encryption" is **unchecked** if you want to be able to edit files natively on the client machines.
 4. **Permissions:** The service is configured to run as the `gman` user. If you encounter "Permission Denied" errors, run `sudo chown -R gman:gman /mnt/obsidian-vault` on the NAS to align ownership.
 

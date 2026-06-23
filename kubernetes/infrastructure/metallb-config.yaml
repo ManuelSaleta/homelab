@@ -5,7 +5,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - 192.168.50.240-192.168.50.250 # Change this range to match your network topology
+    - 192.168.50.240-192.168.50.250 # Change this range to match the network topology
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement

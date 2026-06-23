@@ -1,4 +1,4 @@
-# Define Paths to match your directory structure
+# Define Paths to match the directory structure
 INFRA_DIR := kubernetes/infrastructure
 APPS_DIR  := applications
 

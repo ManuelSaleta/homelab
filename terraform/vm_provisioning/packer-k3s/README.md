@@ -1,6 +1,6 @@
 ## 📀 Packer Template Build & Autoinstall Manual
 
-This module leverages **Packer** and Ubuntu’s native **Autoinstall (Subiquity)** engine to automate the generation of an identical, immutable base OS image template (**ID 777**) hosted on your Proxmox pool.
+This module leverages **Packer** and Ubuntu’s native **Autoinstall (Subiquity)** engine to automate the generation of an identical, immutable base OS image template (**ID 777**) hosted on the Proxmox pool.
 
 ---
 
@@ -8,9 +8,9 @@ This module leverages **Packer** and Ubuntu’s native **Autoinstall (Subiquity)
 
 The pipeline is completely automated through the local `Makefile`. When executing a build, Packer orchestrates the following operations sequentially:
 
-1. **Local HTTP Server Initiation:** Packer boots a temporary HTTP engine bound to `http_bind_address_ip` on port `8688` to expose your `http/user-data` configurations.
+1. **Local HTTP Server Initiation:** Packer boots a temporary HTTP engine bound to `http_bind_address_ip` on port `8688` to expose the `http/user-data` configurations.
 2. **ISO Instantiation:** Provisions a vanilla Ubuntu 24.04 VM, attaches the installer ISO, and handles GRUB boot directives over VNC to catch the hosted automated cloud-config blueprint.
-3. **Unattended Automated Installation:** Subiquity reads the recipe, establishes partitions, seeds your public SSH key (`gman@fedora`), configures passwordless `sudo`, and bakes down the `qemu-guest-agent`.
+3. **Unattended Automated Installation:** Subiquity reads the recipe, establishes partitions, seeds the public SSH key (`gman@fedora`), configures passwordless `sudo`, and bakes down the `qemu-guest-agent`.
 4. **Shell Ingestion Pipeline:** \* **Stage 1 (K3s Offline Prep):** Pulls the installer payload script from `get.k3s.io` and pre-runs it using `INSTALL_K3S_SKIP_START=true`. This caches binary hooks and setups paths without caching unique runtime configurations.
 
 - **Stage 2 (Sanitization):** Wipes machine signatures (`/etc/machine-id`), cleans APT cache pools, clears command strings, and clears transient cloud-init data states.
@@ -67,7 +67,7 @@ The Subiquity installer engine isolates configuration blocks cleanly:
 
 ---
 
-Here is a comprehensive breakdown of the `boot_command` sequence, designed to be inserted directly into your `README.md`. It explains the precise timing, keystrokes, and kernel parameters required to bypass the manual Ubuntu installer interface.
+Here is a comprehensive breakdown of the `boot_command` sequence, designed to be inserted directly into the `README.md`. It explains the precise timing, keystrokes, and kernel parameters required to bypass the manual Ubuntu installer interface.
 
 ---
 
@@ -76,7 +76,7 @@ Here is a comprehensive breakdown of the `boot_command` sequence, designed to be
 > [!IMPORTANT]
 > Extremely sensitive section. Pay special attention.
 
-The `boot_command` property simulates a human physically typing on a keyboard connected to the virtual machine's console during its initial POST screen. Because the Ubuntu live-server installer boots into a graphical menu by default, this automated macro intercepts the bootloader to inject your unattended autoinstall configuration.
+The `boot_command` property simulates a human physically typing on a keyboard connected to the virtual machine's console during its initial POST screen. Because the Ubuntu live-server installer boots into a graphical menu by default, this automated macro intercepts the bootloader to inject the unattended autoinstall configuration.
 
 ```hcl
   boot_command = [
@@ -111,7 +111,7 @@ The `boot_command` property simulates a human physically typing on a keyboard co
 4. **`"\"ds=nocloud;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/\" <wait3>"`**
 
 - **Action:** Types the data-source parameter string, escaping the quotes. Packer automatically substitutes `{{ .HTTPIP }}` and `{{ .HTTPPort }}` with its local temporary web server details (e.g., `http://192.168.50.55:8688/`).
-- **Purpose:** Directs the kernel's `cloud-init` subsystem to search for structural `user-data` and `meta-data` instruction files hosted remotely on your network instead of searching local storage arrays.
+- **Purpose:** Directs the kernel's `cloud-init` subsystem to search for structural `user-data` and `meta-data` instruction files hosted remotely on the network instead of searching local storage arrays.
 
 5. **`"---<enter><wait3>"`**
 
@@ -126,10 +126,10 @@ The `boot_command` property simulates a human physically typing on a keyboard co
 7. **`"boot<enter>"`**
 
 - **Action:** Types `boot` and hits `Enter`.
-- **Purpose:** Fires the execution signal. The VM spins up using the custom kernel arguments, fetches your configuration template over the local HTTP bridge, and transitions completely into silent autoinstall mode.
+- **Purpose:** Fires the execution signal. The VM spins up using the custom kernel arguments, fetches the configuration template over the local HTTP bridge, and transitions completely into silent autoinstall mode.
 
 #### ⚠️ Essential Engineering Notes
 
 - **The Importance of `<wait3>`:** Virtualization environments experience slight disk/CPU scheduling latencies while starting up on Proxmox. The embedded `<wait3>` directives act as defensive buffers, preventing Packer from typing commands faster than the VM's virtual keyboard buffer can receive them.
-- **Network Availability:** Because the kernel pulls the autoinstall files from an HTTP link _during_ this step, the VM's hardware abstraction layer must instantly receive a functional IP address from your local network gateway bridge via DHCP the second the network device turns on.
+- **Network Availability:** Because the kernel pulls the autoinstall files from an HTTP link _during_ this step, the VM's hardware abstraction layer must instantly receive a functional IP address from the local network gateway bridge via DHCP the second the network device turns on.
 ````

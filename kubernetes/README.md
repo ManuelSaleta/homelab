@@ -1,10 +1,10 @@
 ## 🛠️ Kubernetes Command-Line Shortcuts
 
-This repository utilizes standard `kubectl` workflows for cluster operations. Drop these configurations directly into your local shell configuration file (e.g., `~/.zshrc` or `~/.bashrc`) to streamline daily administration tasks.
+This repository utilizes standard `kubectl` workflows for cluster operations. Drop these configurations directly into the local shell configuration file (e.g., `~/.zshrc` or `~/.bashrc`) to streamline daily administration tasks.
 
 ### Core Auto-Completion
 
-Ensure your interactive shell auto-completes resources dynamically by sourcing the native engine:
+Ensure the interactive shell auto-completes resources dynamically by sourcing the native engine:
 
 ```bash
 # Inject native completion architecture
@@ -107,7 +107,7 @@ sudo systemctl restart k3s-agent
 ### Setting up a load balancer
 
 Since k3s is bare-metal; we will need a load balancer...
-From your workstation do:
+From the workstation do:
 
 ```bash
 # Create the namespace and deploy the components

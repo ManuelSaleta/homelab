@@ -1,4 +1,4 @@
-# # In your local widgets.yaml
+# # In the local widgets.yaml
 # - kubernetes:
 #     cpu: true
 #     memory: true
