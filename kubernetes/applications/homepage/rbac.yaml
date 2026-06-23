@@ -12,6 +12,9 @@ rules:
   - apiGroups: [""]
     resources: ["pods", "nodes", "services"] # Added 'services' as it's often needed
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch"]

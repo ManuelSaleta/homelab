@@ -1,5 +1,6 @@
-# # In the local widgets.yaml
-# - kubernetes:
-#     cpu: true
-#     memory: true
-#     showNodes: true
+- Cluster:
+  icon: proxmox.png
+  href: https://192.168.50.200:8006/
+  description: Home automation
+  proxmoxNode: mothership
+  proxmoxVMID: 101

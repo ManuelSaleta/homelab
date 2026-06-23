@@ -37,19 +37,6 @@
             # Shows the label, which is always the node name
             showLabel: true
 - Network:
-    - Pi-hole:
-        icon: pi-hole
-        href: http://pihole.freesalty.com/admin
-        description: Cluster DNS & Ad-Shielding
-        widget:
-          type: pihole
-          url: http://192.168.50.242
-          version: 6
-          key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"
-        # 🎯 FIXED: Aligned 100% to the v1.13.2 manual specification you provided
-        namespace: networking
-        app: pihole-dns-server
-        podSelector: app=pihole-dns-server
     - Cloudflare-Tunnel:
         icon: cloudflare.png
         href: https://one.dash.cloudflare.com/

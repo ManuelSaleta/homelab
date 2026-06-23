@@ -66,6 +66,11 @@ resource "kubernetes_secret_v1" "proxmox_secret" {
   data = {
     # 🎯 Pulls the "AdminHomelabPass123" securely out of plain-text YAML
     PROXMOX_WIDGET_PASSWORD = var.proxmox_vm_auditor_password
+    PROXMOX_URL    = var.proxmox_endpoint
+    PROXMOX_NODE_NAME = var.proxmox_node_name
+    PROXMOX_USER     = var.proxmox_api_user
+    PROXMOX_TOKEN_ID = var.proxmox_api_token_id # e.g., "root@pam!homepage"
+    PROXMOX_TOKEN_SECRET   = var.proxmox_api_token_secret
   }
 }
 

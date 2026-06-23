@@ -1,1 +1,14 @@
-mode: default
+mode: cluster
+# Enable the discovery of different resource types
+services: true
+ingress: true
+traefik: true # Only if you are using Traefik IngressRoutes
+gateway: false # Set to true if using Gateway API
+
+# Specify the namespaces to watch
+namespaces:
+  - networking
+  - default
+# The presence of this block often forces the provider to active state
+kubernetes:
+  enabled: true

@@ -17,6 +17,12 @@ variable "proxmox_api_token" {
   sensitive   = true
 }
 
+variable "proxmox_api_user" {
+  type = string
+  description = "The Proxmox API user for the token. Typically in the format 'username@realm'."
+  sensitive = false
+}
+
 # Packer needs these as individual components
 variable "proxmox_api_token_id" {
   type    = string

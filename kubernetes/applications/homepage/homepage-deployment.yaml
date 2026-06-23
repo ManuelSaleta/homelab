@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: homepage
   namespace: networking
+  labels:
+    app: homepage
 spec:
   replicas: 1
   selector:
@@ -13,11 +15,18 @@ spec:
       labels:
         app: homepage
     spec:
+      # Required for Homepage to authenticate with the K8s API
+      automountServiceAccountToken: true
       serviceAccountName: homepage-service-account
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
+          imagePullPolicy: Always
           env:
+            - name: KUBERNETES_SERVICE_HOST
+              value: "10.43.0.1" # Replace with your cluster's actual API server IP (get it via `kubectl get svc kubernetes -n default`)
+            - name: KUBERNETES_SERVICE_PORT
+              value: "443"
             - name: LOG_LEVEL
               value: debug
             - name: HOMEPAGE_VAR_CF_API_TOKEN
@@ -40,6 +49,11 @@ spec:
                 secretKeyRef:
                   name: pihole-secret
                   key: PIHOLE_PASSWORD
+            - name: HOMEPAGE_VAR_PIHOLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-secret
+                  key: PIHOLE_API_KEY
             - name: HOMEPAGE_VAR_TAILSCALE_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -55,20 +69,47 @@ spec:
                 secretKeyRef:
                   name: tailscale-secret
                   key: TS_LAPTOP_DEVICE_ID
-            - name: HOMEPAGE_VAR_PIHOLE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: pihole-secret
-                  key: PIHOLE_API_KEY
             - name: HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: proxmox-secret
                   key: PROXMOX_WIDGET_PASSWORD
+            - name: HOMEPAGE_VAR_PROXMOX_NODE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_NODE_NAME
+            - name: HOMEPAGE_VAR_PROXMOX_URL
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_URL
+            - name: HOMEPAGE_VAR_PROXMOX_USER
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_USER
+            - name: HOMEPAGE_VAR_PROXMOX_TOKEN_ID
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_TOKEN_ID
+            - name: HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_TOKEN_SECRET
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: "192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
           ports:
             - containerPort: 3000
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
           volumeMounts:
             - name: config-volume
               mountPath: /app/config/settings.yaml
@@ -99,6 +140,7 @@ spec:
   ports:
     - port: 80
       targetPort: 3000
+      name: http
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
