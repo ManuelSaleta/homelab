@@ -28,7 +28,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: cloudflare-tunnel-secret
-                  key: token
+                  key: CF_TUNNEL_TOKEN
           resources:
             requests:
               memory: "64Mi"
