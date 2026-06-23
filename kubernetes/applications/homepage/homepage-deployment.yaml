@@ -100,7 +100,7 @@ spec:
                   key: PROXMOX_TOKEN_SECRET
             # Allowed Hosts: List specific valid addresses
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "homepage.freesalty.com,pihole.freesalty.com"
+              value: "homepage.freesalty.com,pihole.freesalty.com,localhost,127.0.0.1,homepage-service.networking.svc.cluster.local"
           ports:
             - containerPort: 3000
               name: http
