@@ -1,0 +1,5 @@
+# # In the local widgets.yaml
+# - kubernetes:
+#     cpu: true
+#     memory: true
+#     showNodes: true

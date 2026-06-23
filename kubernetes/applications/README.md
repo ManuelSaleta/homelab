@@ -25,7 +25,7 @@ The manifest does **not** hardcode a specific `nodeName`. The Kubernetes Schedul
 
 ### 2. HostPath Storage Warning
 
-Because this configuration utilizes a local `hostPath` volume mapped to `/var/data/pihole/config`, **the physical configuration data resides on the machine where the pod runs.** \* If the pod is scheduled on a worker node lacking your historical configuration files, it will initialize a clean, out-of-the-box database.
+Because this configuration utilizes a local `hostPath` volume mapped to `/var/data/pihole/config`, **the physical configuration data resides on the machine where the pod runs.** \* If the pod is scheduled on a worker node lacking the historical configuration files, it will initialize a clean, out-of-the-box database.
 
 - For absolute cross-node mobility, transition this storage configuration to a distributed network storage engine (e.g., Longhorn or an NFS-backed PersistentVolume) in the future.
 
@@ -33,7 +33,7 @@ Because this configuration utilizes a local `hostPath` volume mapped to `/var/da
 
 ## 🚀 Redeployment Instructions
 
-Follow these precise steps from your administrative workstation to cleanly purge the old configurations, refresh the MetalLB state engine, and spin up the updated schema.
+Follow these precise steps from the administrative workstation to cleanly purge the old configurations, refresh the MetalLB state engine, and spin up the updated schema.
 
 ### Step 1: Clean Up Legacy Kubernetes Resources
 
@@ -49,7 +49,7 @@ kubectl delete deployment pihole pihole-dns-server -n networking --ignore-not-fo
 
 ### Step 2: Flush Persistent Host Directories (Optional)
 
-If you need a completely clean structural slate without inherited database logs or configuration file locks from older v5 structures, execute this cleanup directly on your primary worker machine:
+If you need a completely clean structural slate without inherited database logs or configuration file locks from older v5 structures, execute this cleanup directly on the primary worker machine:
 Bash
 
 # Run this on the target worker node to clear out old legacy config blocks
@@ -60,7 +60,7 @@ Bash
 
 ### Step 3: Apply the Manifest Configuration
 
-Deploy the manifest file directly from your local control station:
+Deploy the manifest file directly from the local control station:
 
 ````bash
     kubectl apply -f pihole-deployment.yaml
@@ -88,7 +88,7 @@ pihole-loadbalancer-service   LoadBalancer   10.43.x.x      192.168.50.242   53:
 
 2. Verify Live DNS Pipeline
 
-Execute a directed lookup query against the newly provisioned load balancer IP to confirm the Pi-hole container is processing and answering network queries from your workstation:
+Execute a directed lookup query against the newly provisioned load balancer IP to confirm the Pi-hole container is processing and answering network queries from the workstation:
 Verification Checklist:
 
 Status must return NOERROR.

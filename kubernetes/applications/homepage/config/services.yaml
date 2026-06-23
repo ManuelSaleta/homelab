@@ -1,0 +1,81 @@
+- Management:
+    - Proxmox:
+        icon: proxmox
+        href: https://192.168.50.200:8006
+        description: Proxmox Virtual Environment
+        widget:
+          type: proxmox
+          url: https://192.168.50.200:8006
+          username: "homepage-widgets-api@pve!homepage-proxmox-widgets"
+          password: "{{HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD}}"
+          node: mothership
+          show:
+            - vms
+- Infrastructure:
+    - Cloudflare-Pod:
+        widget:
+          type: kubernetes
+          namespace: networking
+          podSelector: app=cloudflared
+          cluster:
+            # Shows cluster-wide statistics
+            show: true
+            # Shows the aggregate CPU stats
+            cpu: true
+            # Shows the aggregate memory stats
+            memory: true
+            # Shows a custom label
+            showLabel: true
+            label: "cluster"
+          nodes:
+            # Shows node-specific statistics
+            show: true
+            # Shows the CPU for each node
+            cpu: true
+            # Shows the memory for each node
+            memory: true
+            # Shows the label, which is always the node name
+            showLabel: true
+- Network:
+    - Pi-hole:
+        icon: pi-hole
+        href: http://pihole.freesalty.com/admin
+        description: Cluster DNS & Ad-Shielding
+        widget:
+          type: pihole
+          url: http://192.168.50.242
+          version: 6
+          key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"
+        # 🎯 FIXED: Aligned 100% to the v1.13.2 manual specification you provided
+        namespace: networking
+        app: pihole-dns-server
+        podSelector: app=pihole-dns-server
+    - Cloudflare-Tunnel:
+        icon: cloudflare.png
+        href: https://one.dash.cloudflare.com/
+        widget:
+          type: cloudflared
+          accountid: "{{HOMEPAGE_VAR_CF_ACCOUNT_ID}}"
+          tunnelid: "{{HOMEPAGE_VAR_CF_TUNNEL_ID}}"
+          key: "{{HOMEPAGE_VAR_CF_API_TOKEN}}"
+          fields:
+            - status
+            - origin_ip
+    - micro-nas:
+        icon: tailscale.png
+        href: https://login.tailscale.com/admin/machines
+        widget:
+          type: tailscale
+          deviceid: "{{HOMEPAGE_VAR_TAILSCALE_NAS_DEVICE_ID}}"
+          key: "{{HOMEPAGE_VAR_TAILSCALE_API_KEY}}"
+          label: "NAS Status"
+          fields: [address, last_seen]
+    - macbook-pro:
+        icon: tailscale.png
+        href: https://login.tailscale.com/admin/machines
+        widget:
+          type: tailscale
+          deviceid: "{{HOMEPAGE_VAR_TAILSCALE_LAPTOP_DEVICE_ID}}"
+          key: "{{HOMEPAGE_VAR_TAILSCALE_API_KEY}}"
+          label: "Laptop Status"
+          fields: [address, last_seen]

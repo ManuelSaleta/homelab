@@ -1,6 +1,6 @@
-# Define Paths to match your directory structure
+# Define Paths to match the directory structure
 INFRA_DIR := kubernetes/infrastructure
-APPS_DIR  := kubernetes/applications
+APPS_DIR  := applications
 
 # Default help menu showing available commands
 .PHONY: help
@@ -64,11 +64,11 @@ pihole-down:
 
 homepage-up:
 	@echo "🏠 Deploying Homepage Dashboard..."
-	kubectl apply -f $(APPS_DIR)/homepage-deployment.yaml
+	kubectl apply -f $(APPS_DIR)/homepage/homepage-deployment.yaml
 
 homepage-down:
 	@echo "💥 Removing Homepage Dashboard..."
-	kubectl delete -f $(APPS_DIR)/homepage-deployment.yaml --ignore-not-found
+	kubectl delete -f $(APPS_DIR)/homepage/homepage-deployment.yaml --ignore-not-found
 
 grafana-up:
 	@echo "📈 Deploying Grafana Exposure Configs..."

@@ -97,9 +97,18 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
-metadata:
-  name: pihole-ingress
-  namespace: dashboard # 📊 The GUI routing block lives alongside Homepage
+# metadata:
+#   name: pihole-ingress
+#   namespace: networking # 📊 The GUI routing block lives alongside Homepage
+#   # annotations:
+#   # gethomepage.dev/enabled: "true"
+#   # gethomepage.dev/description: "Ad-blocking DNS"
+#   # gethomepage.dev/group: "Network"
+#   # gethomepage.dev/icon: "pihole.png"
+#   # # # Added these for the widget to actually work:
+#   # # gethomepage.dev/widget.type: "pihole"
+#   # # gethomepage.dev/widget.url: "http://pihole-loadbalancer-service.networking/admin"
+#   # # gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PIHOLE_API_KEY}}" # Make sure this secret exists!
 spec:
   ingressClassName: traefik
   rules:
@@ -110,8 +119,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                # 🎯 CROSS-NAMESPACE ROUTING TRICK:
-                # Pointing the ingress to the fully-qualified service destination across the border
-                name: pihole-dashboard-proxy
+                name: pihole-loadbalancer-service
                 port:
                   name: web

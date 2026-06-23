@@ -26,8 +26,8 @@ provider "proxmox" {
   api_token = var.proxmox_api_token
 
   ssh {
-    agent    = true   # Reads your local Fedora ssh-agent
-    username = "root" # The host OS user on your Proxmox machine
+    agent    = true   # Reads the local Fedora ssh-agent
+    username = "root" # The host OS user on the Proxmox machine
     node {
       name    = "mothership"
       address = var.proxmox_host_ip
@@ -35,7 +35,7 @@ provider "proxmox" {
   }
 }
 
-# 🎯 ADDED: Target your K3s cluster context directly using your local kubeconfig
+# 🎯 ADDED: Target the K3s cluster context directly using the local kubeconfig
 provider "kubernetes" {
   config_path    = "~/.kube/config"
   config_context = "default"
@@ -93,7 +93,7 @@ resource "proxmox_virtual_environment_vm" "k3s_control" {
   initialization {
     datastore_id = "local-lvm" # Tells Proxmox where to spawn the ephemeral cloud-init drive
 
-    # Forces cloud-init to respect gman and locks down your public key file 
+    # Forces cloud-init to respect gman and locks down the public key file 
     user_account {
       username = "gman"
       keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]

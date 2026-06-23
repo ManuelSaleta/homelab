@@ -13,7 +13,10 @@ resource "kubernetes_secret_v1" "tailscale_secret" {
   type = "Opaque"
 
   data = {
-    TS_AUTHKEY = var.tailscale_auth_key
+    TS_AUTHKEY    = var.tailscale_auth_key
+    TS_APITOKEN   = var.tailscale_api_token
+    TS_NAS_DEVICE_ID = var.tailscale_device_id_nas
+    TS_LAPTOP_DEVICE_ID = var.tailscale_device_id_mac
   }
 }
 
@@ -27,8 +30,11 @@ resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
   type = "Opaque"
 
   data = {
-    # 🎯 Pulls your cloudflared tunnel credentials JSON or token from tfvars
+    # 🎯 Pulls the cloudflared tunnel credentials JSON or token from tfvars
     "credentials.json" = var.cloudflare_tunnel_token
+    CF_API_TOKEN       = var.cloudflare_api_token
+    CF_TUNNEL_ID       = var.cloudflare_tunnel_id
+    CF_ACCOUNT_ID      = var.cloudflare_account_id
   }
 }
 
@@ -36,14 +42,30 @@ resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
 resource "kubernetes_secret_v1" "pihole_secret" {
   metadata {
     name      = "pihole-secret"
-    namespace = "networking" # Matches your Homepage dashboard deployment namespace
+    namespace = "networking" # Matches the Homepage dashboard deployment namespace
   }
 
   type = "Opaque"
 
   data = {
-    # 🎯 Pulls your "AdminHomelabPass123" securely out of plain-text YAML
+    # 🎯 Pulls the "AdminHomelabPass123" securely out of plain-text YAML
     PIHOLE_PASSWORD = var.pihole_admin_password
+    PIHOLE_API_KEY  = var.pihole_api_key
+  }
+}
+
+# 2. Core Infrastructure Secrets (e.g., Proxmox Homepage Widget Access)
+resource "kubernetes_secret_v1" "proxmox_secret" {
+  metadata {
+    name      = "proxmox-secret"
+    namespace = "networking" # Matches the Homepage dashboard deployment namespace
+  }
+
+  type = "Opaque"
+
+  data = {
+    # 🎯 Pulls the "AdminHomelabPass123" securely out of plain-text YAML
+    PROXMOX_WIDGET_PASSWORD = var.proxmox_vm_auditor_password
   }
 }
 

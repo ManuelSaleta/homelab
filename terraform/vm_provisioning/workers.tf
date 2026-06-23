@@ -64,9 +64,9 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
     model  = "virtio"
   }
 
-  # Target your freshly generated golden Packer template
+  # Target the freshly generated golden Packer template
   clone {
-    vm_id   = var.proxmox_template_vm_id # Point this directly to your brand new template ID
+    vm_id   = var.proxmox_template_vm_id # Point this directly to the brand new template ID
     full    = true                       # Allocates standalone storage profiles on local-lvm
     retries = 3
   }
@@ -89,7 +89,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
     # Map the specific user-data snippets configuration mapped above
     user_data_file_id = proxmox_virtual_environment_file.k3s_worker_cloud_config[count.index].id
 
-    # Forces cloud-init to pass your exact parameters instead of the "ubuntu" fallback
+    # Forces cloud-init to pass the exact parameters instead of the "ubuntu" fallback
     user_account {
       username = "gman"
       keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]

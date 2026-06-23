@@ -34,10 +34,49 @@ variable "cloudflare_tunnel_token" {
   sensitive   = true
 }
 
+variable "cloudflare_tunnel_id" {
+  type        = string
+  description = "Cloudflare Tunnel ID for the specific tunnel."
+  sensitive   = true
+}
+
+variable "cloudflare_account_id" {
+  type        = string
+  description = "Cloudflare Account ID associated with the tunnel."
+  sensitive   = true
+  
+}
+
+variable "cloudflare_api_token" {
+  type        = string
+  description = "Cloudflare API token for managing tunnels."
+  sensitive   = true
+}
+
 variable "tailscale_auth_key" {
   type        = string
   description = "Reusable or Ephemeral Tailscale Authentication Key for auto-joining the mesh"
   sensitive   = true
+}
+
+variable "tailscale_api_token" {
+  type        = string
+  description = "Tailscale API Token for pulling device metadata and displaying it on the homepage widget"
+  sensitive   = true
+}
+
+variable "tailscale_device_id_nas" {
+  type        = string
+  description = "The Tailscale Device ID for the NAS VM, used to pull specific metadata for the homepage widget."
+  sensitive   = true
+
+}
+
+variable "tailscale_device_id_mac" {
+  type        = string
+  description = "The Tailscale Device ID for the Macbook Pro, used to pull specific metadata for the homepage widget."
+  sensitive   = true
+
 }
 
 variable "proxmox_template_vm_id" {
@@ -64,7 +103,7 @@ variable "proxmox_host_ip" {
 variable "k3s_manager_ip" {
   type        = string
   description = "The IP address of the K3s control manager node for worker registration. Match this IP with the KUBECONFIG"
-  default     = "192.168.50.185" # 🎯 Formatted to point directly to your static manager node address
+  default     = "192.168.50.185" # 🎯 Formatted to point directly to the static manager node address
 }
 
 variable "default_gateway_ip" {
@@ -98,5 +137,16 @@ variable "k3s_share_token" {
 variable "pihole_admin_password" {
   type        = string
   description = "Administrative override credential password for the Pi-hole cluster dashboard."
+  sensitive   = true
+}
+
+variable "pihole_api_key" {
+  type        = string
+  description = "Api token to enable widget access"
+}
+
+variable "proxmox_vm_auditor_password" {
+  type        = string
+  description = "Password for the Proxmox VM auditor user. Will be used to power the Homepage Widgets that pull data from the Proxmox API."
   sensitive   = true
 }

@@ -3,7 +3,7 @@
 # - Clones cleanly from the golden Packer template (ID 777)
 # - Pinpoints 1 CPU core and 512MB of RAM to save resources for K3s.
 # - Attaches a dedicated secondary storage block for note persistence.
-# - Leverages Cloud-init to auto-join your private Tailscale mesh network.
+# - Leverages Cloud-init to auto-join the private Tailscale mesh network.
 # Docs: https://registry.terraform.io/providers/bpg/proxmox/latest/docs
 # ==============================================================================
 
@@ -68,7 +68,7 @@ resource "proxmox_virtual_environment_vm" "micro_nas" {
   description = "Managed by Terraform - Micro Private NAS for Obsidian Vault via Golden Template"
   tags        = ["Storage", "Tailscale", "nas"]
   node_name   = "mothership"
-  vm_id       = 250 # Safe, distinct ID isolated away from your manager (100) and worker blocks
+  vm_id       = 250 # Safe, distinct ID isolated away from the manager (100) and worker blocks
   on_boot     = true
 
   # Enables the QEMU Guest Agent to communicate IP metadata cleanly
@@ -91,7 +91,7 @@ resource "proxmox_virtual_environment_vm" "micro_nas" {
     model  = "virtio"
   }
 
-  # Target your freshly generated golden Packer template
+  # Target the freshly generated golden Packer template
   clone {
     vm_id   = var.proxmox_template_vm_id
     full    = true
@@ -101,7 +101,7 @@ resource "proxmox_virtual_environment_vm" "micro_nas" {
   # Cloned VMs should boot directly straight off their primary OS storage block
   boot_order = ["scsi0"]
 
-  # OS Disk layer (cloned from your Packer foundation base)
+  # OS Disk layer (cloned from the Packer foundation base)
   disk {
     datastore_id = "local-lvm"
     interface    = "scsi0"
@@ -121,13 +121,13 @@ resource "proxmox_virtual_environment_vm" "micro_nas" {
     datastore_id      = "local-lvm" # Location where the cloud-init drive ISO spins up
     user_data_file_id = proxmox_virtual_environment_file.nas_cloud_config.id
 
-    # Forces cloud-init to respect gman and locks down your public key file
+    # Forces cloud-init to respect gman and locks down the public key file
     user_account {
       username = "gman"
       keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
     }
 
-    # Static LAN IP mapping to prevent collisions with your K3s cluster blocks
+    # Static LAN IP mapping to prevent collisions with the K3s cluster blocks
     ip_config {
       ipv4 {
         address = "192.168.50.250/24"

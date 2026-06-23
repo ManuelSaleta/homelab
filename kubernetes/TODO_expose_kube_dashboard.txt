@@ -1,6 +1,6 @@
 Step 1: Deploy the Dashboard Workloads
 
-Log into your k3s-control-01 node via SSH and run the official installation script. This pulls down all the required pods, replica sets, and core cluster architectures into a dedicated kubernetes-dashboard namespace:
+Log into the k3s-control-01 node via SSH and run the official installation script. This pulls down all the required pods, replica sets, and core cluster architectures into a dedicated kubernetes-dashboard namespace:
 Bash
 
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
@@ -8,7 +8,7 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/a
 (Note: Version 2.7.x is the stable production mainline for standard internal dashboard UIs. If you ever upgrade to the brand-new v3.x series down the road, it shifts over to a Helm-based paradigm).
 Step 2: Create the Admin Service Account (The RBAC Pass)
 
-By default, the dashboard is locked down tight with zero permissions. To log in and actually view your pods, namespaces, and system layouts, we need to create an administrative user.
+By default, the dashboard is locked down tight with zero permissions. To log in and actually view the pods, namespaces, and system layouts, we need to create an administrative user.
 
 Let's do this the clean, declarative way. Create a file named dashboard-admin.yaml:
 YAML
@@ -37,9 +37,9 @@ Bash
 
 kubectl apply -f dashboard-admin.yaml
 
-Step 3: Expose It Natively via Your Traefik Ingress
+Step 3: Expose It Natively via the Traefik Ingress
 
-Instead of dealing with manual, temporary kubectl proxy commands every time you want to check your pods, you can wire it straight into your new automated edge layout!
+Instead of dealing with manual, temporary kubectl proxy commands every time you want to check the pods, you can wire it straight into the new automated edge layout!
 
 Create an Ingress manifest named dashboard-ingress.yaml:
 YAML
@@ -72,19 +72,19 @@ Bash
 
 kubectl apply -f dashboard-ingress.yaml
 
-Step 4: Mint Your Login Token
+Step 4: Mint the Login Token
 
-The dashboard will prompt you for a secure login token when you open it. Run this command to generate a dynamic Bearer Token for your newly minted admin user:
+The dashboard will prompt you for a secure login token when you open it. Run this command to generate a dynamic Bearer Token for the newly minted admin user:
 Bash
 
 kubectl -n kubernetes-dashboard create token admin-user
 
-Copy that long output string down to your clipboard.
+Copy that long output string down to the clipboard.
 Step 5: Route It to the World (Optional)
 
-If you want to view this visualization when you're away from your desk, navigate back to your Cloudflare Tunnel dashboard:
+If you want to view this visualization when you're away from the desk, navigate back to the Cloudflare Tunnel dashboard:
 
-    Click Add a route under your homelab-tunnel.
+    Click Add a route under the homelab-tunnel.
 
     Select Published application.
 
@@ -96,4 +96,4 @@ If you want to view this visualization when you're away from your desk, navigate
 
     Set URL to 192.168.50.240 (Traefik).
 
-Open up a browser tab, hit https://kube.freesalty.com, paste in your token, and enjoy your beautiful, realtime visual look into the heart of your Mothership cluster!
+Open up a browser tab, hit https://kube.freesalty.com, paste in the token, and enjoy the beautiful, realtime visual look into the heart of the Mothership cluster!

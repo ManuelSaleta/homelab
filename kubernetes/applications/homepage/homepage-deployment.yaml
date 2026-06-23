@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: networking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      serviceAccountName: homepage-service-account
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:latest
+          env:
+            - name: LOG_LEVEL
+              value: debug
+            - name: HOMEPAGE_VAR_CF_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-secret
+                  key: CF_API_TOKEN
+            - name: HOMEPAGE_VAR_CF_TUNNEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-secret
+                  key: CF_TUNNEL_ID
+            - name: HOMEPAGE_VAR_CF_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-secret
+                  key: CF_ACCOUNT_ID
+            - name: HOMEPAGE_VAR_PIHOLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-secret
+                  key: PIHOLE_PASSWORD
+            - name: HOMEPAGE_VAR_TAILSCALE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-secret
+                  key: TS_APITOKEN
+            - name: HOMEPAGE_VAR_TAILSCALE_NAS_DEVICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-secret
+                  key: TS_NAS_DEVICE_ID
+            - name: HOMEPAGE_VAR_TAILSCALE_LAPTOP_DEVICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-secret
+                  key: TS_LAPTOP_DEVICE_ID
+            - name: HOMEPAGE_VAR_PIHOLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-secret
+                  key: PIHOLE_API_KEY
+            - name: HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_WIDGET_PASSWORD
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config-volume
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config-volume
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+            - name: config-volume
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: homepage-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage-service
+  namespace: networking
+spec:
+  type: ClusterIP
+  selector:
+    app: homepage
+  ports:
+    - port: 80
+      targetPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homepage-ingress
+  namespace: networking
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: homepage.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homepage-service
+                port:
+                  number: 80

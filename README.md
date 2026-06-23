@@ -11,7 +11,7 @@ The primary objective is a zero-intervention deployment pipeline that builds a p
 
 ## 📂 Repository Topology
 
-This workspace is structured to enforce a strict separation of concerns across our self-hosted infrastructure lifecycle, breaking down workloads from bare-metal template generation up to containerized application orchestration.
+This workspace is structured to enforce a strict separation of concerns across the self-hosted infrastructure lifecycle, breaking down workloads from bare-metal template generation up to containerized application orchestration.
 
 ```text
 .
@@ -97,11 +97,11 @@ This workspace is structured to enforce a strict separation of concerns across o
 
 ## 📋 Prerequisites & Workstation Setup
 
-Before initiating a template compilation or applying an infrastructure block layer, your underlying environment must fulfill the following technical baselines:
+Before initiating a template compilation or applying an infrastructure block layer, the underlying environment must fulfill the following technical baselines:
 
 1. Mandatory Local Workstation Tools
 
-Ensure your execution host has the standard infrastructure toolsets installed and available in its tracking path:
+Ensure the execution host has the standard infrastructure toolsets installed and available in its tracking path:
 
     Packer (v1.10+)
 
@@ -135,18 +135,18 @@ The targeted Proxmox host system must have the standard storage allocations conf
 
 The deployment sequence relies completely on secure public key verification loops.
 
-    Ensure your authentication signature (id_ed25519) exists on your machine at ~/.ssh/id_ed25519.
+    Ensure the authentication signature (id_ed25519) exists on the machine at ~/.ssh/id_ed25519.
 
-    Ensure your public verification payload matches the key assigned inside your http/user-data autoinstall template.
+    Ensure the public verification payload matches the key assigned inside the http/user-data autoinstall template.
 
-    Start and bind your local runtime environment agent so Terraform can tap into the communication loop seamlessly over the SSH channel:
+    Start and bind the local runtime environment agent so Terraform can tap into the communication loop seamlessly over the SSH channel:
 
 ```bash
     eval $(ssh-agent -s)
     ssh-add ~/.ssh/id_ed25519
 ```
 
-> [!important] To prevent accidental leaks of private network gateways, cloud tokens, and cluster keys to public spaces, NEVER commit your local terraform.tfvars file. Keep your private variables isolated locally; the underlying .gitignore block is configured to filter out structural \*.tfvars extensions cleanly.
+> [!important] To prevent accidental leaks of private network gateways, cloud tokens, and cluster keys to public spaces, NEVER commit the local terraform.tfvars file. Keep the private variables isolated locally; the underlying .gitignore block is configured to filter out structural \*.tfvars extensions cleanly.
 
 # 🏴‍☠️ Proxmox VE Command-Line Toolkit (`qm` & `pct`)
 
@@ -154,7 +154,7 @@ When managing the underlying virtualization layer for the cluster nodes directly
 
 ## 🖥️ Virtual Machine Management (ProxMox) (`qm`)
 
-These commands control your KVM/QEMU Virtual Machines (like your K3s control-plane and worker nodes).
+These commands control the KVM/QEMU Virtual Machines (like the K3s control-plane and worker nodes).
 
 ```bash
 # Core Lifecycle Controls

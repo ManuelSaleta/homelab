@@ -88,7 +88,7 @@ source "proxmox-iso" "k3s_template" {
   ssh_username = "gman"
   ssh_timeout  = "20m"
 
-  # Point Packer directly to your local private key file on your Fedora workstation
+  # Point Packer directly to the local private key file on the Fedora workstation
   ssh_private_key_file = "~/.ssh/id_ed25519"
 }
 
