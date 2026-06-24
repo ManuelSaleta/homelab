@@ -11,10 +11,17 @@ PACKER_DIR     := packer-k3s
 PACKER_FILE    := ubuntu-vm-k3s.pkr.hcl
 PACKER_VARS    := packer.pkrvars.hcl
 
-.PHONY: help init-all clean-all \
-        p-init p-validate p-build p-debug p-clean \
-        t-init t-plan t-apply t-validate t-clean \
-        destroy-workers destroy-manager destroy-all redeploy-workers redeploy-all
+# Core Phonies
+.PHONY: help init-all clean-all
+
+# Packer Phonies
+.PHONY: p-init p-validate p-build p-debug p-clean
+
+# Terraform Phonies
+.PHONY: t-init t-plan-infra t-apply-infra t-plan-k3s t-apply-k3s wait-for-cluster deploy-all t-validate t-clean
+
+# Lifecycle Phonies
+.PHONY: destroy-workers destroy-manager destroy-all redeploy-workers redeploy-all
 
 # Default target when you just run 'make'
 .DEFAULT_GOAL := help
@@ -57,17 +64,54 @@ p-clean: ## Remove packer cache artifacts
 # 📦 TERRAFORM TARGETS (COMPUTE PROVISIONING)
 # ==============================================================================
 
+# ==============================================================================
+# 📦 TERRAFORM TARGETS (COMPUTE PROVISIONING)
+# ==============================================================================
+
 t-init: ## Initialize the terraform working directory and download providers
 	@echo "=> Initializing OpenTofu/Terraform modules and providers..."
 	terraform init
 
-t-plan: ## Run a standard speculative configuration execution plan
-	@echo "=> Generating infrastructure speculative execution dry-run..."
-	terraform plan
+t-plan-infra: ## Plan the compute/infrastructure resources only
+	@echo "=> Planning infrastructure only..."
+	terraform plan \
+		-target=proxmox_virtual_environment_vm.k3s_control \
+		-target=proxmox_virtual_environment_vm.k3s_worker \
+		-target=proxmox_virtual_environment_vm.micro_nas
 
-t-apply: ## Apply the configuration infrastructure changes with auto-approval
-	@echo "=> Deploying declared virtual infrastructure to compute layer..."
-	terraform apply --auto-approve
+t-apply-infra: ## Apply infrastructure changes with auto-approval
+	@echo "=> Applying infrastructure only..."
+	terraform apply --auto-approve \
+		-target=proxmox_virtual_environment_vm.k3s_control \
+		-target=proxmox_virtual_environment_vm.k3s_worker \
+		-target=proxmox_virtual_environment_vm.micro_nas
+
+t-plan-k3s: ## Plan the Kubernetes control layer resources only
+	@echo "=> Planning Kubernetes configuration layer..."
+	terraform plan \
+		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
+		-target=kubernetes_secret_v1.pihole_secret \
+		-target=kubernetes_secret_v1.proxmox_secret \
+		-target=kubernetes_secret_v1.grafana-secret \
+		-target=kubernetes_secret_v1.tailscale_secret \
+		-target=kubernetes_config_map_v1.homepage_config
+
+t-apply-k3s: ## Apply Kubernetes configurations with auto-approval
+	@echo "=> Applying Kubernetes configuration layer..."
+	terraform apply --auto-approve \
+		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
+		-target=kubernetes_secret_v1.pihole_secret \
+		-target=kubernetes_secret_v1.proxmox_secret \
+		-target=kubernetes_secret_v1.grafana-secret \
+		-target=kubernetes_secret_v1.tailscale_secret \
+		-target=kubernetes_config_map_v1.homepage_config
+
+wait-for-cluster: ## Block execution until the K3s cluster API endpoints respond green
+	@echo "=> Waiting for K3s API to come online..."
+	@until curl -k -s https://192.168.50.185:6443/readyz; do sleep 5; done
+	@echo "=> Cluster is ready for configuration!"
+
+deploy-all: t-apply-infra wait-for-cluster t-apply-k3s ## Full Stack Deploy: Build VMs, wait for health check, push configs
 
 t-validate: ## Validate the underlying syntax formatting syntax architecture
 	@echo "=> Formatting and validating configuration code..."
@@ -78,6 +122,25 @@ t-clean: ## Clear out transient terraform cache footprints and local log locks
 	@echo "=> Clearing local terraform execution cache..."
 	rm -rf .terraform/providers/
 	rm -f .terraform.lock.hcl
+
+# ==============================================================================
+# THE ULTIMATE "NUKE AND REBOOT" MATRIX PIPELINES
+# ==============================================================================
+
+redeploy-workers: ## Teardown infrastructure, validate syntax, and deploy fresh via phased pipeline
+	@echo "🚨 Kicking off a full infrastructure regeneration cycle..."
+	-$(MAKE) destroy-all
+	$(MAKE) t-validate
+	$(MAKE) deploy-all
+	@echo "🎯 Fresh deployment layer successfully executed."
+
+redeploy-all: ## Complete Lifecycle Reset: Nuke environment, re-bake Packer template, and spin up cluster
+	@echo "🚀 Initiating full stack reset (Teardown -> Re-bake Image -> Deploy)..."
+	-$(MAKE) destroy-all
+# 	$(MAKE) p-build
+	$(MAKE) t-init
+	$(MAKE) deploy-all
+	@echo "✨ Whole setup regenerated from bare-metal template up to cluster."
 
 # ==============================================================================
 # ☢️ LIFECYCLE DESTRUCTION CONTROLS

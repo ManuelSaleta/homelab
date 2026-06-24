@@ -13,9 +13,9 @@ resource "kubernetes_secret_v1" "tailscale_secret" {
   type = "Opaque"
 
   data = {
-    TS_AUTHKEY    = var.tailscale_auth_key
-    TS_APITOKEN   = var.tailscale_api_token
-    TS_NAS_DEVICE_ID = var.tailscale_device_id_nas
+    TS_AUTHKEY          = var.tailscale_auth_key
+    TS_APITOKEN         = var.tailscale_api_token
+    TS_NAS_DEVICE_ID    = var.tailscale_device_id_nas
     TS_LAPTOP_DEVICE_ID = var.tailscale_device_id_mac
   }
 }
@@ -31,10 +31,10 @@ resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
 
   data = {
     # 🎯 Pulls the cloudflared tunnel credentials JSON or token from tfvars
-    CF_TUNNEL_TOKEN    = var.cloudflare_tunnel_token
-    CF_API_TOKEN       = var.cloudflare_api_token
-    CF_TUNNEL_ID       = var.cloudflare_tunnel_id
-    CF_ACCOUNT_ID      = var.cloudflare_account_id
+    CF_TUNNEL_TOKEN = var.cloudflare_tunnel_token
+    CF_API_TOKEN    = var.cloudflare_api_token
+    CF_TUNNEL_ID    = var.cloudflare_tunnel_id
+    CF_ACCOUNT_ID   = var.cloudflare_account_id
   }
 }
 
@@ -66,11 +66,26 @@ resource "kubernetes_secret_v1" "proxmox_secret" {
   data = {
     # 🎯 Pulls the "AdminHomelabPass123" securely out of plain-text YAML
     PROXMOX_WIDGET_PASSWORD = var.proxmox_vm_auditor_password
-    PROXMOX_URL    = var.proxmox_endpoint
-    PROXMOX_NODE_NAME = var.proxmox_node_name
-    PROXMOX_USER     = var.proxmox_api_user
-    PROXMOX_TOKEN_ID = var.proxmox_api_token_id # e.g., "root@pam!homepage"
-    PROXMOX_TOKEN_SECRET   = var.proxmox_api_token_secret
+    PROXMOX_URL             = var.proxmox_endpoint
+    PROXMOX_NODE_NAME       = var.proxmox_node_name
+    PROXMOX_USER            = var.proxmox_api_user
+    PROXMOX_TOKEN_ID        = var.proxmox_api_token_id # e.g., "root@pam!homepage"
+    PROXMOX_TOKEN_SECRET    = var.proxmox_api_token_secret
+  }
+}
+
+resource "kubernetes_secret_v1" "grafana-secret" {
+  metadata {
+    name      = "grafana-secret"
+    namespace = "networking" # Enables Homepage Grafana Widget, thus belongs to the networking namespace
+  }
+
+  type = "Opaque"
+
+  data = {
+    GRAFANA_API_KEY = var.grafana_api_key
+    GRAFANA_USERNAME = var.grafana_username
+    GRAFANA_PASSWORD = var.grafana_password
   }
 }
 

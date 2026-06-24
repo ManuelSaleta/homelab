@@ -4,6 +4,25 @@
 # The terraform.tfvars file, but the .hcl extension is for packer build variables, and command:
 # This is a bit redundant, but its the more DRY way right now. See packer.pkrvars.hcl for the variables specific to packer builds.
 
+variable "grafana_api_key" {
+  type        = string
+  description = "Grafana API Key - Enables homepage widget."
+  sensitive   = true
+}
+
+variable "grafana_username" {
+  type = string
+  description = "the grana username"
+  default = "admin"
+  sensitive = false
+}
+
+variable "grafana_password" {
+  type = string
+  description = "the grana password"
+  sensitive = true
+}
+
 variable "proxmox_endpoint" {
   type        = string
   description = "The full HTTPS URL API endpoint for the Proxmox VE host."
@@ -18,9 +37,9 @@ variable "proxmox_api_token" {
 }
 
 variable "proxmox_api_user" {
-  type = string
+  type        = string
   description = "The Proxmox API user for the token. Typically in the format 'username@realm'."
-  sensitive = false
+  sensitive   = false
 }
 
 # Packer needs these as individual components
@@ -50,7 +69,7 @@ variable "cloudflare_account_id" {
   type        = string
   description = "Cloudflare Account ID associated with the tunnel."
   sensitive   = true
-  
+
 }
 
 variable "cloudflare_api_token" {

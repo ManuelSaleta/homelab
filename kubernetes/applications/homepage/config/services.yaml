@@ -66,3 +66,17 @@
           key: "{{HOMEPAGE_VAR_TAILSCALE_API_KEY}}"
           label: "Laptop Status"
           fields: [address, last_seen]
+- Monitoring:
+    - Grafana:
+        icon: grafana.png
+        href: http://promstack-grafana.monitoring.svc.cluster.local:80
+        widget:
+          type: grafana
+          version: 2
+          url: http://promstack-grafana.monitoring.svc.cluster.local:80
+          # Switch from Token to Basic Auth
+          username: "{{HOMEPAGE_VAR_GRAFANA_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
+          show_dashboards: true
+          show_datasources: true
+          show_alerts: true

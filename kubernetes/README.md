@@ -63,16 +63,6 @@ alias ktoken="kubectl -n kubernetes-dashboard create token admin-user"
     kubectl get svc -n kube-system
 ```
 
-### Manually Setting Up CloudFlare Tunnel Token
-
-TODO: Automate this process
-
-```bash
-kubectl create secret generic cloudflare-tunnel-secret \
-  -n networking \
-  --from-literal=token="YOUR_RAW_CLOUDFLARE_TUNNEL_TOKEN_STRING"
-```
-
 # Verify Split-Horizon Ingress Route Resolution:
 
 ```bash
@@ -109,9 +99,22 @@ sudo systemctl restart k3s-agent
 Since k3s is bare-metal; we will need a load balancer...
 From the workstation do:
 
+## 🌐 Core Infrastructure: MetalLB Load Balancer
+
+MetalLB hooks into your local network routing to provide bare-metal Kubernetes clusters with real `LoadBalancer` external IP addresses. 
+
+### ⚠️ Pre-Requisites
+By default, K3s ships with its own lightweight load balancer controller called **Klipper**. Because we are using MetalLB for explicit Layer 2 virtual IP mapping, ensure Klipper does not conflict with your setup.
+
+### 🚀 Deployment Workflow
+
+Infrastructure management is split into two distinct phases: **Installation** (CRDs, controllers, RBAC permissions) and **Configuration** (your custom IP ranges).
+
+#### 1. Deploy the MetalLB Operator & CRDs
+Apply the upstream operator manifest to register the required Custom Resource Definitions (`ipaddresspools.metallb.io`, `l2advertisements.metallb.io`) and initialize the system namespace:
+
 ```bash
-# Create the namespace and deploy the components
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
+kubectl apply -f [https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml](https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml)
 ```
 
 Output should look like:

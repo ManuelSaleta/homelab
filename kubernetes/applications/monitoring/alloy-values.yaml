@@ -1,0 +1,44 @@
+# alloy-values.yaml
+alloy:
+  configMap:
+    content: |
+      // 1. Discover the pods
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // 2. Scrape the discovered pods
+      prometheus.scrape "pods" {
+        targets    = discovery.kubernetes.pods.targets
+        forward_to = [prometheus.remote_write.prom.receiver]
+      }
+
+      // 3. Remote write to your Prometheus service
+      prometheus.remote_write "prom" {
+        endpoint {
+          url = "http://promstack-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+        }
+      }
+
+      // --- Your Log Pipeline (Corrected) ---
+      loki.source.kubernetes "pods" {
+        targets    = discovery.kubernetes.pods.targets
+        forward_to = [loki.process.add_labels.receiver]
+      }
+
+      loki.process "add_labels" {
+        forward_to = [loki.write.endpoint.receiver]
+        stage.labels {
+          values = {
+            "pod"       = "pod",
+            "namespace" = "namespace",
+            "container" = "container",
+          }
+        }
+      }
+
+      loki.write "endpoint" {
+        endpoint {
+          url = "http://my-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }       
+      }

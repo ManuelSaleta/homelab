@@ -1,0 +1,36 @@
+defaultRules:
+  create: true
+alertmanager:
+  enabled: false
+grafana:
+  persistence:
+    enabled: true
+    size: 5Gi
+  grafana.ini:
+    server:
+      root_url: "https://grafana.freesalty.com/"
+      serve_from_sub_path: true
+  # This is the correct way to inject Ingress via the Helm chart
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - grafana.freesalty.com
+    path: /
+    pathType: Prefix
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://my-loki-gateway.monitoring.svc.cluster.local
+      jsonData:
+        maxLines: 1000
+prometheus:
+  prometheusSpec:
+    resources:
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
