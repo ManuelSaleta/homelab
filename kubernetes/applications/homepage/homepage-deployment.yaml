@@ -108,9 +108,8 @@ spec:
             httpGet:
               path: /api/healthcheck
               port: http
-              host: localhost
             initialDelaySeconds: 60
-            periodSeconds: 20
+            periodSeconds: 30
           volumeMounts:
             - name: config-volume
               mountPath: /app/config/settings.yaml
