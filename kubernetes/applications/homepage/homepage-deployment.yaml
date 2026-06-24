@@ -108,6 +108,7 @@ spec:
             httpGet:
               path: /api/healthcheck
               port: http
+              host: localhost
             initialDelaySeconds: 15
             periodSeconds: 20
           volumeMounts:
