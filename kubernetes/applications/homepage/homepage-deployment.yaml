@@ -109,7 +109,7 @@ spec:
               path: /api/healthcheck
               port: http
               host: localhost
-            initialDelaySeconds: 15
+            initialDelaySeconds: 60
             periodSeconds: 20
           volumeMounts:
             - name: config-volume
