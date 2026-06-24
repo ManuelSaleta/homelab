@@ -7,11 +7,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pihole-dns-server
-  namespace: networking # 🌐 Core engine stays rock-solid in networking
+  namespace: networking
   labels:
+    app: pihole-dns-server
     app.kubernetes.io/name: pihole
-    app.kubernetes.io/component: core-dns
-    app.kubernetes.io/part-of: network-services
 spec:
   replicas: 1
   strategy:
@@ -27,14 +26,13 @@ spec:
       containers:
         - name: pihole-ftl-engine
           image: pihole/pihole:latest
-          imagePullPolicy: IfNotPresent
           env:
             - name: TZ
               value: "America/New_York"
             - name: FTLCONF_webserver_api_password
               valueFrom:
                 secretKeyRef:
-                  name: pihole-secret # ✅ Safely looks up the local networking secret
+                  name: pihole-secret
                   key: PIHOLE_PASSWORD
             - name: FTLCONF_dns_listeningMode
               value: "all"
@@ -54,13 +52,6 @@ spec:
             - containerPort: 80
               name: admin-http
               protocol: TCP
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
           volumeMounts:
             - name: pihole-persistent-config
               mountPath: /etc/pihole
@@ -74,7 +65,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: pihole-loadbalancer-service
-  namespace: networking # 🌐 MetalLB binds inside the core networking tier
+  namespace: networking
   annotations:
     metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
 spec:
@@ -97,18 +88,21 @@ spec:
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
-# metadata:
-#   name: pihole-ingress
-#   namespace: networking # 📊 The GUI routing block lives alongside Homepage
-#   # annotations:
-#   # gethomepage.dev/enabled: "true"
-#   # gethomepage.dev/description: "Ad-blocking DNS"
-#   # gethomepage.dev/group: "Network"
-#   # gethomepage.dev/icon: "pihole.png"
-#   # # # Added these for the widget to actually work:
-#   # # gethomepage.dev/widget.type: "pihole"
-#   # # gethomepage.dev/widget.url: "http://pihole-loadbalancer-service.networking/admin"
-#   # # gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PIHOLE_API_KEY}}" # Make sure this secret exists!
+metadata:
+  name: pihole-ingress
+  namespace: networking
+  annotations:
+    # Essential for Homepage Auto-Discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Pi-hole"
+    gethomepage.dev/group: "Network"
+    gethomepage.dev/icon: "pi-hole"
+    gethomepage.dev/href: "http://pihole.freesalty.com/admin"
+    gethomepage.dev/widget.type: "pihole"
+    gethomepage.dev/widget.url: "http://pihole-loadbalancer-service.networking"
+    gethomepage.dev/widget.version: "6"
+    gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"
+    gethomepage.dev/pod-selector: "app=pihole-dns-server"
 spec:
   ingressClassName: traefik
   rules:
@@ -121,4 +115,4 @@ spec:
               service:
                 name: pihole-loadbalancer-service
                 port:
-                  name: web
+                  number: 80

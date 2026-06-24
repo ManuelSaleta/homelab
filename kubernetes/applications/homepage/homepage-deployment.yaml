@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: homepage
   namespace: networking
+  labels:
+    app: homepage
 spec:
   replicas: 1
   selector:
@@ -13,13 +15,16 @@ spec:
       labels:
         app: homepage
     spec:
+      automountServiceAccountToken: true
       serviceAccountName: homepage-service-account
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
+          imagePullPolicy: Always
           env:
             - name: LOG_LEVEL
               value: debug
+            # Cloudflare Secrets
             - name: HOMEPAGE_VAR_CF_API_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -35,11 +40,18 @@ spec:
                 secretKeyRef:
                   name: cloudflare-tunnel-secret
                   key: CF_ACCOUNT_ID
+            # PiHole Secrets
             - name: HOMEPAGE_VAR_PIHOLE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: pihole-secret
                   key: PIHOLE_PASSWORD
+            - name: HOMEPAGE_VAR_PIHOLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-secret
+                  key: PIHOLE_API_KEY
+            # Tailscale Secrets
             - name: HOMEPAGE_VAR_TAILSCALE_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -55,20 +67,49 @@ spec:
                 secretKeyRef:
                   name: tailscale-secret
                   key: TS_LAPTOP_DEVICE_ID
-            - name: HOMEPAGE_VAR_PIHOLE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: pihole-secret
-                  key: PIHOLE_API_KEY
+            # Proxmox Secrets
             - name: HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: proxmox-secret
                   key: PROXMOX_WIDGET_PASSWORD
+            - name: HOMEPAGE_VAR_PROXMOX_NODE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_NODE_NAME
+            - name: HOMEPAGE_VAR_PROXMOX_URL
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_URL
+            - name: HOMEPAGE_VAR_PROXMOX_USER
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_USER
+            - name: HOMEPAGE_VAR_PROXMOX_TOKEN_ID
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_TOKEN_ID
+            - name: HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_TOKEN_SECRET
+            # Allowed Hosts: List specific valid addresses
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "192.168.50.*,homepage.freesalty.com,pihole.freesalty.com"
+              value: "homepage.freesalty.com,pihole.freesalty.com,localhost,127.0.0.1,homepage-service.networking.svc.cluster.local"
           ports:
             - containerPort: 3000
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
           volumeMounts:
             - name: config-volume
               mountPath: /app/config/settings.yaml
@@ -82,10 +123,14 @@ spec:
             - name: config-volume
               mountPath: /app/config/widgets.yaml
               subPath: widgets.yaml
+            - name: logs
+              mountPath: /app/config/logs
       volumes:
         - name: config-volume
           configMap:
             name: homepage-config
+        - name: logs
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -99,6 +144,7 @@ spec:
   ports:
     - port: 80
       targetPort: 3000
+      name: http
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

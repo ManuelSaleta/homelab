@@ -1,5 +1,20 @@
-# # In the local widgets.yaml
-# - kubernetes:
-#     cpu: true
-#     memory: true
-#     showNodes: true
+- kubernetes:
+    label: Cluster Management
+    cluster:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true
+      label: "Cluster"
+    nodes:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true
+- resources:
+    cpu: true
+    memory: true
+    network: default
+- search:
+    provider: duckduckgo
+    target: _blank

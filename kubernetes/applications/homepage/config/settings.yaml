@@ -1,6 +1,4 @@
 title: "Gman's Homelab"
-background: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe" #TODO:  Find a more "homelab-y" background image, maybe with some subtle tech patterns or schematics
+background: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe"
 cardBlur: sm
 description: "A collection of applications and services running in my homelab Kubernetes cluster."
-# kubernetes:
-#   mode: cluster
