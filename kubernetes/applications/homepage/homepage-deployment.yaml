@@ -56,7 +56,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: tailscale-secret
-                  key: TS_APITOKEN
+                  key: TS_API_TOKEN
             - name: HOMEPAGE_VAR_TAILSCALE_NAS_DEVICE_ID
               valueFrom:
                 secretKeyRef:
