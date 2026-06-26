@@ -18,7 +18,6 @@ This workspace is structured to enforce a strict separation of concerns across t
 ├── README.md                           # Global Homelab System Blueprint
 │
 ├── terraform/
-│   ├── TODOs.txt
 │   └── vm_provisioning/
 │       ├── main.tf                     # Proxmox Provider & Control-Plane Allocation
 │       ├── workers.tf                  # Cluster Scale Architecture (Worker Nodes)
@@ -37,7 +36,6 @@ This workspace is structured to enforce a strict separation of concerns across t
 │
 ├── kubernetes/                         # Unified Orchestration Layer
 │   ├── README.md
-│   ├── TODO_expose_kube_dashboard.txt
 │   │
 │   ├── infrastructure/                 # Foundational Cluster Core Network Plugs
 │   │   ├── metallb-config.yaml         # Bare-Metal Layer-2 Core Network Pool (.240-.250)
@@ -45,9 +43,16 @@ This workspace is structured to enforce a strict separation of concerns across t
 │   │
 │   └── applications/                   # Declarative K3s Application Layer (GitOps-Ready)
 │       ├── README.md
-│       ├── TODOS.txt
 │       ├── pihole-deployment.yaml      # Cluster DNS, Ad-Blocking, & Local Split-Horizon Routing
-│       ├── homepage-deployment.yaml    # Main Landing Infrastructure Command Dashboard
+│       ├── homepage/                   # Main Landing Infrastructure Command Dashboard
+                ├── rbac.yaml
+                ├── homepage-deployment.yaml
+                └── config
+                    ├── widgets.yaml
+                    ├── settings.yaml
+                    ├── services.yaml
+                    ├── proxmox.yaml
+                    └── kubernetes.yaml
 │       └── grafana-exposure.yaml       # Metrics Visual Logging Pipeline
 │
 └── docker/                             # Isolated Legacy Container Standalone Sandboxes

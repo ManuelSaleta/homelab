@@ -98,18 +98,34 @@ spec:
                 secretKeyRef:
                   name: proxmox-secret
                   key: PROXMOX_TOKEN_SECRET
+            # Granafa Secrets
+            - name: HOMEPAGE_VAR_GRAFANA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secret
+                  key: GRAFANA_API_KEY
+            - name: HOMEPAGE_VAR_GRAFANA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secret
+                  key: GRAFANA_USERNAME
+            - name: HOMEPAGE_VAR_GRAFANA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-secret
+                  key: GRAFANA_PASSPWORD
             # Allowed Hosts: List specific valid addresses
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "homepage.freesalty.com,pihole.freesalty.com,localhost,127.0.0.1,homepage-service.networking.svc.cluster.local"
+              value: "homepage.freesalty.com,pihole.freesalty.com,localhost,*"
           ports:
             - containerPort: 3000
               name: http
-          livenessProbe:
-            httpGet:
-              path: /api/healthcheck
-              port: http
-            initialDelaySeconds: 60
-            periodSeconds: 30
+          # livenessProbe:
+          #   httpGet:
+          #     path: /api/healthcheck
+          #     port: http
+          #   initialDelaySeconds: 60
+          #   periodSeconds: 30
           volumeMounts:
             - name: config-volume
               mountPath: /app/config/settings.yaml

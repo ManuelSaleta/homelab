@@ -70,14 +70,6 @@ homepage-down:
 	@echo "💥 Removing Homepage Dashboard..."
 	kubectl delete -f $(APPS_DIR)/homepage/homepage-deployment.yaml --ignore-not-found
 
-grafana-up:
-	@echo "📈 Deploying Grafana Exposure Configs..."
-	kubectl apply -f $(APPS_DIR)/grafana-exposure.yaml
-
-grafana-down:
-	@echo "💥 Removing Grafana Exposure Configs..."
-	kubectl delete -f $(APPS_DIR)/grafana-exposure.yaml --ignore-not-found
-
 
 # ==============================================================================
 # GLOBAL APPLICATION GROUPS

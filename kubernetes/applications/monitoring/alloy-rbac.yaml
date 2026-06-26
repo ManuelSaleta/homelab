@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alloy-cluster-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alloy-cluster-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: my-alloy
+    namespace: monitoring
+roleRef:
+  kind: ClusterRole
+  name: alloy-cluster-reader
+  apiGroup: rbac.authorization.k8s.io

@@ -83,7 +83,7 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 ```bash
 # Head over to the worker nodes; paste the following with the above token, and the IP of the manager VM.
 curl -sfL https://get.k3s.io | \
-  K3S_URL="https://192.168.50.72:6443" \
+  K3S_URL="https://192.168.50.185:6443" \
   K3S_TOKEN="YOUR_FRESHLY_EXTRACTED_SERVER_TOKEN" \
   INSTALL_K3S_SKIP_DOWNLOAD=true \
   INSTALL_K3S_EXEC="agent --node-name=k3s-worker-01" sh -

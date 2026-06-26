@@ -16,16 +16,16 @@ resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
     hostname: "k3s-worker-0${count.index + 1}"
     
     runcmd:
-      # 1. Set the individual node name inside the system environment overrides
+      # 1. Set the individual node name
       - echo 'K3S_NODE_NAME="k3s-worker-0${count.index + 1}"' > /etc/systemd/system/k3s-agent.service.env
       
-      # TODO: pass the manger IP variable instead. Too lazy 
-      # 2. Re-register the pre-installed k3s binary to target the control plane
-      # Since k3s is already installed, this step just modifies the service flags instantly
-      # TODO: This curl command is crazy; ideally we should be passing these parameters in a more idempotent way instead of re-running the entire install script with skip-download. This is a quick and dirty way to get the job done without needing to write a custom script or Ansible playbook for this step.
-      - curl -sfL https://get.k3s.io | K3S_URL="https://192.168.50.72:6443" K3S_TOKEN="${var.k3s_share_token}" INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent --node-name=k3s-worker-0${count.index + 1}" sh -
+      # 2. WAIT for the control plane to be reachable before trying to join
+      - until curl -k -s https://192.168.50.185:6443/readyz; do echo "Waiting for control plane..."; sleep 5; done
       
-      # 3. Reload systemd configurations and bounce the agent to connect
+      # 3. Join the cluster
+      - curl -sfL https://get.k3s.io | K3S_URL="https://192.168.50.185:6443" K3S_TOKEN="${var.k3s_share_token}" INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent --node-name=k3s-worker-0${count.index + 1}" sh -
+      
+      # 4. Reload and restart
       - systemctl daemon-reload
       - systemctl restart k3s-agent
     EOF
