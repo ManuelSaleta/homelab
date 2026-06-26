@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uptime-kuma-pvc
+  namespace: networking
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi # Uptime Kuma SQLite databases are lightweight; 4GB is plenty for long-term metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uptime-kuma
+  namespace: networking
+  labels:
+    app: uptime-kuma
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # SQLite doesn't support concurrent multi-pod writes, so cycle the pod cleanly on updates
+  selector:
+    matchLabels:
+      app: uptime-kuma
+  template:
+    metadata:
+      labels:
+        app: uptime-kuma
+    spec:
+      containers:
+        - name: uptime-kuma
+          image: louislam/uptime-kuma:1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+              name: http
+          volumeMounts:
+            - name: uptime-kuma-data
+              mountPath: /app/data
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: "500m"
+            requests:
+              memory: 256Mi
+              cpu: "200m"
+      volumes:
+        - name: uptime-kuma-data
+          persistentVolumeClaim:
+            claimName: uptime-kuma-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uptime-kuma-service
+  namespace: networking
+spec:
+  type: ClusterIP
+  selector:
+    app: uptime-kuma
+  ports:
+    - port: 80
+      targetPort: 3001
+      name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uptime-kuma-ingress
+  namespace: networking
+  annotations:
+    # Enable automatic discovery for your Homepage gallery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Uptime Kuma"
+    gethomepage.dev/group: "Monitoring"
+    gethomepage.dev/icon: "uptime-kuma.png"
+    gethomepage.dev/href: "https://uptime.freesalty.com"
+
+    # Configure the active layout widget parameters
+    gethomepage.dev/widget.type: "uptimekuma"
+    gethomepage.dev/widget.url: "http://uptime-kuma-service.networking.svc.cluster.local:80"
+
+    # Uptime Kuma widget uses a slug format to target specific monitoring rows
+    # You can change "default" to a specific status page slug later if you configure one!
+    gethomepage.dev/widget.slug: "default"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: uptime.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-kuma-service
+                port:
+                  number: 80
