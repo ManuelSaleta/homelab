@@ -71,20 +71,19 @@ metadata:
   name: uptime-kuma-ingress
   namespace: networking
   annotations:
-    # Enable automatic discovery for your Homepage gallery
+    # Enables automatic service discovery for homepage
     gethomepage.dev/enabled: "true"
     gethomepage.dev/name: "Uptime Kuma"
     gethomepage.dev/group: "Monitoring"
-    gethomepage.dev/icon: "uptime-kuma.png"
+    gethomepage.dev/icon: "uptime-kuma"
     gethomepage.dev/href: "https://uptime.freesalty.com"
-
-    # Configure the active layout widget parameters
     gethomepage.dev/widget.type: "uptimekuma"
-    gethomepage.dev/widget.url: "http://uptime-kuma-service.networking.svc.cluster.local:80"
-
-    # Uptime Kuma widget uses a slug format to target specific monitoring rows
-    # You can change "default" to a specific status page slug later if you configure one!
+    # Match the namespace-scoped internal cluster routing pattern
+    gethomepage.dev/widget.url: "http://uptime-kuma-service.networking"
+    # Pass the required slug parameter for Uptime Kuma to fetch metrics
     gethomepage.dev/widget.slug: "default"
+    # Link it to the pod selector so the cluster proxy maps the network path perfectly
+    gethomepage.dev/pod-selector: "app=uptime-kuma"
 spec:
   ingressClassName: traefik
   rules:
