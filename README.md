@@ -114,10 +114,6 @@ Ensure the execution host has the standard infrastructure toolsets installed and
 
     Kubectl
 
-    GNU Make (Standard shell scripting execution matrix)
-
-    OpenSSH Client (With an active backend authentication agent)
-
 Bash
 
 ## 📋 Example for Linux workstations

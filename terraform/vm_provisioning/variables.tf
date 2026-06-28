@@ -11,16 +11,16 @@ variable "grafana_api_key" {
 }
 
 variable "grafana_username" {
-  type = string
+  type        = string
   description = "the grana username"
-  default = "admin"
-  sensitive = false
+  default     = "admin"
+  sensitive   = false
 }
 
 variable "grafana_password" {
-  type = string
+  type        = string
   description = "the grana password"
-  sensitive = true
+  sensitive   = true
 }
 
 variable "proxmox_endpoint" {
@@ -77,6 +77,13 @@ variable "cloudflare_api_token" {
   description = "Cloudflare API token for managing tunnels."
   sensitive   = true
 }
+
+variable "cloudflare_dns_api_token" {
+  type        = string
+  description = "Cloudflare DNS API token for enabling https traffic over local network"
+  sensitive   = true
+}
+
 
 variable "tailscale_auth_key" {
   type        = string

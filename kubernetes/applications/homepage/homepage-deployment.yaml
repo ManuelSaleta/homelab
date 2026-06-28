@@ -167,8 +167,16 @@ kind: Ingress
 metadata:
   name: homepage-ingress
   namespace: networking
+  annotations:
+    gethomepage.dev/enabled: "true"
+    # Force traffic through the websecure endpoint
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik
+  # 🎯 THE MISSING PIECE: This tells K8s and Traefik to turn on TLS for this domain
+  tls:
+    - hosts:
+        - homepage.freesalty.com
   rules:
     - host: homepage.freesalty.com
       http:
