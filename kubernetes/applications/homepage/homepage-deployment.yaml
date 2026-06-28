@@ -56,7 +56,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: tailscale-secret
-                  key: TS_APITOKEN
+                  key: TS_API_TOKEN
             - name: HOMEPAGE_VAR_TAILSCALE_NAS_DEVICE_ID
               valueFrom:
                 secretKeyRef:
@@ -113,7 +113,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: grafana-secret
-                  key: GRAFANA_PASSPWORD
+                  key: GRAFANA_PASSWORD
             # Allowed Hosts: List specific valid addresses
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: "homepage.freesalty.com,pihole.freesalty.com,localhost,*"
