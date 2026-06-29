@@ -78,6 +78,8 @@ metadata:
     gethomepage.dev/icon: "uptime-kuma"
     gethomepage.dev/href: "https://uptime.freesalty.com"
     gethomepage.dev/widget.type: "uptimekuma"
+    # Enables Traefik automatic dns reroute to https
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
     # Match the namespace-scoped internal cluster routing pattern
     gethomepage.dev/widget.url: "http://uptime-kuma-service.networking"
     # Pass the required slug parameter for Uptime Kuma to fetch metrics

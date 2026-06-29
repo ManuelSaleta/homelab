@@ -97,8 +97,12 @@ metadata:
     gethomepage.dev/name: "Pi-hole"
     gethomepage.dev/group: "Network"
     gethomepage.dev/icon: "pi-hole"
-    gethomepage.dev/href: "http://pihole.freesalty.com/admin"
+    # FIX: Upgraded to https so the dashboard icon targets the secure edge
+    gethomepage.dev/href: "https://pihole.freesalty.com/admin"
     gethomepage.dev/widget.type: "pihole"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+
+    # KEEP AS HTTP: This is cluster-internal traffic pod-to-pod, so plain text port 80 is correct and faster
     gethomepage.dev/widget.url: "http://pihole-loadbalancer-service.networking"
     gethomepage.dev/widget.version: "6"
     gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"

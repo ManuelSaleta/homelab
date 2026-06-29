@@ -13,14 +13,29 @@ resource "kubernetes_secret_v1" "tailscale_secret" {
   type = "Opaque"
 
   data = {
-    TS_AUTH_KEY          = var.tailscale_auth_key
-    TS_API_TOKEN         = var.tailscale_api_token
+    TS_AUTH_KEY         = var.tailscale_auth_key
+    TS_API_TOKEN        = var.tailscale_api_token
     TS_NAS_DEVICE_ID    = var.tailscale_device_id_nas
     TS_LAPTOP_DEVICE_ID = var.tailscale_device_id_mac
   }
 }
 
-# 🔐 4. CLOUDFLARE TUNNEL EDGE INGRESS SECRET
+# 🔐 1. TRAEFIK DNS-01 CHALLENGE SECRET (kube-system namespace)
+resource "kubernetes_secret_v1" "traefik_cloudflare_api_token" {
+  metadata {
+    name      = "cloudflare-dns-api-token"
+    namespace = "kube-system"
+  }
+
+  type = "Opaque"
+
+  data = {
+    # Traefik expects the literal string 'CF_API_TOKEN' as its environment variable key
+    CF_API_TOKEN = var.cloudflare_dns_api_token
+  }
+}
+
+# 🔐 2. CLOUDFLARE TUNNEL EDGE INGRESS SECRET
 resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
   metadata {
     name      = "cloudflare-tunnel-secret"
@@ -31,10 +46,10 @@ resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
 
   data = {
     # 🎯 Pulls the cloudflared tunnel credentials JSON or token from tfvars
-    CF_TUNNEL_TOKEN = var.cloudflare_tunnel_token
-    CF_API_TOKEN    = var.cloudflare_api_token
-    CF_TUNNEL_ID    = var.cloudflare_tunnel_id
-    CF_ACCOUNT_ID   = var.cloudflare_account_id
+    CF_TUNNEL_TOKEN  = var.cloudflare_tunnel_token
+    CF_API_TOKEN     = var.cloudflare_api_token
+    CF_TUNNEL_ID     = var.cloudflare_tunnel_id
+    CF_ACCOUNT_ID    = var.cloudflare_account_id
   }
 }
 
@@ -83,7 +98,7 @@ resource "kubernetes_secret_v1" "grafana-secret" {
   type = "Opaque"
 
   data = {
-    GRAFANA_API_KEY = var.grafana_api_key
+    GRAFANA_API_KEY  = var.grafana_api_key
     GRAFANA_USERNAME = var.grafana_username
     GRAFANA_PASSWORD = var.grafana_password
   }
