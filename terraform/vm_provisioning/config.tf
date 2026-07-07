@@ -12,3 +12,4 @@ resource "kubernetes_config_map_v1" "homepage_config" {
     "widgets.yaml"    = file("${path.module}/../../kubernetes/applications/homepage/config/widgets.yaml")
   }
 }
+

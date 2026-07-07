@@ -55,6 +55,9 @@ alias kkill="pkill -9 -f 'kubectl proxy'"
 # Modern On-Demand Token Generator (Valid for 1 hour)
 alias ktoken="kubectl -n kubernetes-dashboard create token admin-user"
 
+# Inspect config-map value for a deployment
+alias homepage-config="kubectl get configmap homepage-config -n networking -o yaml"
+
 ```
 
 ## Cluster Verification Quick Reference
@@ -101,9 +104,10 @@ From the workstation do:
 
 ## 🌐 Core Infrastructure: MetalLB Load Balancer
 
-MetalLB hooks into your local network routing to provide bare-metal Kubernetes clusters with real `LoadBalancer` external IP addresses. 
+MetalLB hooks into your local network routing to provide bare-metal Kubernetes clusters with real `LoadBalancer` external IP addresses.
 
 ### ⚠️ Pre-Requisites
+
 By default, K3s ships with its own lightweight load balancer controller called **Klipper**. Because we are using MetalLB for explicit Layer 2 virtual IP mapping, ensure Klipper does not conflict with your setup.
 
 ### 🚀 Deployment Workflow
@@ -111,6 +115,7 @@ By default, K3s ships with its own lightweight load balancer controller called *
 Infrastructure management is split into two distinct phases: **Installation** (CRDs, controllers, RBAC permissions) and **Configuration** (your custom IP ranges).
 
 #### 1. Deploy the MetalLB Operator & CRDs
+
 Apply the upstream operator manifest to register the required Custom Resource Definitions (`ipaddresspools.metallb.io`, `l2advertisements.metallb.io`) and initialize the system namespace:
 
 ```bash
