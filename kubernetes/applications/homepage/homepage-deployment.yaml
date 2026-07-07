@@ -141,7 +141,13 @@ spec:
               subPath: widgets.yaml
             - name: logs
               mountPath: /app/config/logs
+            - name: bg-volume
+              mountPath: /app/public/images/homepage_background.webp
+              subPath: homepage_background.webp
       volumes:
+        - name: bg-volume
+          secret:
+            secretName: homepage-background
         - name: config-volume
           configMap:
             name: homepage-config
@@ -168,8 +174,12 @@ metadata:
   name: homepage-ingress
   namespace: networking
   annotations:
-    gethomepage.dev/enabled: "true"
-    # Force traffic through the websecure endpoint
+    gethomepage.dev/enabled: "false"
+    # 1. Tell Homepage what the actual clickable URL is
+    gethomepage.dev/href: "https://homepage.yourdomain.com"
+    # 2. Tell Homepage where to look for the health check (internal cluster service)
+    gethomepage.dev/ping: "http://homepage.networking.svc.cluster.local:3000"
+    # Your existing Traefik entrypoints
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik

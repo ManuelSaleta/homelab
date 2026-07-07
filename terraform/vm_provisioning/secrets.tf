@@ -104,6 +104,19 @@ resource "kubernetes_secret_v1" "grafana-secret" {
   }
 }
 
+# The background image asset
+resource "kubernetes_secret_v1" "homepage_background" {
+  metadata {
+    name      = "homepage-background"
+    namespace = "networking"
+  }
+
+  binary_data = {
+    # Reads the raw image from your local directory and encodes it to base64 automatically
+    "homepage_background.webp" = filebase64("${path.module}/../../kubernetes/applications/homepage/config/assets/homepage_background.webp")
+  }
+}
+
 # # 3. Application State Secrets (Example: Postgres or Immich Backends)
 # resource "kubernetes_secret_v1" "database_secret" {
 #   metadata {

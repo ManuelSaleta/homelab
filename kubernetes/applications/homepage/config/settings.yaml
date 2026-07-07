@@ -1,4 +1,4 @@
 title: "Gman's Homelab"
-background: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe"
+background: "/images/homepage_background.webp"
 cardBlur: sm
 description: "A collection of applications and services running in my homelab Kubernetes cluster."
