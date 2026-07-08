@@ -85,9 +85,9 @@ Before executing automation targets via the root Makefile, ensure the environmen
 
 ## 1. Toolchain Installation (Fedora/RHEL Workstations)
 
-Bash
-
-sudo dnf install -y packer terraform make openssh-clients kubectl helm
+```bash
+    sudo dnf install -y packer terraform make openssh-clients kubectl helm
+```
 
 ## 2. Local SSH Key & Verification Loops
 
@@ -99,9 +99,7 @@ Bash
     ssh-add ~/.ssh/id_ed25519
 ```
 
-> [!IMPORTANT]
-
-    Security Isolation: NEVER commit local *.tfvars files. Private keys, network maps, and gateway tokens must remain locally isolated on the workstation to   prevent accidental public configuration leaks.
+- Security Isolation: NEVER commit local \*.tfvars files. Private keys, network maps, and gateway tokens must remain locally isolated on the workstation to prevent accidental public configuration leaks.
 
 ## 3. Hypervisor Storage Allocations
 
