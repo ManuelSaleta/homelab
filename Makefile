@@ -248,6 +248,8 @@ infra-status:
 karakeep-up:
 	@echo "🎯 Deploying Karakeep Application..."
 	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-deployment.yaml
+	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-meili.yaml
+	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-browser.yaml
 
 karakeep-down:
 	@echo "💥 Removing Karakeep Application..."

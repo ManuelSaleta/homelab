@@ -27,6 +27,18 @@ spec:
               name: app-http
               protocol: TCP
           env:
+            # Link to Meilisearch
+            - name: MEILI_ADDR
+              value: "http://karakeep-meili-service:7700"
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: karakeep-secret
+                  key: MEILI_MASTER_KEY
+
+            # Link to Browserless chrome for web scraping
+            - name: BROWSER_WEBSOCKET_URL
+              value: "ws://karakeep-browser-service:3000/chromium/playwright"
             - name: DATA_DIR
               value: /data
             - name: NEXTAUTH_URL
@@ -36,6 +48,9 @@ spec:
                 secretKeyRef:
                   name: karakeep-secret
                   key: NEXTAUTH_SECRET
+            # Disable signups to prevent unauthorized access to the application
+            - name: DISABLE_SIGNUPS
+              value: "true"
           volumeMounts:
             - name: karakeep-persistent-config
               mountPath: /data

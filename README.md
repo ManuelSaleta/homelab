@@ -92,12 +92,13 @@ Before executing automation targets via the root Makefile, ensure the environmen
 ## 2. Local SSH Key & Verification Loops
 
 Secure authentication loops rely entirely on public key checks. Ensure the signature exists locally and is bound to the running SSH agent before starting deployments:
-Bash
+
+````bash
 
 ```bash
     eval $(ssh-agent -s)
     ssh-add ~/.ssh/id_ed25519
-```
+````
 
 - Security Isolation: NEVER commit local \*.tfvars files. Private keys, network maps, and gateway tokens must remain locally isolated on the workstation to prevent accidental public configuration leaks.
 
@@ -360,10 +361,121 @@ These are some of the more common kubectl I found myself repeating; turned into 
     # Inspect config-map value for a deployment
 
     alias homepage-config="kubectl get configmap homepage-config -n networking -o yaml"
+
+    # Search ENVIRONMENT variables for a given service
+
+    kubectl exec -it deployment/karakeep-server -n networking -- env | grep DISABLE
 ```
 
-# Application Specific:
+# Application Specific
 
-## Karakeep:
+## Karakeep
 
-Quickly generate a robust string for this value on your terminal using `openssl rand -base64 36`
+- Quickly generate a robust string for this value on your terminal using `openssl rand -base64 36`
+
+By default `sign-ups are disabled. To add an additional user:
+
+1. Log into your account at https://karakeep.freesalty.com.
+2. Navigate to the Admin Settings page (located in your profile/settings menu).
+3. Find the Users List tab and click the Create User button.
+4. Input their details (Name, Email, and a temporary password) and hit Create.
+
+### Karakeep Troubleshooting
+
+debugging the browser plugin, if you ran `karakeep-browser.yaml`, but the browser engine claims is `not configured` on the admin panel.
+
+- Start with a network test:
+
+  ```bash
+    kubectl exec -it deployment/karakeep-server -n networking -- wget -qO- http://karakeep-browser-service:3000/json
+  ```
+
+- Make sure you `karakeep` main deployment manifest, `karakeep-deployment.yaml` in this instance has the websocket env set to:
+
+```
+    # Link to Browserless chrome for web scraping
+    - name: BROWSER_WEBSOCKET_URL
+        value: "ws://karakeep-browser-service:3000"
+```
+
+#### Watch live Browser session:
+
+In your karakeep dashboard, drop a JS heavy website like reddit.com.
+
+At the same time run the following command to see the webscrapping engine go brrrr.
+
+```bash
+    kubectl port-forward svc/karakeep-browser-service 3000:3000 -n networking
+```
+
+2. Stream the Live Container Logs
+
+Open up a couple of split terminal panes (using tmux or your terminal tabs) and tail the log streams for all three components simultaneously while you add the link.
+
+Pane 1: Watch Karakeep coordinate the job
+
+```bash
+    kubectl logs deployment/karakeep-server -n networking -f --tail=20
+```
+
+    Look for: Logs indicating a new link parsing job has been added to the queue and an upstream connection request sent to the browser wrapper.
+
+Pane 2: Watch Browserless execute the render
+
+```bash
+    kubectl logs deployment/karakeep-browser -n networking -f --tail=20
+```
+
+    Look for: Session started, logs about Chrome binaries launching, navigation events to reddit.com, and session closure metrics.
+
+Pane 3: Watch Meilisearch build the full-text index
+
+```bash
+    kubectl logs deployment/karakeep-meili -n networking -f --tail=20
+```
+
+---
+
+# Homepage:
+
+todo
+
+## Homepage Troubleshooting
+
+todo
+
+---
+
+# Grafana:
+
+todo
+
+## Grafana Troubleshooting
+
+todo
+
+---
+
+# Pihole:
+
+todo
+
+## Pihole Troubleshooting
+
+todo
+
+---
+
+# Uptime-kuma:
+
+todo
+
+## Uptime-kuma Troubleshooting
+
+todo
+
+---
+
+```
+
+```

@@ -127,5 +127,6 @@ resource "kubernetes_secret_v1" "karakeep_secret" {
 
   data = {
     NEXTAUTH_SECRET = var.karakeep_nextauth_secret
+    MEILI_MASTER_KEY = var.karakeep_meili_master_key
   }
 }
