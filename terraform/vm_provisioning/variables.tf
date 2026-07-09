@@ -1,8 +1,14 @@
 # Variables for Proxmox VM provisioning with Terraform and Packer
 # ==============================================================================
-# Packer needs its variables defined in its own .hcl file. They can share 
+# Packer needs its variables defined in its own .hcl file. They can share
 # The terraform.tfvars file, but the .hcl extension is for packer build variables, and command:
 # This is a bit redundant, but its the more DRY way right now. See packer.pkrvars.hcl for the variables specific to packer builds.
+
+variable "karakeep_nextauth_secret" {
+  type        = string
+  description = "A random secret string used by NextAuth to encrypt tokens and secure sessions for Karakeep."
+  sensitive   = true
+}
 
 variable "grafana_api_key" {
   type        = string

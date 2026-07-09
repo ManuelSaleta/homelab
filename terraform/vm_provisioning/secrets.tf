@@ -117,17 +117,15 @@ resource "kubernetes_secret_v1" "homepage_background" {
   }
 }
 
-# # 3. Application State Secrets (Example: Postgres or Immich Backends)
-# resource "kubernetes_secret_v1" "database_secret" {
-#   metadata {
-#     name      = "database-secret"
-#     namespace = "apps"
-#   }
+resource "kubernetes_secret_v1" "karakeep_secret" {
+  metadata {
+    name      = "karakeep-secret"
+    namespace = "networking"
+  }
 
-#   type = "Opaque"
+  type = "Opaque"
 
-#   data = {
-#     username = "postgres"
-#     password = var.database_root_password
-#   }
-# }
+  data = {
+    NEXTAUTH_SECRET = var.karakeep_nextauth_secret
+  }
+}

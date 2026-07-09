@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: karakeep-server
+  namespace: networking
+  labels:
+    app: karakeep-server
+    app.kubernetes.io/name: karakeep
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: karakeep-server
+  template:
+    metadata:
+      labels:
+        app: karakeep-server
+    spec:
+      containers:
+        - name: karakeep-engine
+          image: ghcr.io/karakeep-app/karakeep:release
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: app-http
+              protocol: TCP
+          env:
+            - name: DATA_DIR
+              value: /data
+            - name: NEXTAUTH_URL
+              value: "https://karakeep.freesalty.com"
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: karakeep-secret
+                  key: NEXTAUTH_SECRET
+          volumeMounts:
+            - name: karakeep-persistent-config
+              mountPath: /data
+      volumes:
+        - name: karakeep-persistent-config
+          hostPath:
+            path: /var/data/karakeep/config
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: karakeep-cluster-service
+  namespace: networking
+spec:
+  type: ClusterIP
+  selector:
+    app: karakeep-server
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: web
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: karakeep-ingress
+  namespace: networking
+  annotations:
+    # Traefik router entrypoints matching your Pi-hole ingress style
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+
+    # Homepage Auto-Discovery configuration
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Karakeep"
+    gethomepage.dev/group: "Services"
+    gethomepage.dev/icon: "karakeep"
+    gethomepage.dev/href: "https://karakeep.freesalty.com"
+    gethomepage.dev/pod-selector: "app=karakeep-server"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: karakeep.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: karakeep-cluster-service
+                port:
+                  number: 3000

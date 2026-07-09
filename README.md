@@ -361,3 +361,9 @@ These are some of the more common kubectl I found myself repeating; turned into 
 
     alias homepage-config="kubectl get configmap homepage-config -n networking -o yaml"
 ```
+
+# Application Specific:
+
+## Karakeep:
+
+Quickly generate a robust string for this value on your terminal using `openssl rand -base64 36`
