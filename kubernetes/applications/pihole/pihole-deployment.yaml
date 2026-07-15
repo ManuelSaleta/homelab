@@ -1,122 +1,143 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: networking
+  name: media
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: navidrome-music-pv
+spec:
+  capacity:
+    storage: 1Ti # Adjust according to the total footprint of your music archive
+  volumeMode: Filesystem
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nas-nfs-music
+  nfs:
+    server: 192.168.50.X # <- REPLACE with your NAS IP address
+    path: /mnt/pools/storage/music # <- REPLACE with your actual NAS NFS export path
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-music-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: nas-nfs-music
+  resources:
+    requests:
+      storage: 1Ti
+  volumeName: navidrome-music-pv
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pihole-dns-server
-  namespace: networking
+  name: navidrome-media-server
+  namespace: media
   labels:
-    app: pihole-dns-server
-    app.kubernetes.io/name: pihole
+    app: navidrome-media-server
+    app.kubernetes.io/name: navidrome
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: pihole-dns-server
+      app: navidrome-media-server
   template:
     metadata:
       labels:
-        app: pihole-dns-server
+        app: navidrome-media-server
     spec:
       containers:
-        - name: pihole-ftl-engine
-          image: pihole/pihole:latest
+        - name: navidrome-core-engine
+          image: deluan/navidrome:latest
           env:
             - name: TZ
               value: "America/New_York"
-            - name: FTLCONF_webserver_api_password
-              valueFrom:
-                secretKeyRef:
-                  name: pihole-secret
-                  key: PIHOLE_PASSWORD
-            - name: FTLCONF_dns_listeningMode
-              value: "all"
-            - name: FTLCONF_dns_upstreams
-              value: "1.1.1.1;8.8.8.8"
-            - name: FTLCONF_misc_dnsmasq_lines
-              value: "address=/freesalty.com/192.168.50.240"
-            - name: FTLCONF_webserver_cors_allowedHosts
-              value: "pihole.freesalty.com,freesalty.com"
+            - name: ND_MUSICFOLDER
+              value: "/music"
+            - name: ND_DATAFOLDER
+              value: "/data"
+            - name: ND_SCANSCHEDULE
+              value: "@every 30m"
+            - name: ND_LOGLEVEL
+              value: "info"
+            # Optional: Enforce specific transcoding parameters or configurations if needed
+            - name: ND_ENABLETRANSCODINGCONFIG
+              value: "true"
           ports:
-            - containerPort: 53
-              name: dns-udp
-              protocol: UDP
-            - containerPort: 53
-              name: dns-tcp
-              protocol: TCP
-            - containerPort: 80
+            - containerPort: 4533
               name: admin-http
               protocol: TCP
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi" # Buffer safety margin for heavy background scans and stream encoding
           volumeMounts:
-            - name: pihole-persistent-config
-              mountPath: /etc/pihole
+            - name: navidrome-music-mount
+              mountPath: /music
+              readOnly: true
+            - name: navidrome-persistent-config
+              mountPath: /data
       volumes:
-        - name: pihole-persistent-config
+        - name: navidrome-music-mount
+          persistentVolumeClaim:
+            claimName: navidrome-music-pvc
+        - name: navidrome-persistent-config
           hostPath:
-            path: /var/data/pihole/config
+            path: /var/data/navidrome/config
             type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: pihole-loadbalancer-service
-  namespace: networking
+  name: navidrome-loadbalancer-service
+  namespace: media
   annotations:
-    metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
+    metallb.universe.tf/loadBalancerIPs: "192.168.50.243" # Assigned IP from your IPAM pool
 spec:
   type: LoadBalancer
   selector:
-    app: pihole-dns-server
+    app: navidrome-media-server
   ports:
-    - port: 53
-      targetPort: 53
-      protocol: UDP
-      name: inbound-dns-udp
-    - port: 53
-      targetPort: 53
-      protocol: TCP
-      name: inbound-dns-tcp
-    - port: 80
-      targetPort: 80
+    - port: 4533
+      targetPort: 4533
       protocol: TCP
       name: web
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: pihole-ingress
-  namespace: networking
+  name: navidrome-ingress
+  namespace: media
   annotations:
-    # Essential for Homepage Auto-Discovery
+    # Service Discovery Engine for Homepage
     gethomepage.dev/enabled: "true"
-    gethomepage.dev/name: "Pi-hole"
-    gethomepage.dev/group: "Network"
-    gethomepage.dev/icon: "pi-hole"
-    # FIX: Upgraded to https so the dashboard icon targets the secure edge
-    gethomepage.dev/href: "https://pihole.freesalty.com/admin"
-    gethomepage.dev/widget.type: "pihole"
+    gethomepage.dev/name: "Navidrome"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "navidrome"
+    gethomepage.dev/href: "https://music.freesalty.com/"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 
-    # KEEP AS HTTP: This is cluster-internal traffic pod-to-pod, so plain text port 80 is correct and faster
-    gethomepage.dev/widget.url: "http://pihole-loadbalancer-service.networking"
-    gethomepage.dev/widget.version: "6"
-    gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"
-    gethomepage.dev/pod-selector: "app=pihole-dns-server"
+    # Internal metrics check for state tracking
+    gethomepage.dev/pod-selector: "app=navidrome-media-server"
 spec:
   ingressClassName: traefik
   rules:
-    - host: pihole.freesalty.com
+    - host: music.freesalty.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: pihole-loadbalancer-service
+                name: navidrome-loadbalancer-service
                 port:
-                  number: 80
+                  number: 4533
