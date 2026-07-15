@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: vaultwarden-nas-pv
+  labels:
+    type: nfs
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain # Ensures data isn't deleted from the NAS if the PVC is deleted
+  nfs:
+    server: 192.168.50.X # <-- Replace with the actual IP of your NAS VM
+    path: /mnt/storage/vaultwarden # <-- Replace with your exact NAS NFS export path
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-nas-pvc
+  namespace: networking
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: vaultwarden-nas-pv
+  # Explicitly set empty to match our statically provisioned PV above
+  storageClassName: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden-server
+  namespace: networking
+  labels:
+    app: vaultwarden-server
+    app.kubernetes.io/name: vaultwarden
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vaultwarden-server
+  template:
+    metadata:
+      labels:
+        app: vaultwarden-server
+    spec:
+      containers:
+        - name: vaultwarden-engine
+          image: vaultwarden/server:latest
+          env:
+            - name: TZ
+              value: "America/New_York"
+            - name: SIGNUPS_ALLOWED
+              value: "true"
+            - name: WEBSOCKET_ENABLED
+              value: "true"
+            - name: DOMAIN
+              value: "https://vault.freesalty.com"
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-secret
+                  key: ADMIN_TOKEN
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+          volumeMounts:
+            - name: vaultwarden-persistent-config
+              mountPath: /data
+      volumes:
+        - name: vaultwarden-persistent-config
+          persistentVolumeClaim:
+            claimName: vaultwarden-nas-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden-loadbalancer-service
+  namespace: networking
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: "192.168.50.243"
+spec:
+  type: LoadBalancer
+  selector:
+    app: vaultwarden-server
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: web
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vaultwarden-ingress
+  namespace: networking
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Vaultwarden"
+    gethomepage.dev/group: "Security"
+    gethomepage.dev/icon: "vaultwarden"
+    gethomepage.dev/href: "https://vault.freesalty.com"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: vault.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vaultwarden-loadbalancer-service
+                port:
+                  number: 80
