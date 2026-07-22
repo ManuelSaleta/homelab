@@ -1,8 +1,15 @@
 # Variables for Proxmox VM provisioning with Terraform and Packer
 # ==============================================================================
-# Packer needs its variables defined in its own .hcl file. They can share 
+# Packer needs its variables defined in its own .hcl file. They can share
 # The terraform.tfvars file, but the .hcl extension is for packer build variables, and command:
 # This is a bit redundant, but its the more DRY way right now. See packer.pkrvars.hcl for the variables specific to packer builds.
+
+variable "second-level-domain" {
+  type        = string
+  description = "The domain name that proceeds any publicly exposed top level domain, 'top-level.second-level.com"
+  default     = "freesalty.com"
+  sensitive   = false
+}
 
 variable "grafana_api_key" {
   type        = string

@@ -46,10 +46,10 @@ resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
 
   data = {
     # 🎯 Pulls the cloudflared tunnel credentials JSON or token from tfvars
-    CF_TUNNEL_TOKEN  = var.cloudflare_tunnel_token
-    CF_API_TOKEN     = var.cloudflare_api_token
-    CF_TUNNEL_ID     = var.cloudflare_tunnel_id
-    CF_ACCOUNT_ID    = var.cloudflare_account_id
+    CF_TUNNEL_TOKEN = var.cloudflare_tunnel_token
+    CF_API_TOKEN    = var.cloudflare_api_token
+    CF_TUNNEL_ID    = var.cloudflare_tunnel_id
+    CF_ACCOUNT_ID   = var.cloudflare_account_id
   }
 }
 
