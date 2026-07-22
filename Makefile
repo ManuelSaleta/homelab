@@ -173,6 +173,7 @@ t-apply-infra: ## Apply infrastructure changes with auto-approval
 t-plan-k3s: ## Plan the Kubernetes control layer resources only
 	@echo "=> Planning Kubernetes configuration layer..."
 	terraform  -chdir=$(TERRAFORM_DIR) plan \
+		-target=kubernetes_secret_v1.global_domain \
 		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
 		-target=kubernetes_secret_v1.pihole_secret \
 		-target=kubernetes_secret_v1.proxmox_secret \
@@ -183,6 +184,7 @@ t-plan-k3s: ## Plan the Kubernetes control layer resources only
 t-apply-k3s: ## Apply Kubernetes configurations with auto-approval
 	@echo "=> Applying Kubernetes configuration layer..."
 	terraform  -chdir=$(TERRAFORM_DIR) apply --auto-approve \
+		-target=kubernetes_secret_v1.global_domain \
 		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
 		-target=kubernetes_secret_v1.pihole_secret \
 		-target=kubernetes_secret_v1.proxmox_secret \

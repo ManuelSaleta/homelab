@@ -3,7 +3,24 @@
 # Prevents raw sensitive secret tokens from being tracked in plain text git YAML files.
 # ==============================================================================
 
-# 1. Tailscale Subnet/Mesh Network Secret
+# main.tf
+resource "kubernetes_secret_v1" "global_domain" {
+  metadata {
+    name      = "global-domain-secret"
+    namespace = "kube-system"
+    annotations = {
+      "reflector.v1.k8s.emberstack.com/reflection-allowed"            = "true"
+      "reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces" = "networking,media,monitoring"
+      "reflector.v1.k8s.emberstack.com/reflection-auto-enabled"       = "true"
+    }
+  }
+
+  data = {
+    DOMAIN_NAME = var.second_level_domain
+  }
+}
+
+# Tailscale Subnet/Mesh Network Secret
 resource "kubernetes_secret_v1" "tailscale_secret" {
   metadata {
     name      = "tailscale-secret"
@@ -20,7 +37,7 @@ resource "kubernetes_secret_v1" "tailscale_secret" {
   }
 }
 
-# 🔐 1. TRAEFIK DNS-01 CHALLENGE SECRET (kube-system namespace)
+# TRAEFIK DNS-01 CHALLENGE SECRET (kube-system namespace)
 resource "kubernetes_secret_v1" "traefik_cloudflare_api_token" {
   metadata {
     name      = "cloudflare-dns-api-token"
@@ -35,7 +52,7 @@ resource "kubernetes_secret_v1" "traefik_cloudflare_api_token" {
   }
 }
 
-# 🔐 2. CLOUDFLARE TUNNEL EDGE INGRESS SECRET
+# CLOUDFLARE TUNNEL EDGE INGRESS SECRET
 resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
   metadata {
     name      = "cloudflare-tunnel-secret"
@@ -53,7 +70,7 @@ resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
   }
 }
 
-# 2. Core Infrastructure Secrets (e.g., Pi-hole Admin Access)
+# Core Infrastructure Secrets (e.g., Pi-hole Admin Access)
 resource "kubernetes_secret_v1" "pihole_secret" {
   metadata {
     name      = "pihole-secret"
@@ -69,7 +86,7 @@ resource "kubernetes_secret_v1" "pihole_secret" {
   }
 }
 
-# 2. Core Infrastructure Secrets (e.g., Proxmox Homepage Widget Access)
+# Core Infrastructure Secrets (e.g., Proxmox Homepage Widget Access)
 resource "kubernetes_secret_v1" "proxmox_secret" {
   metadata {
     name      = "proxmox-secret"
@@ -89,6 +106,7 @@ resource "kubernetes_secret_v1" "proxmox_secret" {
   }
 }
 
+# Core Monitoring Secrets
 resource "kubernetes_secret_v1" "grafana-secret" {
   metadata {
     name      = "grafana-secret"
@@ -116,18 +134,3 @@ resource "kubernetes_secret_v1" "homepage_background" {
     "homepage_background.webp" = filebase64("${path.module}/../../kubernetes/applications/homepage/config/assets/homepage_background.webp")
   }
 }
-
-# # 3. Application State Secrets (Example: Postgres or Immich Backends)
-# resource "kubernetes_secret_v1" "database_secret" {
-#   metadata {
-#     name      = "database-secret"
-#     namespace = "apps"
-#   }
-
-#   type = "Opaque"
-
-#   data = {
-#     username = "postgres"
-#     password = var.database_root_password
-#   }
-# }
