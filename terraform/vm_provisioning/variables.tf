@@ -4,9 +4,9 @@
 # The terraform.tfvars file, but the .hcl extension is for packer build variables, and command:
 # This is a bit redundant, but its the more DRY way right now. See packer.pkrvars.hcl for the variables specific to packer builds.
 
-variable "second-level-domain" {
+variable "second_level_domain" {
   type        = string
-  description = "The domain name that proceeds any publicly exposed top level domain, 'top-level.second-level.com"
+  description = "The root domain name that precedes the top-level domain (e.g., freesalty.com)."
   default     = "freesalty.com"
   sensitive   = false
 }
