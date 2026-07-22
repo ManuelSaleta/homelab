@@ -149,30 +149,30 @@ p-clean: ## Remove packer cache artifacts
 
 t-init: ## Initialize the terraform working directory and download providers
 	@echo "=> Initializing OpenTofu/Terraform modules and providers..."
-	terraform -C $(TERRAFORM_DIR) init
+	terraform  -chdir=$(TERRAFORM_DIR) init
 
 t-validate: ## Validate the underlying syntax formatting syntax architecture
 	@echo "=> Formatting and validating configuration code..."
-	terraform -C $(TERRAFORM_DIR) fmt
-	terraform -C $(TERRAFORM_DIR) validate
+	terraform -chdir=$(TERRAFORM_DIR) fmt
+	terraform -chdir=$(TERRAFORM_DIR) validate
 
 t-plan-infra: ## Plan the compute/infrastructure resources only
 	@echo "=> Planning infrastructure only..."
-	terraform -C $(TERRAFORM_DIR) plan \
+	terraform  -chdir=$(TERRAFORM_DIR) plan \
 		-target=proxmox_virtual_environment_vm.k3s_control \
 		-target=proxmox_virtual_environment_vm.k3s_worker \
 		-target=proxmox_virtual_environment_vm.micro_nas
 
 t-apply-infra: ## Apply infrastructure changes with auto-approval
 	@echo "=> Applying infrastructure only..."
-	terraform -C $(TERRAFORM_DIR) apply --auto-approve \
+	terraform  -chdir=$(TERRAFORM_DIR) apply --auto-approve \
 		-target=proxmox_virtual_environment_vm.k3s_control \
 		-target=proxmox_virtual_environment_vm.k3s_worker \
 		-target=proxmox_virtual_environment_vm.micro_nas
 
 t-plan-k3s: ## Plan the Kubernetes control layer resources only
 	@echo "=> Planning Kubernetes configuration layer..."
-	terraform -C $(TERRAFORM_DIR) plan \
+	terraform  -chdir=$(TERRAFORM_DIR) plan \
 		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
 		-target=kubernetes_secret_v1.pihole_secret \
 		-target=kubernetes_secret_v1.proxmox_secret \
@@ -182,7 +182,7 @@ t-plan-k3s: ## Plan the Kubernetes control layer resources only
 
 t-apply-k3s: ## Apply Kubernetes configurations with auto-approval
 	@echo "=> Applying Kubernetes configuration layer..."
-	terraform -C $(TERRAFORM_DIR) apply --auto-approve \
+	terraform  -chdir=$(TERRAFORM_DIR) apply --auto-approve \
 		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
 		-target=kubernetes_secret_v1.pihole_secret \
 		-target=kubernetes_secret_v1.proxmox_secret \
@@ -197,8 +197,8 @@ wait-for-cluster: ## Block execution until the K3s cluster API endpoints respond
 
 t-clean: ## Clear out transient terraform cache footprints and local log locks
 	@echo "=> Clearing local terraform execution cache..."
-	rm -rf $(TERRAFORM_DIR)/.terraform/providers/
-	rm -f $(TERRAFORM_DIR)/.terraform.lock.hcl
+	rm -rf -chdir=$(TERRAFORM_DIR)/.terraform/providers/
+	rm -f -chdir=$(TERRAFORM_DIR)/.terraform.lock.hcl
 
 # ==============================================================================
 # ☢️ LIFECYCLE DESTRUCTION CONTROLS
@@ -206,17 +206,17 @@ t-clean: ## Clear out transient terraform cache footprints and local log locks
 
 destroy-workers: ## Target and destroy only the worker nodes pool instantly
 	@echo "⚠️  Targeting worker node destruction..."
-	terraform -C $(TERRAFORM_DIR) destroy -target="$(WORKER_TARGET)" --auto-approve
+	terraform  -chdir=$(TERRAFORM_DIR) destroy -target="$(WORKER_TARGET)" --auto-approve
 
 destroy-manager: ## Target and destroy only the control plane manager node instantly
 	@echo "⚠️  Targeting control plane manager node destruction..."
-	terraform -C $(TERRAFORM_DIR) destroy -target="$(CONTROL_TARGET)" --auto-approve
+	terraform  -chdir=$(TERRAFORM_DIR) destroy -target="$(CONTROL_TARGET)" --auto-approve
 
 destroy-all: ## Completely tear down the entire cluster infrastructure layout (With Safety Prompt)
 	@echo -n "☢️:.WARNING!.:☢️: You are about to completely nuke the entire cluster layout. Proceed? [y/N]: " && \
 	read ans && [ $${ans:-N} = y ] || [ $${ans:-N} = Y ] || [ $${ans:-N} = yes ] || [ $${ans:-N} = YES ] || \
 	(echo "❌ Destruction aborted." && exit 1)
-	terraform -C $(TERRAFORM_DIR) destroy --auto-approve
+	terraform  -chdir=$(TERRAFORM_DIR) destroy --auto-approve
 
 # ==============================================================================
 # 🌐 KUBERNETES INFRASTRUCTURE CORE
