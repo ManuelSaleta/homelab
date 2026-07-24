@@ -246,12 +246,12 @@ infra-status:
 # ==============================================================================
 
 vaultwarden-up:
-	@echo "🎯 Deploying Vaultwarden..."
-	kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
+    @echo "🎯 Deploying Vaultwarden..."
+    kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
 
 vaultwarden-down:
-	@echo "💥 Removing Vaultwarden Deployment..."
-	kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
+    @echo "💥 Removing Vaultwarden Deployment..."
+    kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
 
 pihole-up:
 	@echo "🎯 Deploying Pi-hole DNS Engine..."
