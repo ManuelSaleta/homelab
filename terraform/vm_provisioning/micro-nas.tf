@@ -21,7 +21,7 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
     data = <<-EOF
     #cloud-config
     hostname: "micro-nas"
-    
+
     # Declaratively partition and prepare the secondary storage disk block for Obsidian
     disk_setup:
       /dev/sdb:
@@ -38,24 +38,45 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - [ /dev/sdb, /mnt/obsidian-vault, "ext4", "defaults,nofail", "0", "2" ]
 
     runcmd:
-      # 1. Install Tailscale and Syncthing
+      # 0. Set not interface
+      - export DEBIAN_FRONTEND=noninteractive
+
+      ##############################################################################
+      # Sequence 1 - 4 is all about setting up Syncthing w/ Tailscales
+      # Sequence 1.1 - 4.1 is all about setting up the nfs mounting tools
+      ##############################################################################
+
+      # 1. Install Tailscale, Syncthing, and nfs-kernel-server
       - curl -fsSL https://tailscale.com/install.sh | sh
-      - apt-get update && apt-get install -y syncthing
-      
+      - apt-get update && apt-get install -y syncthing nfs-kernel-server
+
       # 2. Configure Tailscale
       - tailscale up --authkey="${var.tailscale_auth_key}" --accept-dns=false
-      
+
       # 3. Provision Syncthing for gman
       # Creates the directory structure and enables the service for the non-root user
       - mkdir -p /home/gman/.config/syncthing
       - systemctl --user enable syncthing.service
       - systemctl --user start syncthing.service
-      
+
       # 4. Modify config to allow GUI access over the Tailscale network
       # We wait a moment for the service to generate the initial config.xml
       - sleep 5
       - sed -i 's/127.0.0.1:8384/0.0.0.0:8384/' /home/gman/.config/syncthing/config.xml
       - systemctl --user restart syncthing.service
+
+      # 1.1. Create Vaultwarden (pass-manager)
+      - mkdir -p /mnt/storage/vaultwarden
+
+      # 2.1. Set permissions, 1000 for first non root user
+      - chown -R 1000:1000 /mnt/storage/vaultwarden
+
+      # 3.1. Write export rule to /etc/exports and apply
+      - echo "/mnt/storage/vaultwarden 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      - exportfs -rav
+
+      # 4.1 Make sure the service starts up automatically
+      - systemctl enable --now nfs-server
     EOF
   }
 }
