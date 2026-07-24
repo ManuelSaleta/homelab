@@ -1,34 +1,7 @@
 apiVersion: v1
-kind: PersistentVolume
+kind: Namespace
 metadata:
-  name: vaultwarden-nas-pv
-  labels:
-    type: nfs
-spec:
-  capacity:
-    storage: 5Gi
-  volumeMode: Filesystem
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain # Ensures data isn't deleted from the NAS if the PVC is deleted
-  nfs:
-    server: 192.168.50.X # <-- Replace with the actual IP of your NAS VM
-    path: /mnt/storage/vaultwarden # <-- Replace with your exact NAS NFS export path
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: vaultwarden-nas-pvc
-  namespace: networking
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  volumeName: vaultwarden-nas-pv
-  # Explicitly set empty to match our statically provisioned PV above
-  storageClassName: ""
+  name: networking
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -50,6 +23,10 @@ spec:
       labels:
         app: vaultwarden-server
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: vaultwarden-engine
           image: vaultwarden/server:latest
@@ -102,6 +79,7 @@ metadata:
   name: vaultwarden-ingress
   namespace: networking
   annotations:
+    # Essential for Homepage Auto-Discovery
     gethomepage.dev/enabled: "true"
     gethomepage.dev/name: "Vaultwarden"
     gethomepage.dev/group: "Security"
@@ -121,3 +99,35 @@ spec:
                 name: vaultwarden-loadbalancer-service
                 port:
                   number: 80
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: vaultwarden-nas-pv
+  labels:
+    type: nfs
+spec:
+  capacity:
+    storage: 4Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain # Retains database on NAS if PVC is deleted
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/obsidian-vault/vaultwarden
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-nas-pvc
+  namespace: networking
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: vaultwarden-nas-pv
+  storageClassName: ""
