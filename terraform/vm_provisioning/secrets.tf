@@ -3,6 +3,20 @@
 # Prevents raw sensitive secret tokens from being tracked in plain text git YAML files.
 # ==============================================================================
 
+#1. Vaultwarden password manager token
+resource "kubernetes_secret_v1" "vaultwarden_secret" {
+  metadata {
+    name      = "vaultwarden-secret"
+    namespace = "networking"
+  }
+
+  type = "Opaque"
+
+  data = {
+    ADMIN_TOKEN = var.vaultwarden_admin_token
+  }
+}
+
 # 1. Tailscale Subnet/Mesh Network Secret
 resource "kubernetes_secret_v1" "tailscale_secret" {
   metadata {
@@ -20,7 +34,7 @@ resource "kubernetes_secret_v1" "tailscale_secret" {
   }
 }
 
-# 🔐 1. TRAEFIK DNS-01 CHALLENGE SECRET (kube-system namespace)
+# 1. TRAEFIK DNS-01 CHALLENGE SECRET (kube-system namespace)
 resource "kubernetes_secret_v1" "traefik_cloudflare_api_token" {
   metadata {
     name      = "cloudflare-dns-api-token"
@@ -35,7 +49,7 @@ resource "kubernetes_secret_v1" "traefik_cloudflare_api_token" {
   }
 }
 
-# 🔐 2. CLOUDFLARE TUNNEL EDGE INGRESS SECRET
+# 2. CLOUDFLARE TUNNEL EDGE INGRESS SECRET
 resource "kubernetes_secret_v1" "cloudflare_tunnel_secret" {
   metadata {
     name      = "cloudflare-tunnel-secret"
