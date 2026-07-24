@@ -64,20 +64,21 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make infra-status     - Check networking stack resource health"
 	@echo ""
 	@echo "Kubernetes Shared Applications:"
-	@echo "  make apps-up          - Ship entire user-facing cluster software stack"
-	@echo "  make apps-down        - Complete cluster software stacks wipe"
-	@echo "  make apps-status      - Check status of running application pods"
-	@echo "  make pihole-up/down   - Target deployment specifically for Pi-hole"
-	@echo "  make homepage-up/down - Target deployment specifically for Homepage"
-	@echo "  make grafana-up/down  - Target deployment specifically for Grafana layer"
+	@echo "  make apps-up               - Ship entire user-facing cluster software stack"
+	@echo "  make apps-down             - Complete cluster software stacks wipe"
+	@echo "  make apps-status           - Check status of running application pods"
+    @echo "  make vaultwarden-up/down   - Target deployment specifically for Vaultwarden"
+	@echo "  make pihole-up/down        - Target deployment specifically for Pi-hole"
+	@echo "  make homepage-up/down      - Target deployment specifically for Homepage"
+	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
 	@echo ""
 	@echo "Cluster Lifecycle Control Matrix:"
-	@echo "  make deploy-all       - Orchestrate full stack: compute provisioning up to configs"
-	@echo "  make redeploy-workers - Tear down environments, validate, and rebuild"
-	@echo "  make redeploy-all     - Ultimate sequence: Nuke, Re-bake Image, Spin up cluster"
-	@echo "  make destroy-workers  - Target and dismantle worker pools immediately"
-	@echo "  make destroy-manager  - Target and dismantle control-plane node immediately"
-	@echo "  make destroy-all      - Safely prompt and nuke entire cluster ecosystem"
+	@echo "  make deploy-all            - Orchestrate full stack: compute provisioning up to configs"
+	@echo "  make redeploy-workers      - Tear down environments, validate, and rebuild"
+	@echo "  make redeploy-all          - Ultimate sequence: Nuke, Re-bake Image, Spin up cluster"
+	@echo "  make destroy-workers       - Target and dismantle worker pools immediately"
+	@echo "  make destroy-manager       - Target and dismantle control-plane node immediately"
+	@echo "  make destroy-all           - Safely prompt and nuke entire cluster ecosystem"
 	@echo ""
 	@echo "Cluster Monitoring & Observability Stack:"
 	@echo "  make promstack-install-all - Staggered full deploy: Operator -> Loki -> Alloy"
@@ -244,6 +245,14 @@ infra-status:
 # 🚀 KUBERNETES INDIVIDUAL & GLOBAL APPLICATION GROUPS
 # ==============================================================================
 
+vaultwarden-up:
+	@echo "🎯 Deploying Vaultwarden..."
+	kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
+
+vaultwarden-down:
+	@echo "💥 Removing Vaultwarden Deployment..."
+	kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
+
 pihole-up:
 	@echo "🎯 Deploying Pi-hole DNS Engine..."
 	kubectl apply -f $(APPS_DIR)/pihole/pihole-deployment.yaml
@@ -268,13 +277,13 @@ grafana-down:
 	@echo "💥 Removing Grafana Exposure Layer..."
 	kubectl delete -f $(APPS_DIR)/monitoring/prometheus-stack.yaml --ignore-not-found
 
-apps-up: pihole-up homepage-up grafana-up ## Deploy all applications at once
+apps-up: pihole-up homepage-up grafana-up vaultwarden-up ## Deploy all applications at once
 	@echo "✅ All applications applied successfully."
 
 apps-down: ## Tear down all cluster workloads with a safety step
 	@echo "🛑 WARNING: You are about to wipe all apps. Press Ctrl+C to abort, or Enter to continue..."
 	@read _
-	$(MAKE) pihole-down homepage-down grafana-down
+	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down
 
 apps-status:
 	@echo "🔍 Checking Application Status..."
