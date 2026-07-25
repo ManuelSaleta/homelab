@@ -21,8 +21,8 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
     data = <<-EOF
     #cloud-config
     hostname: "micro-nas"
-    
-    # Declaratively partition and prepare the secondary storage disk block for Obsidian
+
+    # Declaratively partition and prepare the secondary storage disk block
     disk_setup:
       /dev/sdb:
         table_type: 'gpt'
@@ -35,27 +35,43 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
         partition: auto
 
     mounts:
-      - [ /dev/sdb, /mnt/obsidian-vault, "ext4", "defaults,nofail", "0", "2" ]
+      - [ /dev/sdb, /mnt/storage, "ext4", "defaults,nofail", "0", "2" ]
 
     runcmd:
-      # 1. Install Tailscale and Syncthing
+      ##############################################################################
+      # Sequence 1 - 4: Syncthing w/ Tailscale setup
+      # Sequence 1.1 - 4.1: NFS server & exports setup
+      ##############################################################################
+
+      # 1. Install Tailscale, Syncthing, and nfs-kernel-server
       - curl -fsSL https://tailscale.com/install.sh | sh
-      - apt-get update && apt-get install -y syncthing
-      
+      - DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y syncthing nfs-kernel-server
+
       # 2. Configure Tailscale
       - tailscale up --authkey="${var.tailscale_auth_key}" --accept-dns=false
-      
-      # 3. Provision Syncthing for gman
-      # Creates the directory structure and enables the service for the non-root user
+
+      # 3. Provision Syncthing for gman via systemd unit template
       - mkdir -p /home/gman/.config/syncthing
-      - systemctl --user enable syncthing.service
-      - systemctl --user start syncthing.service
-      
+      - chown -R gman:gman /home/gman/.config
+      - systemctl enable --now syncthing@gman.service
+
       # 4. Modify config to allow GUI access over the Tailscale network
-      # We wait a moment for the service to generate the initial config.xml
       - sleep 5
       - sed -i 's/127.0.0.1:8384/0.0.0.0:8384/' /home/gman/.config/syncthing/config.xml
-      - systemctl --user restart syncthing.service
+      - systemctl restart syncthing@gman.service
+
+      # 1.1. Create Vaultwarden directory on secondary storage disk
+      - mkdir -p /mnt/storage/vaultwarden
+
+      # 2.1. Set permissions (1000 for standard non-root application execution)
+      - chown -R 1000:1000 /mnt/storage/vaultwarden
+
+      # 3.1. Write export rule to /etc/exports and apply
+      - echo "/mnt/storage/vaultwarden 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      - exportfs -rav
+
+      # 4.1 Enable and start NFS server
+      - systemctl enable --now nfs-server
     EOF
   }
 }
