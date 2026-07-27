@@ -74,7 +74,7 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make apps-up               - Ship entire user-facing cluster software stack"
 	@echo "  make apps-down             - Complete cluster software stacks wipe"
 	@echo "  make apps-status           - Check status of running application pods"
-    @echo "  make vaultwarden-up/down   - Target deployment specifically for Vaultwarden"
+	@echo "  make vaultwarden-up/down   - Target deployment specifically for Vaultwarden"
 	@echo "  make pihole-up/down        - Target deployment specifically for Pi-hole"
 	@echo "  make homepage-up/down      - Target deployment specifically for Homepage"
 	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
@@ -263,14 +263,14 @@ karakeep-up:
 karakeep-down:
 	@echo "💥 Removing Karakeep Application..."
 	kubectl delete -f $(APPS_DIR)/karakeep/karakeep-deployment.yaml --ignore-not-found
-	
+
 vaultwarden-up:
-    @echo "🎯 Deploying Vaultwarden..."
-    kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
+	@echo "🎯 Deploying Vaultwarden..."
+	kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
 
 vaultwarden-down:
-    @echo "💥 Removing Vaultwarden Deployment..."
-    kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
+	@echo "💥 Removing Vaultwarden Deployment..."
+	kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
 
 pihole-up:
 	@echo "🎯 Deploying Pi-hole DNS Engine..."
