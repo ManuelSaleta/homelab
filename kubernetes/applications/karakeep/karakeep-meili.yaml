@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: karakeep-meili
+  namespace: networking
+  labels:
+    app: karakeep-meili
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: karakeep-meili
+  template:
+    metadata:
+      labels:
+        app: karakeep-meili
+    spec:
+      containers:
+        - name: meilisearch
+          image: getmeili/meilisearch:v1.11
+          ports:
+            - containerPort: 7700
+              name: meili-http
+          env:
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: karakeep-secret
+                  key: MEILI_MASTER_KEY
+            - name: MEILI_NO_ANALYTICS
+              value: "true"
+          volumeMounts:
+            - name: meili-storage
+              mountPath: /meili_data
+      volumes:
+        - name: meili-storage
+          hostPath:
+            path: /var/data/karakeep/meili
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: karakeep-meili-service
+  namespace: networking
+spec:
+  type: ClusterIP
+  selector:
+    app: karakeep-meili
+  ports:
+    - port: 7700
+      targetPort: 7700
+      protocol: TCP
+      name: http

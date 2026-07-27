@@ -28,7 +28,7 @@ CONTROL_TARGET := proxmox_virtual_environment_vm.k3s_control
 .PHONY: p-init p-validate p-build p-debug p-clean
 .PHONY: t-init t-validate t-clean t-plan-infra t-apply-infra t-plan-k3s t-apply-k3s
 .PHONY: infra-up infra-down infra-status
-.PHONY: apps-up apps-down apps-status pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down
+.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down
 .PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all
 .PHONY: install-loki install-alloy install-promstack grafana-pass promstack-install-all promstack-clean
 
@@ -64,10 +64,17 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make infra-status     - Check networking stack resource health"
 	@echo ""
 	@echo "Kubernetes Shared Applications:"
+	@echo "  make apps-up          - Ship entire user-facing cluster software stack"
+	@echo "  make apps-down        - Complete cluster software stacks wipe"
+	@echo "  make apps-status      - Check status of running application pods"
+	@echo "  make karakeep-up/down - Target deployment specifically for Karakeep"
+	@echo "  make pihole-up/down   - Target deployment specifically for Pi-hole"
+	@echo "  make homepage-up/down - Target deployment specifically for Homepage"
+	@echo "  make grafana-up/down  - Target deployment specifically for Grafana layer"
 	@echo "  make apps-up               - Ship entire user-facing cluster software stack"
 	@echo "  make apps-down             - Complete cluster software stacks wipe"
 	@echo "  make apps-status           - Check status of running application pods"
-    @echo "  make vaultwarden-up/down   - Target deployment specifically for Vaultwarden"
+	@echo "  make vaultwarden-up/down   - Target deployment specifically for Vaultwarden"
 	@echo "  make pihole-up/down        - Target deployment specifically for Pi-hole"
 	@echo "  make homepage-up/down      - Target deployment specifically for Homepage"
 	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
@@ -159,14 +166,14 @@ t-validate: ## Validate the underlying syntax formatting syntax architecture
 
 t-plan-infra: ## Plan the compute/infrastructure resources only
 	@echo "=> Planning infrastructure only..."
-	terraform  -chdir=$(TERRAFORM_DIR) plan \
+	terraform -chdir=$(TERRAFORM_DIR) plan \
 		-target=proxmox_virtual_environment_vm.k3s_control \
 		-target=proxmox_virtual_environment_vm.k3s_worker \
 		-target=proxmox_virtual_environment_vm.micro_nas
 
 t-apply-infra: ## Apply infrastructure changes with auto-approval
 	@echo "=> Applying infrastructure only..."
-	terraform  -chdir=$(TERRAFORM_DIR) apply --auto-approve \
+	terraform -chdir=$(TERRAFORM_DIR) apply --auto-approve \
 		-target=proxmox_virtual_environment_vm.k3s_control \
 		-target=proxmox_virtual_environment_vm.k3s_worker \
 		-target=proxmox_virtual_environment_vm.micro_nas
@@ -179,6 +186,7 @@ t-plan-k3s: ## Plan the Kubernetes control layer resources only
 		-target=kubernetes_secret_v1.pihole_secret \
 		-target=kubernetes_secret_v1.proxmox_secret \
 		-target=kubernetes_secret_v1.grafana-secret \
+		-target=kubernetes_secret_v1.karakeep_secret \
 		-target=kubernetes_secret_v1.tailscale_secret \
 		-target=kubernetes_config_map_v1.homepage_config
 
@@ -190,6 +198,7 @@ t-apply-k3s: ## Apply Kubernetes configurations with auto-approval
 		-target=kubernetes_secret_v1.pihole_secret \
 		-target=kubernetes_secret_v1.proxmox_secret \
 		-target=kubernetes_secret_v1.grafana-secret \
+		-target=kubernetes_secret_v1.karakeep_secret \
 		-target=kubernetes_secret_v1.tailscale_secret \
 		-target=kubernetes_config_map_v1.homepage_config
 
@@ -245,13 +254,23 @@ infra-status:
 # 🚀 KUBERNETES INDIVIDUAL & GLOBAL APPLICATION GROUPS
 # ==============================================================================
 
+karakeep-up:
+	@echo "🎯 Deploying Karakeep Application..."
+	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-deployment.yaml
+	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-meili.yaml
+	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-browser.yaml
+
+karakeep-down:
+	@echo "💥 Removing Karakeep Application..."
+	kubectl delete -f $(APPS_DIR)/karakeep/karakeep-deployment.yaml --ignore-not-found
+
 vaultwarden-up:
-    @echo "🎯 Deploying Vaultwarden..."
-    kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
+	@echo "🎯 Deploying Vaultwarden..."
+	kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
 
 vaultwarden-down:
-    @echo "💥 Removing Vaultwarden Deployment..."
-    kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
+	@echo "💥 Removing Vaultwarden Deployment..."
+	kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
 
 pihole-up:
 	@echo "🎯 Deploying Pi-hole DNS Engine..."
