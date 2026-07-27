@@ -26,6 +26,9 @@ autoinstall:
     - qemu-guest-agent
     - curl
     - openssh-server
+    # K3s persistent storage clients
+    - nfs-common
+    - open-iscsi
 
   late-commands:
     # 1. Clear cloud-init states so it treats the first real boot cleanly

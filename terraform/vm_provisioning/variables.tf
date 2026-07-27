@@ -9,9 +9,15 @@ variable "karakeep_meili_master_key" {
   description = "A random secret string used by MeiliSearch to secure the master key for Karakeep."
   sensitive   = true
 }
+
 variable "karakeep_nextauth_secret" {
   type        = string
   description = "A random secret string used by NextAuth to encrypt tokens and secure sessions for Karakeep."
+}
+
+variable "vaultwarden_admin_token" {
+  type        = string
+  description = "Admin token or Argon2 hash for Vaultwarden web admin portal"
   sensitive   = true
 }
 
