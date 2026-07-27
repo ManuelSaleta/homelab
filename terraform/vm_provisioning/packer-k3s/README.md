@@ -23,22 +23,21 @@ The pipeline is completely automated through the local `Makefile`. When executin
 
 Execute these targets from the root folder directory to run validation or initialization steps:
 
-````bash
-# Fetch and compile the Proxmox builder plugin dependencies
-make init
+```bash
+  # Fetch and compile the Proxmox builder plugin dependencies
+  make init
 
-# Run structural HCL syntax and lint checks using the variables file
-make validate
+  # Run structural HCL syntax and lint checks using the variables file
+  make validate
 
-# Standard production build pipeline execution run
-make build
+  # Standard production build pipeline execution run
+  make build
 
-# Debug mode execution: steps pause iteratively and stream verbosely (PACKER_LOG=1)
-make build-debug
+  # Debug mode execution: steps pause iteratively and stream verbosely (PACKER_LOG=1)
+  make build-debug
 
-# Clean down local cache workspace structures
-make clean
-
+  # Clean down local cache workspace structures
+  make clean
 ```
 
 ---
@@ -132,4 +131,3 @@ The `boot_command` property simulates a human physically typing on a keyboard co
 
 - **The Importance of `<wait3>`:** Virtualization environments experience slight disk/CPU scheduling latencies while starting up on Proxmox. The embedded `<wait3>` directives act as defensive buffers, preventing Packer from typing commands faster than the VM's virtual keyboard buffer can receive them.
 - **Network Availability:** Because the kernel pulls the autoinstall files from an HTTP link _during_ this step, the VM's hardware abstraction layer must instantly receive a functional IP address from the local network gateway bridge via DHCP the second the network device turns on.
-````
