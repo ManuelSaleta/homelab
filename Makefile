@@ -64,16 +64,10 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make infra-status     - Check networking stack resource health"
 	@echo ""
 	@echo "Kubernetes Shared Applications:"
-	@echo "  make apps-up          - Ship entire user-facing cluster software stack"
-	@echo "  make apps-down        - Complete cluster software stacks wipe"
-	@echo "  make apps-status      - Check status of running application pods"
-	@echo "  make karakeep-up/down - Target deployment specifically for Karakeep"
-	@echo "  make pihole-up/down   - Target deployment specifically for Pi-hole"
-	@echo "  make homepage-up/down - Target deployment specifically for Homepage"
-	@echo "  make grafana-up/down  - Target deployment specifically for Grafana layer"
 	@echo "  make apps-up               - Ship entire user-facing cluster software stack"
 	@echo "  make apps-down             - Complete cluster software stacks wipe"
 	@echo "  make apps-status           - Check status of running application pods"
+	@echo "  make karakeep-up/down - Target deployment specifically for Karakeep"
 	@echo "  make vaultwarden-up/down   - Target deployment specifically for Vaultwarden"
 	@echo "  make pihole-up/down        - Target deployment specifically for Pi-hole"
 	@echo "  make homepage-up/down      - Target deployment specifically for Homepage"
@@ -296,13 +290,13 @@ grafana-down:
 	@echo "💥 Removing Grafana Exposure Layer..."
 	kubectl delete -f $(APPS_DIR)/monitoring/prometheus-stack.yaml --ignore-not-found
 
-apps-up: pihole-up homepage-up grafana-up vaultwarden-up ## Deploy all applications at once
+apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up ## Deploy all applications at once
 	@echo "✅ All applications applied successfully."
 
 apps-down: ## Tear down all cluster workloads with a safety step
 	@echo "🛑 WARNING: You are about to wipe all apps. Press Ctrl+C to abort, or Enter to continue..."
 	@read _
-	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down
+	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down
 
 apps-status:
 	@echo "🔍 Checking Application Status..."
