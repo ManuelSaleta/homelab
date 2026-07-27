@@ -41,7 +41,8 @@ flowchart TD
     end
 
     subgraph Local_LAN["fa:fa-network-wired Local Area Network"]
-        fedora["fa:fa-desktop Fedora Workstation"]:::network
+        fedora["fa:fa-desktop Workstation" ]:::network
+        syncthing[("fa:fa-sync Syncthing")]:::storage
     end
 
     subgraph Tailnet["fa:fa-shield-alt Tailscale Mesh"]
@@ -53,11 +54,14 @@ flowchart TD
         Traefik["fa:fa-project-diagram Traefik"]:::app
         MetalLB["fa:fa-balance-scale MetalLB"]:::app
         Homepage["fa:fa-home Homepage"]:::app
+        Vaultwarden["fa:fa-home Vaultwarden"]:::app
+        Karakeep["fa:fa-home Karakeep"]:::app
         PiHole["fa:fa-ad Pi-Hole"]:::app
         Grafana["fa:fa-chart-line Grafana"]:::app
     end
 
-    MetalLB --> Homepage & PiHole & Grafana
+    Traefik --> MetalLB
+    MetalLB --> Homepage & PiHole & Grafana & Vaultwarden & Karakeep
     K3s_Cluster --- Traefik
     K3s_Cluster@{ shape: rounded }
     Proxmox_Mothership@{ shape: rounded }
@@ -72,6 +76,8 @@ flowchart TD
     Traefik@{ shape: rounded }
     MetalLB@{ shape: rounded }
     Homepage@{ shape: rounded }
+    Vaultwarden@{ shape: rounded }
+    Karakeep@{ shape: rounded }
     PiHole@{ shape: rounded }
     Grafana@{ shape: rounded }
     fedora@{ shape: rounded }
@@ -93,12 +99,10 @@ Before executing automation targets via the root Makefile, ensure the environmen
 
 Secure authentication loops rely entirely on public key checks. Ensure the signature exists locally and is bound to the running SSH agent before starting deployments:
 
-````bash
-
 ```bash
     eval $(ssh-agent -s)
     ssh-add ~/.ssh/id_ed25519
-````
+```
 
 - Security Isolation: NEVER commit local \*.tfvars files. Private keys, network maps, and gateway tokens must remain locally isolated on the workstation to prevent accidental public configuration leaks.
 
