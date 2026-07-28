@@ -58,10 +58,11 @@ flowchart TD
         Karakeep["fa:fa-home Karakeep"]:::app
         PiHole["fa:fa-ad Pi-Hole"]:::app
         Grafana["fa:fa-chart-line Grafana"]:::app
+        Navidrome["fa:fa-chart-line Navidrome"]:::server
     end
 
     Traefik --> MetalLB
-    MetalLB --> Homepage & PiHole & Grafana & Vaultwarden & Karakeep
+    MetalLB --> Homepage & PiHole & Grafana & Vaultwarden & Karakeep & Navidrome
     K3s_Cluster --- Traefik
     K3s_Cluster@{ shape: rounded }
     Proxmox_Mothership@{ shape: rounded }
@@ -80,6 +81,7 @@ flowchart TD
     Karakeep@{ shape: rounded }
     PiHole@{ shape: rounded }
     Grafana@{ shape: rounded }
+    Navidrome@{ shape: rounded }
     fedora@{ shape: rounded }
     mac@{ shape: rounded }
     vm_template@{ shape: rounded }
@@ -127,9 +129,6 @@ Directory Context: terraform/vm_provisioning/packer-k3s/
 Automate the installation of an identical, immutable base OS template (ID 777) using Ubuntu's native Subiquity Autoinstall engine hosted on the Proxmox pool.
 🕹️ Deep Dive: The Packer boot_command Sequence
 
-The macro simulates keyboard console input during POST initialization to intercept the standard boot loader screen, forcing GRUB into an unattended configuration pipeline:
-Terraform
-
 ```bash
     boot_command = [
         "<esc><wait3>",
@@ -142,28 +141,26 @@ Terraform
     ]
 ```
 
-1. Bypass Execution: It opens the GRUB terminal panel, sets the automated kernel installation flag (autoinstall), and queries the localized HTTP engine context ({{ .HTTPIP }}:{{ .HTTPPort }}) for custom user/meta-data definitions.
-2. Pre-Baked Layers: The baked image pre-stages core binary hooks (INSTALL_K3S_SKIP_START=true), starts up the qemu-guest-agent, seeds workstation access keys, and strips local host machine signatures to guarantee flawless template expansion.
-3. Timing & Latency: Embedded <wait3> directives act as defensive buffers, preventing Packer from typing faster than the virtual keyboard buffer can receive characters.
+The macro simulates keyboard console input during POST initialization to intercept the standard boot loader screen, forcing GRUB into an unattended configuration pipeline via `Packer/Terraform`. This helps inject the custom cloud-init config. via `user-data` file defined in `packer-k3s/http`. [Read more about it here](./terraform/vm_provisioning/packer-k3s/README.md)
 
 ---
 
 # 📦 Phase 2: Compute Provisioning via Terraform
 
-Directory Context: terraform/vm_provisioning/
+Directory Context: `terraform/vm_provisioning/*`
 
-Consumes the golden template image to provision resource-mapped virtual hardware topologies, inject network configurations, and handle automatic node registration using the baked ID 777 template.
+Consumes the golden template image to provision resource-mapped virtual hardware topologies, inject network configurations, and handle automatic node registration using the baked `ID 777` template.
 Compute Fleet Profiles
 
 - Manager Plane (k3s-control-01): 2 Cores, 3GB RAM, DHCP Network Allocation.
 - Worker Pools (k3s-worker-0[1-N]): 2 Cores, 2GB RAM, Static Networking Matrix (starting at .210 / .211).
-- Decentralized Storage Block (micro-nas): Automation target spinning up dedicated sync spaces.
+- Decentralized Storage Block (micro-nas): Automation target spinning up dedicated sync spaces. Outside of the K3s cluster, this ensures data safety and lets me play around with pods, replicas and svcs without fear of data loss.
 
 ---
 
 # 🌐 Phase 3: Kubernetes Core Infrastructure
 
-Directory Context: kubernetes/infrastructure/
+Directory Context: `kubernetes/infrastructure/*`
 
 Because bare-metal K3s nodes do not feature a native cloud load balancer controller out of the box, core networking elements handle internal service mapping.
 
@@ -182,7 +179,7 @@ Configuration Sync: From the project root, apply localized L2 IP pool definition
 
 # 🚀 Phase 4: Kubernetes Applications & Services
 
-Directory Context: kubernetes/applications/
+Directory Context: `kubernetes/applications/*`
 
 ## 1. Ad-Blocking Engine: Pi-hole Deployment
 
@@ -190,8 +187,7 @@ Establishes a single service instance that co-locates core DNS filtering network
 
 Dedicated IP Profile: 192.168.50.242 (DNS: 53/UDP & 53/TCP | Web Panel: 80/TCP)
 
-- Web Admin Panel Path: http://192.168.50.242/admin
-- Default Credentials: AdminHomelabPass123
+- Web Admin Panel Path: https://pihole.freesatly.com/admin (this will be different for everybody of course)
 - Persistent Storage Architecture: Currently mapped to local node hostPath space (/var/data/pihole/config). Data strictly belongs to the physical worker host running the active pod. For absolute cross-node mobility, transition this layer to a distributed engine (e.g., Longhorn or NFS).
 - Runtime Administrative Passwords: Update access configurations directly via the execution namespace:
 
@@ -220,8 +216,11 @@ The automated storage configuration provisions explicit Tailscale and Syncthing 
 - Permissions Mitigation: Syncthing operates within the gman user space context. If synchronization drops or hits authorization errors, align file tree parameters directly on the host node:
 
 ```bash
-    sudo chown -R gman:gman /mnt/obsidian-vault
+    sudo chown -R gman:gman /mnt/storage
 ```
+
+> [!IMPORTANT]
+> Mount everything you want to live outside your cluster from `mnt/storage/${my-app-data}
 
 ---
 
@@ -269,8 +268,6 @@ Every single time the primary manager plane node (k3s-control-01) is destroyed a
 
 # 🛠️ Hypervisor & Cluster Native CLI Shortcuts
 
-Drop these native diagnostic profiles straight into the workstation shell configuration file (e.g., `~/.zshrc` or `~/.bashrc`).
-
 ## Proxmox Host CLI Commands (qm & pct)
 
 ```bash
@@ -286,12 +283,14 @@ Drop these native diagnostic profiles straight into the workstation shell config
 
 ## Kubernetes CLI Commands
 
+Drop these native diagnostic profiles straight into the workstation shell configuration file (e.g., `~/.zshrc` or `~/.bashrc`).
+
 You will inevitably run into issues, and situations requiring you to work directly inside the cluster.
 These are some of the more common kubectl I found myself repeating; turned into aliases for simplicity.
 
 ```bash
     # Cluster Routing Switchers
-    alias kcontext-MOTHERSHIP="kubectl config use-context default"
+    alias kcontext-default="kubectl config use-context default"
     alias kcurr-context="kubectl config get-contexts"
 
     # Global System Diagnostics
@@ -480,6 +479,12 @@ todo
 
 ---
 
-```
+# VaultWarden (Bitwarden):
 
-```
+todo
+
+## VaultWarden (Bitwarden) Troubleshooting
+
+todo
+
+---

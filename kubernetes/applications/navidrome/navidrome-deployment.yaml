@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome-media-server
+  namespace: media
+  labels:
+    app: navidrome-media-server
+    app.kubernetes.io/name: navidrome
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: navidrome-media-server
+  template:
+    metadata:
+      labels:
+        app: navidrome-media-server
+    spec:
+      containers:
+        - name: navidrome-core-engine
+          image: deluan/navidrome:latest
+          env:
+            - name: TZ
+              value: "America/New_York"
+            - name: ND_MUSICFOLDER
+              value: "/music"
+            - name: ND_DATAFOLDER
+              value: "/data"
+            - name: ND_SCANSCHEDULE
+              value: "@every 30m"
+            - name: ND_LOGLEVEL
+              value: "info"
+            - name: ND_ENABLETRANSCODINGCONFIG
+              value: "true"
+          ports:
+            - containerPort: 4533
+              name: admin-http
+              protocol: TCP
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+          volumeMounts:
+            - name: navidrome-music-mount
+              mountPath: /music
+              readOnly: true
+            - name: navidrome-persistent-config
+              mountPath: /data
+      volumes:
+        - name: navidrome-music-mount
+          persistentVolumeClaim:
+            claimName: navidrome-music-pvc
+        - name: navidrome-persistent-config
+          hostPath:
+            path: /var/data/navidrome/config
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navidrome-loadbalancer-service
+  namespace: media
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: "192.168.50.243"
+spec:
+  type: LoadBalancer
+  selector:
+    app: navidrome-media-server
+  ports:
+    - port: 4533
+      targetPort: 4533
+      protocol: TCP
+      name: web
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: navidrome-ingress
+  namespace: media
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Navidrome"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "navidrome"
+    gethomepage.dev/href: "https://music.freesalty.com/"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    gethomepage.dev/pod-selector: "app=navidrome-media-server"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: music.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: navidrome-loadbalancer-service
+                port:
+                  number: 4533
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: navidrome-music-pv
+  labels:
+    type: nfs
+spec:
+  capacity:
+    storage: 1Ti
+  volumeMode: Filesystem
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/pools/storage/music
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-music-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 1Ti
+  volumeName: navidrome-music-pv
