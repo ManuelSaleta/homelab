@@ -158,43 +158,52 @@ t-validate: ## Validate the underlying syntax formatting syntax architecture
 	terraform -chdir=$(TERRAFORM_DIR) fmt
 	terraform -chdir=$(TERRAFORM_DIR) validate
 
+# ==============================================================================
+# Adding your configs here, applies to both plan and apply
+# ==============================================================================
+INFRA_TARGETS := proxmox_virtual_environment_vm.k3s_control \
+                 proxmox_virtual_environment_vm.k3s_worker \
+                 proxmox_virtual_environment_vm.micro_nas
+
+K3S_TARGETS   := kubernetes_secret_v1.vaultwarden_secret \
+                 kubernetes_secret_v1.cloudflare_tunnel_secret \
+                 kubernetes_secret_v1.pihole_secret \
+                 kubernetes_secret_v1.proxmox_secret \
+                 kubernetes_secret_v1.grafana-secret \
+                 kubernetes_secret_v1.karakeep_secret \
+                 kubernetes_secret_v1.tailscale_secret \
+                 kubernetes_config_map_v1.homepage_config
+
+# ==============================================================================
+# Helper Flags Construction
+# ==============================================================================
+INFRA_FLAGS := $(addprefix -target=,$(INFRA_TARGETS))
+K3S_FLAGS   := $(addprefix -target=,$(K3S_TARGETS))
+
+# Base Terraform execution command
+TF := terraform -chdir=$(TERRAFORM_DIR)
+
+# ==============================================================================
+# Infrastructure Targets
+# ==============================================================================
 t-plan-infra: ## Plan the compute/infrastructure resources only
 	@echo "=> Planning infrastructure only..."
-	terraform -chdir=$(TERRAFORM_DIR) plan \
-		-target=proxmox_virtual_environment_vm.k3s_control \
-		-target=proxmox_virtual_environment_vm.k3s_worker \
-		-target=proxmox_virtual_environment_vm.micro_nas
+	$(TF) plan $(INFRA_FLAGS)
 
 t-apply-infra: ## Apply infrastructure changes with auto-approval
 	@echo "=> Applying infrastructure only..."
-	terraform -chdir=$(TERRAFORM_DIR) apply --auto-approve \
-		-target=proxmox_virtual_environment_vm.k3s_control \
-		-target=proxmox_virtual_environment_vm.k3s_worker \
-		-target=proxmox_virtual_environment_vm.micro_nas
+	$(TF) apply -auto-approve $(INFRA_FLAGS)
 
+# ==============================================================================
+# K3s / Kubernetes Layer Targets
+# ==============================================================================
 t-plan-k3s: ## Plan the Kubernetes control layer resources only
 	@echo "=> Planning Kubernetes configuration layer..."
-	terraform  -chdir=$(TERRAFORM_DIR) plan \
-		-target=kubernetes_secret_v1.vaultwarden_secret \
-		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
-		-target=kubernetes_secret_v1.pihole_secret \
-		-target=kubernetes_secret_v1.proxmox_secret \
-		-target=kubernetes_secret_v1.grafana-secret \
-		-target=kubernetes_secret_v1.karakeep_secret \
-		-target=kubernetes_secret_v1.tailscale_secret \
-		-target=kubernetes_config_map_v1.homepage_config
+	$(TF) plan $(K3S_FLAGS)
 
 t-apply-k3s: ## Apply Kubernetes configurations with auto-approval
 	@echo "=> Applying Kubernetes configuration layer..."
-	terraform  -chdir=$(TERRAFORM_DIR) apply --auto-approve \
-		-target=kubernetes_secret_v1.vaultwarden_secret \
-		-target=kubernetes_secret_v1.cloudflare_tunnel_secret \
-		-target=kubernetes_secret_v1.pihole_secret \
-		-target=kubernetes_secret_v1.proxmox_secret \
-		-target=kubernetes_secret_v1.grafana-secret \
-		-target=kubernetes_secret_v1.karakeep_secret \
-		-target=kubernetes_secret_v1.tailscale_secret \
-		-target=kubernetes_config_map_v1.homepage_config
+	$(TF) apply -auto-approve $(K3S_FLAGS)
 
 wait-for-cluster: ## Block execution until the K3s cluster API endpoints respond green
 	@echo "=> Waiting for K3s API to come online..."
@@ -228,17 +237,21 @@ destroy-all: ## Completely tear down the entire cluster infrastructure layout (W
 # 🌐 KUBERNETES INFRASTRUCTURE CORE
 # ==============================================================================
 
-infra-up:
-	@echo "🚀 Deploying Cluster Infrastructure Core Layers..."
-	kubectl apply -f $(INFRA_DIR)/metallb-config.yaml
-	kubectl apply -f $(INFRA_DIR)/tailscale-config.yaml
-	kubectl apply -f $(INFRA_DIR)/cloudflared-tunnel.yaml
+# List of core infrastructure manifests (in deployment order)
+INFRA_MANIFESTS := metallb-config.yaml \
+                   tailscale-config.yaml \
+                   cloudflared-tunnel.yaml
 
-infra-down:
+# Prepend the directory path to each manifest
+INFRA_FILES := $(addprefix $(INFRA_DIR)/,$(INFRA_MANIFESTS))
+
+infra-up: ## Deploy Cluster Infrastructure Core Layers
+	@echo "🚀 Deploying Cluster Infrastructure Core Layers..."
+	kubectl apply -f $(INFRA_FILES)
+
+infra-down: ## Tear down Core Infrastructure Layers
 	@echo "⚠️ Tearing down Core Infrastructure Layers..."
-	kubectl delete -f $(INFRA_DIR)/cloudflared-tunnel.yaml --ignore-not-found
-	kubectl delete -f $(INFRA_DIR)/metallb-config.yaml --ignore-not-found
-	kubectl delete -f $(INFRA_DIR)/tailscale-config.yaml --ignore-not-found
+	kubectl delete -f $(INFRA_FILES) --ignore-not-found
 
 infra-status:
 	@echo "🔍 Checking Infrastructure Workloads..."
