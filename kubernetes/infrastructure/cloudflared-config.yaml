@@ -22,6 +22,8 @@ spec:
           args:
             - "tunnel"
             - "--no-autoupdate"
+            - "--protocol"
+            - "http2"
             - "run"
           env:
             - name: TUNNEL_TOKEN
