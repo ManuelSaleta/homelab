@@ -52,6 +52,9 @@ spec:
             - containerPort: 80
               name: http
               protocol: TCP
+            - containerPort: 3012
+              name: websocket
+              protocol: TCP
           volumeMounts:
             - name: vaultwarden-persistent-config
               mountPath: /data
@@ -76,6 +79,10 @@ spec:
       targetPort: 80
       protocol: TCP
       name: web
+    - port: 3012
+      targetPort: 3012
+      protocol: TCP
+      name: websocket
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -83,15 +90,20 @@ metadata:
   name: vaultwarden-ingress
   namespace: networking
   annotations:
-    # Essential for Homepage Auto-Discovery
+    # Homepage Auto-Discovery
     gethomepage.dev/enabled: "true"
     gethomepage.dev/name: "Vaultwarden"
     gethomepage.dev/group: "Security"
     gethomepage.dev/icon: "vaultwarden"
     gethomepage.dev/href: "https://vault.freesalty.com"
-    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    # Traefik Router & TLS Resolver Settings
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le-resolver
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - vault.freesalty.com
   rules:
     - host: vault.freesalty.com
       http:
