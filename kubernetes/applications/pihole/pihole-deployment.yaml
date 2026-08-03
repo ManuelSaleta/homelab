@@ -1,4 +1,16 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-custom-dnsmasq
+  namespace: networking
+data:
+  00-block-ipv6.conf: |
+    # Force dnsmasq to evaluate freesalty.com locally and never request upstream AAAA records
+    local=/freesalty.com/
+    address=/freesalty.com/192.168.50.240
+    address=/freesalty.com/::
+---
+apiVersion: v1
 kind: Namespace
 metadata:
   name: networking
@@ -55,7 +67,13 @@ spec:
           volumeMounts:
             - name: pihole-persistent-config
               mountPath: /etc/pihole
+            - name: custom-dnsmasq-config
+              mountPath: /etc/dnsmasq.d/00-block-ipv6.conf
+              subPath: 00-block-ipv6.conf
       volumes:
+        - name: custom-dnsmasq-config
+          configMap:
+            name: pihole-custom-dnsmasq
         - name: pihole-persistent-config
           hostPath:
             path: /var/data/pihole/config
