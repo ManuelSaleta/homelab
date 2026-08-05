@@ -5,15 +5,15 @@ metadata:
   namespace: networking
 data:
   00-block-ipv6.conf: |
-    # Force dnsmasq to evaluate freesalty.com locally and never request upstream AAAA records
+    # Force dnsmasq to treat freesalty.com as strictly local
     local=/freesalty.com/
-    address=/freesalty.com/192.168.50.240
-    address=/freesalty.com/::
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: networking
+
+    # Map IPv4 queries to Vaultwarden's actual MetalLB LoadBalancer IP
+    address=/freesalty.com/192.168.50.243
+
+    # Returning an empty address line forces dnsmasq to answer AAAA queries
+    # locally with NOERROR and 0 answers (suppressing upstream lookup)
+    address=/freesalty.com/
 ---
 apiVersion: apps/v1
 kind: Deployment
