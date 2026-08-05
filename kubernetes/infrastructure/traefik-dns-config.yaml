@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
 spec:
   valuesContent: |-
-    # 1. Environment variables (API Token)
+    # 1. Cloudflare API Token
     env:
       - name: CLOUDFLARE_DNS_API_TOKEN
         valueFrom:
@@ -13,11 +13,11 @@ spec:
             name: cloudflare-dns-api-token
             key: CF_API_TOKEN
 
-    # 2. Structured Let's Encrypt Setup
+    # 2. ACME DNS-01 Challenge Configuration
     certificatesResolvers:
       le-resolver:
         acme:
-          email: your-email@freesalty.com
+          email: "manny2206@gmail.com"
           storage: /data/acme.json
           dnsChallenge:
             provider: cloudflare
@@ -25,11 +25,14 @@ spec:
               - "1.1.1.1:53"
               - "8.8.8.8:53"
 
-    # 3. Clear the explicit domain index arrays to fix the collision
-    additionalArguments:
-      - "--entryPoints.websecure.http.tls=true"
+    # 3. Default TLS and Cert Resolver on websecure via Helm values
+    ports:
+      websecure:
+        tls:
+          enabled: true
+          certResolver: le-resolver
 
-    # 4. Storage configuration
+    # 4. Storage Persistence
     persistence:
       enabled: true
       path: /data
