@@ -206,21 +206,46 @@ Deploys a comprehensive performance tracking layer via clean Helm upgrade and in
     kubectl delete all --all -n monitoring
 ```
 
-# 📁 Storage Systems Synchronization: Obsidian Vault
+# 📁 Storage Architecture & Decoupling: "What is Where"
 
-Resource Engine Context: terraform/vm_provisioning/micro-nas.tf
+Resource Engine Context: [terraform/vm_provisioning/micro-nas.tf](file:///home/gman/Projects/homelab/terraform/vm_provisioning/micro-nas.tf)
 
-The automated storage configuration provisions explicit Tailscale and Syncthing instances for decentralized, private file replication across client networks.
+The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden password database, Navidrome music library and cache) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` VM (`192.168.50.250`).
 
-- GUI Administration Panel Entry: Fetch the Tailscale engine network address with tailscale ip -4 on the micro-nas and route via local web browser to http://[TAILSCALE-IP]:8384.
-- Permissions Mitigation: Syncthing operates within the gman user space context. If synchronization drops or hits authorization errors, align file tree parameters directly on the host node:
+### 1. Physical Hardware & Volume Group Topology
 
-```bash
-    sudo chown -R gman:gman /mnt/storage
+```text
+PROXMOX HOST (mothership)
+├── 🚀 nvme0n1 (238.5G NVMe SSD) -> VG: `pve` (Pool: `local-lvm`)
+│   ├── Host Root (`/`) & Swap
+│   ├── VM 100 [k3s-control-01]: 30G (OS / Control Plane State)
+│   ├── VM 210 [k3s-worker-01]:  30G (OS / Ephemeral Workload Containers)
+│   ├── VM 211 [k3s-worker-02]:  30G (OS / Ephemeral Workload Containers)
+│   └── VM 250 [micro-nas]:      20G (OS Root `/` on fast NVMe)
+│
+└── 💽 sda (931.5G / 1TB External HDD) -> VG: `ext-hdd-vg` (Pool: `ext-hdd-thin`)
+    └── VM 250 [micro-nas]: Dedicated Thin Disk Allocation (Persistent Storage)
 ```
 
+### 2. Standardized Storage Pattern: `/mnt/export/storage/<application-name>`
+
+Inside `micro-nas` (`192.168.50.250`), the bulk persistent storage block from the external HDD is mounted to `/mnt/export/storage` (or partitioned under `/mnt/export/storage`). Applications consume isolated NFS shares using the uniform pattern `/mnt/export/storage/<application-name>`:
+
+| Application | Micro-NAS File Path | NFS Export Rule (`/etc/exports`) | Consumer / Protocol | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.50.0/24(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
+| **Navidrome (App Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.50.0/24(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), user cache & artwork |
+| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.0/24(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files |
+| **Obsidian Vault** | `/mnt/export/storage/obsidian` | N/A (Syncthing user space) | Syncthing / Tailscale Mesh | Markdown notes synchronized across workstations & mobile |
+
+### 3. File Permissions & Access Standards
+- **Container UID/GID**: NFS exports for K8s container workloads are permissioned with `chown -R 1000:1000` to allow non-root pod processes full read/write access.
+- **Syncthing User Context**: Syncthing operates within the `gman` user space context.
+  - GUI Administration Panel: Route to `http://[TAILSCALE-IP]:8384` over the Tailscale mesh.
+  - Permission Alignment: `sudo chown -R gman:gman /mnt/export/storage/obsidian`
+
 > [!IMPORTANT]
-> Mount everything you want to live outside your cluster from `mnt/storage/${my-app-data}
+> **Zero Data Loss Guarantee**: You can safely run `make destroy-workers` or `make destroy-all` to completely nuke and re-provision the K3s cluster. As long as `micro-nas` (VM 250) remains intact, zero persistent data will ever be lost.
 
 ---
 

@@ -35,12 +35,12 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
         partition: auto
 
     mounts:
-      - [ /dev/sdb, /mnt/storage, "ext4", "defaults,nofail", "0", "2" ]
+      - [ /dev/sdb, /mnt/export/storage, "ext4", "defaults,nofail", "0", "2" ]
 
     runcmd:
       ##############################################################################
       # Sequence 1 - 4: Syncthing w/ Tailscale setup
-      # Sequence 1.1 - 4.1: NFS server & exports setup
+      # Sequence 5 - 8: NFS server & /mnt/export/storage/<app> shares setup
       ##############################################################################
 
       # 1. Install Tailscale, Syncthing, and nfs-kernel-server
@@ -60,17 +60,25 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - sed -i 's/127.0.0.1:8384/0.0.0.0:8384/' /home/gman/.config/syncthing/config.xml
       - systemctl restart syncthing@gman.service
 
-      # 1.1. Create Vaultwarden directory on secondary storage disk
-      - mkdir -p /mnt/storage/vaultwarden
+      # 5. Create persistent application directories under /mnt/export/storage
+      - mkdir -p /mnt/export/storage/vaultwarden
+      - mkdir -p /mnt/export/storage/navidrome/data
+      - mkdir -p /mnt/export/storage/navidrome/music
+      - mkdir -p /mnt/export/storage/obsidian
 
-      # 2.1. Set permissions (1000 for standard non-root application execution)
-      - chown -R 1000:1000 /mnt/storage/vaultwarden
+      # 6. Set permissions (1000 for standard non-root container workloads, gman for Obsidian sync)
+      - chown -R 1000:1000 /mnt/export/storage/vaultwarden
+      - chown -R 1000:1000 /mnt/export/storage/navidrome
+      - chmod -R 775 /mnt/export/storage/navidrome/music
+      - chown -R gman:gman /mnt/export/storage/obsidian
 
-      # 3.1. Write export rule to /etc/exports and apply
-      - echo "/mnt/storage/vaultwarden 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      # 7. Write export rules to /etc/exports and apply
+      - echo "/mnt/export/storage/vaultwarden 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/data 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/music 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
       - exportfs -rav
 
-      # 4.1 Enable and start NFS server
+      # 8. Enable and start NFS server
       - systemctl enable --now nfs-server
     EOF
   }

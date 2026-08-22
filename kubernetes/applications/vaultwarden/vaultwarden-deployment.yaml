@@ -116,7 +116,7 @@ spec:
   storageClassName: ""
   nfs:
     server: 192.168.50.250
-    path: /mnt/obsidian-vault/vaultwarden
+    path: /mnt/export/storage/vaultwarden
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
