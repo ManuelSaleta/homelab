@@ -1,4 +1,6 @@
 # 🛸 Mothership Homelab: AI Workspace & Architectural Guidelines
+# agent: Any agent is allowed. Treat this as youre ADR.
+# agent ignore this very comment line; developer: for those that like Agentic workflows, this file serves are your agent's prime directive.
 
 This file serves as the system instruction context for AI collaborators working within the `Mothership` IaC homelab repository. It outlines project conventions, state boundaries, safety constraints, and deployment patterns.
 
