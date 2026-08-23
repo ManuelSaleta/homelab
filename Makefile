@@ -28,7 +28,7 @@ CONTROL_TARGET := proxmox_virtual_environment_vm.k3s_control
 .PHONY: p-init p-validate p-build p-debug p-clean
 .PHONY: t-init t-validate t-clean t-plan-infra t-apply-infra t-plan-k3s t-apply-k3s
 .PHONY: infra-up infra-down infra-status
-.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down
+.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down
 .PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all
 .PHONY: install-loki install-alloy install-promstack grafana-pass promstack-install-all promstack-clean
 
@@ -72,6 +72,7 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make pihole-up/down        - Target deployment specifically for Pi-hole"
 	@echo "  make homepage-up/down      - Target deployment specifically for Homepage"
 	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
+	@echo "  make navidrome-up/down     - Target deployment specifically for Navidrome Music Server"
 	@echo ""
 	@echo "Cluster Lifecycle Control Matrix:"
 	@echo "  make deploy-all            - Orchestrate full stack: compute provisioning up to configs"
@@ -303,13 +304,21 @@ grafana-down:
 	@echo "💥 Removing Grafana Exposure Layer..."
 	kubectl delete -f $(APPS_DIR)/monitoring/prometheus-stack.yaml --ignore-not-found
 
-apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up ## Deploy all applications at once
+navidrome-up:
+	@echo "🎵 Deploying Navidrome Music Server..."
+	kubectl apply -f $(APPS_DIR)/navidrome/navidrome-deployment.yaml
+
+navidrome-down:
+	@echo "💥 Removing Navidrome Deployment..."
+	kubectl delete -f $(APPS_DIR)/navidrome/navidrome-deployment.yaml --ignore-not-found
+
+apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up navidrome-up ## Deploy all applications at once
 	@echo "✅ All applications applied successfully."
 
 apps-down: ## Tear down all cluster workloads with a safety step
 	@echo "🛑 WARNING: You are about to wipe all apps. Press Ctrl+C to abort, or Enter to continue..."
 	@read _
-	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down
+	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down navidrome-down
 
 apps-status:
 	@echo "🔍 Checking Application Status..."

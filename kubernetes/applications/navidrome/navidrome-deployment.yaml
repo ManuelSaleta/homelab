@@ -3,6 +3,68 @@ kind: Namespace
 metadata:
   name: media
 ---
+# 1. Music Library Persistent Volume & Claim
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: navidrome-music-pv
+spec:
+  capacity:
+    storage: 200Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/export/storage/navidrome/music
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-music-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 200Gi
+  volumeName: navidrome-music-pv
+---
+# 2. Navidrome Database & State Persistent Volume & Claim
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: navidrome-config-pv
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/export/storage/navidrome/data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: navidrome-config-pv
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,19 +122,16 @@ spec:
           persistentVolumeClaim:
             claimName: navidrome-music-pvc
         - name: navidrome-persistent-config
-          hostPath:
-            path: /var/data/navidrome/config
-            type: DirectoryOrCreate
+          persistentVolumeClaim:
+            claimName: navidrome-config-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: navidrome-loadbalancer-service
+  name: navidrome-service
   namespace: media
-  annotations:
-    metallb.universe.tf/loadBalancerIPs: "192.168.50.243"
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: navidrome-media-server
   ports:
@@ -92,8 +151,8 @@ metadata:
     gethomepage.dev/group: "Media"
     gethomepage.dev/icon: "navidrome"
     gethomepage.dev/href: "https://music.freesalty.com/"
-    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
     gethomepage.dev/pod-selector: "app=navidrome-media-server"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik
   rules:
@@ -104,38 +163,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: navidrome-loadbalancer-service
+                name: navidrome-service
                 port:
                   number: 4533
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: navidrome-music-pv
-  labels:
-    type: nfs
-spec:
-  capacity:
-    storage: 1Ti
-  volumeMode: Filesystem
-  accessModes:
-    - ReadOnlyMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: ""
-  nfs:
-    server: 192.168.50.250
-    path: /mnt/pools/storage/music
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: navidrome-music-pvc
-  namespace: media
-spec:
-  accessModes:
-    - ReadOnlyMany
-  storageClassName: ""
-  resources:
-    requests:
-      storage: 1Ti
-  volumeName: navidrome-music-pv
