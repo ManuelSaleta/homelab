@@ -194,7 +194,7 @@ Deploys a comprehensive performance tracking layer via clean Helm upgrade and in
 
 # 📁 Storage Architecture & Decoupling: "What is Where"
 
-Resource Engine Context: [terraform/vm_provisioning/micro-nas.tf](file:///home/gman/Projects/homelab/terraform/vm_provisioning/micro-nas.tf)
+Resource Engine Context: [terraform/vm_provisioning/micro-nas.tf](./terraform/vm_provisioning/micro-nas.tf)
 
 The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden passwords, Navidrome music, Plex media/metadata) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` LXC container (`192.168.50.250`, CT 250).
 
@@ -466,7 +466,7 @@ Pane 3: Watch Meilisearch build the full-text index
 
 ## Homepage
 
-Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/homepage/homepage-deployment.yaml) & [kubernetes/applications/homepage/config/](file:///home/gman/Projects/homelab/kubernetes/applications/homepage/config/)
+Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](./kubernetes/applications/homepage/homepage-deployment.yaml) & [kubernetes/applications/homepage/config/](./kubernetes/applications/homepage/config/)
 
 - Web Ingress URL: `https://homepage.freesalty.com`
 - Port Profile: `3000/TCP` (ClusterIP Service: `80/TCP`)
@@ -493,7 +493,7 @@ Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](fi
 
 ## Grafana & Observability Suite
 
-Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/prometheus-values.yaml), [loki-values.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/loki-values.yaml), and [alloy-values.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/alloy-values.yaml)
+Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](./kubernetes/applications/monitoring/prometheus-values.yaml), [loki-values.yaml](./kubernetes/applications/monitoring/loki-values.yaml), and [alloy-values.yaml](./kubernetes/applications/monitoring/alloy-values.yaml)
 
 - Web Ingress URL: `https://grafana.freesalty.com/`
 - Port Profile: `80/TCP` (Traefik Ingress routing to Grafana service)
@@ -523,7 +523,7 @@ Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](fi
 
 ## Pi-hole DNS & Ad-Blocker
 
-Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/pihole/pihole-deployment.yaml)
+Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](./kubernetes/applications/pihole/pihole-deployment.yaml)
 
 - Web Ingress URL: `https://pihole.freesalty.com/admin/`
 - Dedicated MetalLB VIP: `192.168.50.242`
@@ -555,7 +555,7 @@ Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](file:/
 
 ## Uptime Kuma Status Monitor
 
-Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml)
+Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml](./kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml)
 
 - Web Ingress URL: `https://uptime.freesalty.com`
 - Port Profile: `3001/TCP` (ClusterIP Service: `80/TCP`)
@@ -581,7 +581,7 @@ Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.ya
 
 ## Vaultwarden (Bitwarden)
 
-Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml)
+Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml](./kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml)
 
 - Web Ingress URL: `https://vault.freesalty.com`
 - Dedicated MetalLB VIP: `192.168.50.243`
@@ -610,7 +610,7 @@ Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.ya
 
 ## Plex Media Server
 
-Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/plex/plex-deployment.yaml)
+Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](./kubernetes/applications/plex/plex-deployment.yaml)
 
 - Web Ingress URL: `https://plex.freesalty.com/`
 - Port Profile: `32400/TCP`
@@ -638,7 +638,7 @@ Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](file:///ho
 
 ## Navidrome Music Server
 
-Resource Context: [kubernetes/applications/navidrome/navidrome-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/navidrome/navidrome-deployment.yaml)
+Resource Context: [kubernetes/applications/navidrome/navidrome-deployment.yaml](./kubernetes/applications/navidrome/navidrome-deployment.yaml)
 
 - Web Ingress URL: `https://music.freesalty.com/`
 - Port Profile: `4533/TCP`
