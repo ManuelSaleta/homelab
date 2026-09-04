@@ -175,8 +175,8 @@ variable "worker_count" {
 
 variable "proxmox_lxc_template" {
   type        = string
-  description = "The Proxmox container template file for micro-nas LXC (e.g. local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst)"
-  default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+  description = "The Proxmox container template file for micro-nas LXC (e.g. local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst)"
+  default     = "local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst"
 }
 
 variable "k3s_share_token" {
