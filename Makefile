@@ -29,7 +29,7 @@ CONTROL_TARGET := proxmox_virtual_environment_vm.k3s_control
 .PHONY: t-init t-validate t-clean t-plan-infra t-apply-infra t-plan-k3s t-apply-k3s
 .PHONY: infra-up infra-down infra-status
 .PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down plex-up plex-down
-.PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all
+.PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all drain-worker-02
 .PHONY: install-loki install-alloy install-promstack grafana-pass promstack-install-all promstack-clean
 
 # ==============================================================================
@@ -165,7 +165,7 @@ t-validate: ## Validate the underlying syntax formatting syntax architecture
 # ==============================================================================
 INFRA_TARGETS := proxmox_virtual_environment_vm.k3s_control \
                  proxmox_virtual_environment_vm.k3s_worker \
-                 proxmox_virtual_environment_vm.micro_nas
+                 proxmox_virtual_environment_container.micro_nas
 
 K3S_TARGETS   := kubernetes_secret_v1.vaultwarden_secret \
                  kubernetes_secret_v1.cloudflare_tunnel_secret \
@@ -220,6 +220,12 @@ t-clean: ## Clear out transient terraform cache footprints and local log locks
 # ==============================================================================
 # ☢️ LIFECYCLE DESTRUCTION CONTROLS
 # ==============================================================================
+
+drain-worker-02: ## Safely cordon and drain k3s-worker-02 before scaling down to dual-node
+	@echo "⚠️ Cordoning and draining k3s-worker-02..."
+	-kubectl cordon k3s-worker-02
+	-kubectl drain k3s-worker-02 --delete-emptydir-data --ignore-daemonsets --force
+	@echo "✅ k3s-worker-02 drained safely. Ready for 'make t-apply-infra'."
 
 destroy-workers: ## Target and destroy only the worker nodes pool instantly
 	@echo "⚠️  Targeting worker node destruction..."

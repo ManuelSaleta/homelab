@@ -169,8 +169,14 @@ variable "http_bind_address_ip" {
 
 variable "worker_count" {
   type        = number
-  description = "The number of worker nodes to provision in the cluster."
-  default     = 2
+  description = "The number of worker nodes to provision in the cluster (1 worker + 1 control plane = dual-node setup)."
+  default     = 1
+}
+
+variable "proxmox_lxc_template" {
+  type        = string
+  description = "The Proxmox container template file for micro-nas LXC (e.g. local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst)"
+  default     = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
 }
 
 variable "k3s_share_token" {
