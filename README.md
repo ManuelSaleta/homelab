@@ -8,83 +8,69 @@ The primary objective is a zero-intervention deployment pipeline that bakes a li
 
 ## 🏗️ Architectural Topology
 
-- Originally I thought mermaid was the way to go but might go with draw.io instead no sure yet...
-
 ```mermaid
----
-config:
-  theme: mc
-  themeVariables:
-    fontFamily: ''
-    fontSize: 14px
-  layout: elk
----
-flowchart TD
-    classDef k3s fill:#326ce5,stroke:#fff,color:#fff;
-    classDef cloudflare fill:#f38020,stroke:#fff,color:#fff;
-    classDef proxmox fill:#e46623,stroke:#fff,color:#fff;
-    classDef storage fill:#8d6e63,stroke:#fff,color:#fff;
-    classDef network fill:#4caf50,stroke:#fff,color:#fff;
-    classDef app fill:#607d8b,stroke:#fff,color:#fff;
-    classDef tailscale fill:#0055ff,stroke:#fff,color:#fff;
-    subgraph Proxmox_Mothership["fa:fa-server Proxmox Mothership Node"]
+flowchart TB
+    classDef k3s fill:#326ce5,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef proxmox fill:#e46623,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef storage fill:#8d6e63,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef network fill:#2e7d32,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef app fill:#455a64,stroke:#fff,stroke-width:1px,color:#fff;
+    classDef client fill:#0288d1,stroke:#fff,stroke-width:1px,color:#fff;
+
+    subgraph Clients["fa:fa-globe Ingress & Clients"]
+        direction LR
+        Fedora["fa:fa-desktop Fedora Workstation (LAN)"]:::client
+        MacRemote["fa:fa-laptop Mac Remote (Tailscale)"]:::client
+        CloudflareEdge["fa:fa-cloud Cloudflare Zero Trust"]:::client
+    end
+
+    subgraph Proxmox_Mothership["fa:fa-server Proxmox Host: 'mothership' (16 GB Physical RAM)"]
         direction TB
-        micro_nas[("fa:fa-hdd micro-nas VM")]:::storage
 
-        subgraph K3s_Cluster["fa:fa-microchip K3s Cluster"]
-            direction LR
-            control["fa:fa-server control-01"]:::k3s
-            worker1["fa:fa-server worker-01"]:::k3s
-            worker2["fa:fa-server worker-02"]:::k3s
+        subgraph Storage_Layer["fa:fa-database Storage Decoupling: micro-nas (LXC CT 250)"]
+            MicroNAS["fa:fa-hdd micro-nas LXC (512 MB RAM)\nNFS Kernel Server | Tailscale | Syncthing"]:::storage
+            ExtHDD[("fa:fa-database External 1TB HDD\n/mnt/export/storage")]:::storage
+            MicroNAS --- ExtHDD
         end
-        vm_template["fa:fa-copy k3s-vm-template"]:::proxmox
+
+        subgraph K3s_Cluster["fa:fa-microchip Dual-Node K3s Cluster"]
+            direction LR
+            ControlPlane["fa:fa-shield-alt k3s-control-01 (VM 100)\n3 GB RAM | 2 vCPUs\nAPI Server, Ingress, CoreDNS"]:::k3s
+            WorkerNode["fa:fa-cogs k3s-worker-01 (VM 210)\n3 GB RAM | 2 vCPUs\nCompute & Application Workloads"]:::k3s
+        end
+
+        subgraph Ingress_Networking["fa:fa-network-wired Networking & Routing"]
+            direction LR
+            Traefik["Traefik (Ingress)"]:::network
+            MetalLB["MetalLB (L2 VIPs)"]:::network
+            Cloudflared["Cloudflared (Tunnel)"]:::network
+        end
+
+        subgraph Applications["fa:fa-cubes Kubernetes Application Stack"]
+            direction TB
+            subgraph Media_Namespace["Media Namespace"]
+                Plex["fa:fa-film Plex Media Server (:32400)"]:::app
+                Navidrome["fa:fa-music Navidrome Music (:4533)"]:::app
+            end
+            subgraph Networking_Namespace["Networking Namespace"]
+                Homepage["fa:fa-home Homepage Dashboard (:3000)"]:::app
+                PiHole["fa:fa-shield-virus Pi-hole DNS (:53 / :80)"]:::app
+                Vaultwarden["fa:fa-key Vaultwarden (:80)"]:::app
+                Karakeep["fa:fa-bookmark Karakeep (Meili + Chrome)"]:::app
+                UptimeKuma["fa:fa-heartbeat Uptime Kuma (:3001)"]:::app
+            end
+            subgraph Monitoring_Namespace["Monitoring Namespace"]
+                Monitoring["fa:fa-chart-line Prometheus, Grafana, Loki & Alloy"]:::app
+            end
+        end
     end
 
-    subgraph Local_LAN["fa:fa-network-wired Local Area Network"]
-        fedora["fa:fa-desktop Workstation" ]:::network
-        syncthing[("fa:fa-sync Syncthing")]:::storage
-    end
-
-    subgraph Tailnet["fa:fa-shield-alt Tailscale Mesh"]
-        mac["fa:fa-laptop Mac (Remote)"]:::tailscale
-        nas_node[("fa:fa-sync Syncthing")]:::storage
-    end
-
-    subgraph K3s_Apps["fa:fa-cubes K3s Application Stack"]
-        Traefik["fa:fa-project-diagram Traefik"]:::app
-        MetalLB["fa:fa-balance-scale MetalLB"]:::app
-        Homepage["fa:fa-home Homepage"]:::app
-        Vaultwarden["fa:fa-home Vaultwarden"]:::app
-        Karakeep["fa:fa-home Karakeep"]:::app
-        PiHole["fa:fa-ad Pi-Hole"]:::app
-        Grafana["fa:fa-chart-line Grafana"]:::app
-        Navidrome["fa:fa-chart-line Navidrome"]:::server
-    end
-
-    Traefik --> MetalLB
-    MetalLB --> Homepage & PiHole & Grafana & Vaultwarden & Karakeep & Navidrome
-    K3s_Cluster --- Traefik
-    K3s_Cluster@{ shape: rounded }
-    Proxmox_Mothership@{ shape: rounded }
-    Local_LAN@{ shape: rounded }
-    Tailnet@{ shape: rounded }
-    K3s_Apps@{ shape: rounded }
-    micro_nas@{ shape: stadium }
-    nas_node@{ shape: stadium }
-    control@{ shape: rounded }
-    worker1@{ shape: rounded }
-    worker2@{ shape: rounded }
-    Traefik@{ shape: rounded }
-    MetalLB@{ shape: rounded }
-    Homepage@{ shape: rounded }
-    Vaultwarden@{ shape: rounded }
-    Karakeep@{ shape: rounded }
-    PiHole@{ shape: rounded }
-    Grafana@{ shape: rounded }
-    Navidrome@{ shape: rounded }
-    fedora@{ shape: rounded }
-    mac@{ shape: rounded }
-    vm_template@{ shape: rounded }
+    Clients --> Ingress_Networking
+    Ingress_Networking --> Applications
+    K3s_Cluster --- Ingress_Networking
+    Applications -. "NFS PV Mounts (all_squash, UID 1000)" .-> MicroNAS
+    Fedora -. "Obsidian Sync" .-> MicroNAS
+    MacRemote -. "Tailscale Mesh" .-> MicroNAS
 ```
 
 # 📋 Prerequisites & Local Workstation Setup
@@ -210,48 +196,62 @@ Deploys a comprehensive performance tracking layer via clean Helm upgrade and in
 
 Resource Engine Context: [terraform/vm_provisioning/micro-nas.tf](file:///home/gman/Projects/homelab/terraform/vm_provisioning/micro-nas.tf)
 
-The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden password database, Navidrome music library and cache) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` VM (`192.168.50.250`).
+The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden passwords, Navidrome music, Plex media/metadata) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` LXC container (`192.168.50.250`, CT 250).
 
-### 1. Physical Hardware & Volume Group Topology
+### 1. Physical Hardware & Memory Allocation (16 GB Host Footprint)
 
 ```text
-PROXMOX HOST (mothership)
+PROXMOX HOST: mothership (16 GB Physical RAM Total)
 ├── 🚀 nvme0n1 (238.5G NVMe SSD) -> VG: `pve` (Pool: `local-lvm`)
-│   ├── Host Root (`/`) & Swap
-│   ├── VM 100 [k3s-control-01]: 30G (OS / Control Plane State)
-│   ├── VM 210 [k3s-worker-01]:  30G (OS / Ephemeral Workload Containers)
-│   ├── VM 211 [k3s-worker-02]:  30G (OS / Ephemeral Workload Containers)
-│   └── VM 250 [micro-nas]:      20G (OS Root `/` on fast NVMe)
+│   ├── Host Root (`/`) & Proxmox Hypervisor Overhead
+│   ├── VM 100 [k3s-control-01]: 30G NVMe | 3,072 MB (3 GB) RAM (Control Plane & Core Services)
+│   ├── VM 210 [k3s-worker-01]:  30G NVMe | 3,072 MB (3 GB) RAM (Workloads & App Stack)
+│   ├── CT 250 [micro-nas]:      15G NVMe |   512 MB (0.5 GB) RAM (LXC NFS & Syncthing Engine)
+│   └── ⚡ Available Host Headroom: ~9.4 GB RAM for ZFS ARC, Linux page cache, and future workloads
 │
-└── 💽 sda (931.5G / 1TB External HDD) -> VG: `ext-hdd-vg` (Pool: `ext-hdd-thin`)
-    └── VM 250 [micro-nas]: Dedicated Thin Disk Allocation (Persistent Storage)
+└── 💽 sda (931.5G / 1TB External HDD) -> Mounted to `/mnt/export/storage`
+    └── CT 250 [micro-nas]: Dedicated Thin Disk Mount Point (Stateful NFS Shares)
 ```
 
 ### 2. Standardized Storage Pattern: `/mnt/export/storage/<application-name>`
 
-Inside `micro-nas` (`192.168.50.250`), the bulk persistent storage block from the external HDD is mounted to `/mnt/export/storage` (or partitioned under `/mnt/export/storage`). Applications consume isolated NFS shares using the uniform pattern `/mnt/export/storage/<application-name>`:
+Inside `micro-nas` (`192.168.50.250`), persistent storage is mounted under `/mnt/export/storage`. Applications consume isolated NFS shares using hardened `all_squash` rules scoped strictly to the K3s node IPs (`192.168.50.185` and `192.168.50.210`):
 
 | Application | Micro-NAS File Path | NFS Export Rule (`/etc/exports`) | Consumer / Protocol | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.50.0/24(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
-| **Navidrome (App Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.50.0/24(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), user cache & artwork |
-| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.0/24(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files |
-| **Obsidian Vault** | `/mnt/export/storage/obsidian` | N/A (Syncthing user space) | Syncthing / Tailscale Mesh | Markdown notes synchronized across workstations & mobile |
+| **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
+| **Navidrome (Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), cache & artwork |
+| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files |
+| **Plex (Config & DB)** | `/mnt/export/storage/plex/config` | `/mnt/export/storage/plex/config 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-config-pv`, 20Gi) | Server metadata, SQLite DB, agent state |
+| **Plex (Media Library)**| `/mnt/export/storage/plex/media` | `/mnt/export/storage/plex/media 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-media-pv`, 500Gi) | Movies, TV series, video content |
+| **Obsidian Vault** | `/mnt/export/storage/obsidian` | N/A (Syncthing user space) | Syncthing / Tailscale Mesh | Markdown notes synchronized across devices |
 
-### 3. File Permissions & Access Standards
-- **Container UID/GID**: NFS exports for K8s container workloads are permissioned with `chown -R 1000:1000` to allow non-root pod processes full read/write access.
-- **Syncthing User Context**: Syncthing operates within the `gman` user space context.
-  - GUI Administration Panel: Route to `http://[TAILSCALE-IP]:8384` over the Tailscale mesh.
-  - Permission Alignment: `sudo chown -R gman:gman /mnt/export/storage/obsidian`
+### 3. File Permissions & Security Hardening
+- **Container UID/GID**: NFS exports for K8s container workloads are permissioned with `chown -R 1000:1000` to match standard non-root container workloads.
+- **Root Squashing**: All NFS exports enforce `all_squash,anonuid=1000,anongid=1000`, ensuring client-side root processes can never execute with root privileges on the NAS host filesystem.
+- **Syncthing Tailscale Isolation**: Syncthing's web admin GUI is bound strictly to the host's private Tailscale IP (`[TAILSCALE-IP]:8384`), keeping port 8384 closed on the physical LAN.
 
 > [!IMPORTANT]
-> **Zero Data Loss Guarantee**: You can safely run `make destroy-workers` or `make destroy-all` to completely nuke and re-provision the K3s cluster. As long as `micro-nas` (VM 250) remains intact, zero persistent data will ever be lost.
+> **Zero Data Loss Guarantee**: You can safely run `make destroy-workers` or `make destroy-all` to completely tear down and re-provision the K3s cluster. As long as `micro-nas` (CT 250) remains intact, zero persistent application or note data will ever be lost.
 
 ---
 
 # 🛑 Operations & Lifecycle Troubleshooting
 
-## 1. Manual K3s Cluster Token Synchronization
+## 1. Safe Dual-Node Migration & Node Draining
+
+When scaling down from 2 workers to 1 worker (transitioning to the dual-node topology), gracefully evict running pods before applying Terraform changes:
+
+```bash
+# 1. Gracefully cordon and drain k3s-worker-02 (evicts pods to worker-01 and control-01)
+make drain-worker-02
+
+# 2. Apply Terraform to decommission VM 211 and reconfigure cluster resources
+make t-apply-infra
+
+# 3. Clean up the node registration from Kubernetes
+kubectl delete node k3s-worker-02
+```
 
 Every single time the primary manager plane node (k3s-control-01) is destroyed and re-provisioned, it mints a fresh, randomized cluster authorization hash. You must manually sync this hash to allow worker nodes to register cleanly.
 
@@ -511,5 +511,30 @@ todo
 ## VaultWarden (Bitwarden) Troubleshooting
 
 todo
+
+---
+
+# Plex Media Server:
+
+Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/plex/plex-deployment.yaml)
+
+- Web Ingress URL: `https://plex.freesalty.com/`
+- Port Profile: `32400/TCP`
+- Persistent Storage:
+  - Media Library: `/mnt/export/storage/plex/media` (500Gi NFS PV, read-only mount)
+  - Config & DB: `/mnt/export/storage/plex/config` (20Gi NFS PV)
+  - Transcoding Scratch Space: Dedicated ephemeral `emptyDir` mounted at `/transcode` (preserves NAS I/O)
+
+---
+
+# Navidrome Music Server:
+
+Resource Context: [kubernetes/applications/navidrome/navidrome-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/navidrome/navidrome-deployment.yaml)
+
+- Web Ingress URL: `https://music.freesalty.com/`
+- Port Profile: `4533/TCP`
+- Persistent Storage:
+  - Music Library: `/mnt/export/storage/navidrome/music` (200Gi NFS PV, read-only mount)
+  - Application Data: `/mnt/export/storage/navidrome/data` (5Gi NFS PV)
 
 ---
