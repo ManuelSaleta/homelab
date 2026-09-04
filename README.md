@@ -98,7 +98,7 @@ Secure authentication loops rely entirely on public key checks. Ensure the signa
 
 The target Proxmox host system must have the following configuration targets:
 
-    local: Storage target hosting the baseline Ubuntu installation media image (local:iso/ubuntu-24.04.4-live-server-amd64.iso).
+    local: Storage target hosting the baseline Ubuntu installation media image (local:iso/ubuntu-26.04.1-live-server-amd64.iso) and LXC template (local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst).
 
     local-lvm: Block pool backend allocation targeted for virtual node root disks (scsi0).
 
@@ -464,57 +464,151 @@ Pane 3: Watch Meilisearch build the full-text index
 
 ---
 
-# Homepage:
+## Homepage
 
-todo
+Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/homepage/homepage-deployment.yaml) & [kubernetes/applications/homepage/config/](file:///home/gman/Projects/homelab/kubernetes/applications/homepage/config/)
 
-## Homepage Troubleshooting
+- Web Ingress URL: `https://homepage.freesalty.com`
+- Port Profile: `3000/TCP` (ClusterIP Service: `80/TCP`)
+- Key Integrations: Central dashboard with live widgets for Proxmox VE, Pi-hole, Tailscale mesh status, Cloudflare Tunnel health, and Grafana / Kubernetes cluster metrics. Uses ServiceAccount token (`homepage-service-account`) with scoped RBAC for native cluster discovery.
 
-todo
+### Homepage Troubleshooting
 
----
-
-# Grafana:
-
-todo
-
-## Grafana Troubleshooting
-
-todo
-
----
-
-# Pihole:
-
-todo
-
-## Pihole Troubleshooting
-
-todo
+- Inspect rendered ConfigMap files:
+  ```bash
+  kubectl get configmap homepage-config -n networking -o yaml
+  ```
+- Verify environment variables and secret injections:
+  ```bash
+  kubectl exec -it deployment/homepage -n networking -- env | grep HOMEPAGE_VAR_
+  ```
+- Stream live application runtime logs:
+  ```bash
+  kubectl logs deployment/homepage -n networking -f --tail=50
+  ```
+- Fix `403 Forbidden` / Invalid Host Header:
+  Ensure `HOMEPAGE_ALLOWED_HOSTS` includes `homepage.freesalty.com,localhost,127.0.0.1` in the deployment environment.
 
 ---
 
-# Uptime-kuma:
+## Grafana & Observability Suite
 
-todo
+Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/prometheus-values.yaml), [loki-values.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/loki-values.yaml), and [alloy-values.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/alloy-values.yaml)
 
-## Uptime-kuma Troubleshooting
+- Web Ingress URL: `https://grafana.freesalty.com/`
+- Port Profile: `80/TCP` (Traefik Ingress routing to Grafana service)
+- Persistent Storage: `5Gi` PVC (`promstack-grafana`) for dashboards, alerts, and settings.
+- Integrated Data Sources: Prometheus (`kube-prometheus-stack`), Loki log aggregation gateway (`http://my-loki-gateway.monitoring.svc.cluster.local`), and Alloy telemetry collectors running as node DaemonSets.
 
-todo
+### Grafana Troubleshooting
+
+- Retrieve the auto-generated Grafana admin password:
+  ```bash
+  kubectl get secret -n monitoring promstack-grafana -o jsonpath="{.data.admin-password}" | base64 --decode; echo
+  ```
+- Verify cluster monitoring pods and daemonsets:
+  ```bash
+  kubectl get pods -n monitoring -o wide
+  ```
+- Stream Alloy log collection & pipeline ingestion:
+  ```bash
+  kubectl logs -n monitoring daemonset/alloy -f --tail=50
+  ```
+- Port-forward Prometheus server UI for direct query/rule inspection:
+  ```bash
+  kubectl port-forward -n monitoring svc/promstack-kube-prometheus-prometheus 9090:9090
+  ```
 
 ---
 
-# VaultWarden (Bitwarden):
+## Pi-hole DNS & Ad-Blocker
 
-todo
+Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/pihole/pihole-deployment.yaml)
 
-## VaultWarden (Bitwarden) Troubleshooting
+- Web Ingress URL: `https://pihole.freesalty.com/admin/`
+- Dedicated MetalLB VIP: `192.168.50.242`
+- Port Profile: `53/UDP & 53/TCP` (DNS Resolution), `80/TCP` (Admin Web GUI)
+- Persistent Storage: HostPath volume mounted at `/var/data/pihole/config` (mapped to `/etc/pihole` inside the pod)
+- DNS Architecture: Upstream resolvers (`1.1.1.1`, `8.8.8.8`) with custom dnsmasq rule directing local homelab queries (`address=/freesalty.com/192.168.50.240`).
 
-todo
+### Pi-hole Troubleshooting
+
+- Reset / update Web GUI admin password:
+  ```bash
+  kubectl exec -it -n networking deployment/pihole-dns-server -- pihole setpassword
+  ```
+- Test local and upstream DNS queries:
+  ```bash
+  dig @192.168.50.242 freesalty.com +short
+  dig @192.168.50.242 google.com +short
+  ```
+- Stream FTL live query resolution logs:
+  ```bash
+  kubectl exec -it -n networking deployment/pihole-dns-server -- tail -f /var/log/pihole/pihole.log
+  ```
+- Inspect FTL daemon service status:
+  ```bash
+  kubectl exec -it -n networking deployment/pihole-dns-server -- pihole status
+  ```
 
 ---
 
-# Plex Media Server:
+## Uptime Kuma Status Monitor
+
+Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml)
+
+- Web Ingress URL: `https://uptime.freesalty.com`
+- Port Profile: `3001/TCP` (ClusterIP Service: `80/TCP`)
+- Persistent Storage: `uptime-kuma-pvc` (4Gi RWO PV mapped to `/app/data`)
+- Deployment Strategy: `Recreate` strategy prevents SQLite database concurrent locks during rollout transitions.
+
+### Uptime Kuma Troubleshooting
+
+- Stream monitor probe logs and heartbeat events:
+  ```bash
+  kubectl logs deployment/uptime-kuma -n networking -f --tail=50
+  ```
+- Reset admin credentials via internal CLI:
+  ```bash
+  kubectl exec -it deployment/uptime-kuma -n networking -- npm run reset-password
+  ```
+- Inspect SQLite database file integrity and size:
+  ```bash
+  kubectl exec -it deployment/uptime-kuma -n networking -- ls -lh /app/data/
+  ```
+
+---
+
+## Vaultwarden (Bitwarden)
+
+Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml)
+
+- Web Ingress URL: `https://vault.freesalty.com`
+- Dedicated MetalLB VIP: `192.168.50.243`
+- Port Profile: `80/TCP` (HTTP & integrated WebSocket notifications)
+- Persistent Storage: `vaultwarden-nas-pv` (4Gi NFS mount at `/mnt/export/storage/vaultwarden` mapped to `/data` in container, non-root UID `1000:1000`)
+- Security Baseline: `SIGNUPS_ALLOWED: "false"`, `WEBSOCKET_ENABLED: "true"`, `ADMIN_TOKEN` protected via Kubernetes Secret.
+
+### Vaultwarden Troubleshooting
+
+- Retrieve Admin Token for `/admin` portal login:
+  ```bash
+  kubectl get secret vaultwarden-secret -n networking -o jsonpath="{.data.ADMIN_TOKEN}" | base64 --decode; echo
+  ```
+- Check NFS file ownership and permissions:
+  ```bash
+  kubectl exec -it deployment/vaultwarden-server -n networking -- ls -la /data
+  ```
+- Temporarily allow sign-ups for adding new accounts:
+  ```bash
+  kubectl set env deployment/vaultwarden-server -n networking SIGNUPS_ALLOWED=true
+  # Complete registration at https://vault.freesalty.com, then disable again:
+  kubectl set env deployment/vaultwarden-server -n networking SIGNUPS_ALLOWED=false
+  ```
+
+---
+
+## Plex Media Server
 
 Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/plex/plex-deployment.yaml)
 
@@ -525,9 +619,24 @@ Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](file:///ho
   - Config & DB: `/mnt/export/storage/plex/config` (20Gi NFS PV)
   - Transcoding Scratch Space: Dedicated ephemeral `emptyDir` mounted at `/transcode` (preserves NAS I/O)
 
+### Plex Troubleshooting
+
+- Stream Plex server logs:
+  ```bash
+  kubectl logs deployment/plex-media-server -n media -f --tail=50
+  ```
+- Check transcode directory disk usage:
+  ```bash
+  kubectl exec -it deployment/plex-media-server -n media -- df -h /transcode
+  ```
+- Verify NFS media mount accessibility:
+  ```bash
+  kubectl exec -it deployment/plex-media-server -n media -- ls -la /media
+  ```
+
 ---
 
-# Navidrome Music Server:
+## Navidrome Music Server
 
 Resource Context: [kubernetes/applications/navidrome/navidrome-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/navidrome/navidrome-deployment.yaml)
 
@@ -537,4 +646,13 @@ Resource Context: [kubernetes/applications/navidrome/navidrome-deployment.yaml](
   - Music Library: `/mnt/export/storage/navidrome/music` (200Gi NFS PV, read-only mount)
   - Application Data: `/mnt/export/storage/navidrome/data` (5Gi NFS PV)
 
----
+### Navidrome Troubleshooting
+
+- Stream music indexing and scanner logs:
+  ```bash
+  kubectl logs deployment/navidrome -n media -f --tail=50
+  ```
+- Verify music library files and permissions:
+  ```bash
+  kubectl exec -it deployment/navidrome -n media -- ls -la /music
+  ```
