@@ -1,0 +1,172 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+# 1. Media Library Persistent Volume & Claim
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: plex-media-pv
+spec:
+  capacity:
+    storage: 500Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/export/storage/plex/media
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-media-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 500Gi
+  volumeName: plex-media-pv
+---
+# 2. Plex Configuration & Database Persistent Volume & Claim
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: plex-config-pv
+spec:
+  capacity:
+    storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/export/storage/plex/config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 20Gi
+  volumeName: plex-config-pv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex-media-server
+  namespace: media
+  labels:
+    app: plex-media-server
+    app.kubernetes.io/name: plex
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: plex-media-server
+  template:
+    metadata:
+      labels:
+        app: plex-media-server
+    spec:
+      hostNetwork: false
+      containers:
+        - name: plex-core-engine
+          image: lscr.io/linuxserver/plex:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/New_York"
+            - name: VERSION
+              value: "docker"
+            - name: PLEX_CLAIM
+              value: "" # Optional: Add your claim token from https://plex.tv/claim here on initial setup
+          ports:
+            - containerPort: 32400
+              name: pms-http
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1500m"
+              memory: "1536Mi"
+          volumeMounts:
+            - name: plex-media-mount
+              mountPath: /media
+              readOnly: true
+            - name: plex-persistent-config
+              mountPath: /config
+            - name: plex-transcode-tmp
+              mountPath: /transcode
+      volumes:
+        - name: plex-media-mount
+          persistentVolumeClaim:
+            claimName: plex-media-pvc
+        - name: plex-persistent-config
+          persistentVolumeClaim:
+            claimName: plex-config-pvc
+        - name: plex-transcode-tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: plex-service
+  namespace: media
+spec:
+  type: ClusterIP
+  selector:
+    app: plex-media-server
+  ports:
+    - port: 32400
+      targetPort: 32400
+      protocol: TCP
+      name: web
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plex-ingress
+  namespace: media
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Plex"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "plex"
+    gethomepage.dev/href: "https://plex.freesalty.com/"
+    gethomepage.dev/pod-selector: "app=plex-media-server"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: plex.freesalty.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: plex-service
+                port:
+                  number: 32400
