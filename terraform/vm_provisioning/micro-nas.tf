@@ -64,18 +64,24 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - mkdir -p /mnt/export/storage/vaultwarden
       - mkdir -p /mnt/export/storage/navidrome/data
       - mkdir -p /mnt/export/storage/navidrome/music
+      - mkdir -p /mnt/export/storage/plex/config
+      - mkdir -p /mnt/export/storage/plex/media
       - mkdir -p /mnt/export/storage/obsidian
 
       # 6. Set permissions (1000 for standard non-root container workloads, gman for Obsidian sync)
       - chown -R 1000:1000 /mnt/export/storage/vaultwarden
       - chown -R 1000:1000 /mnt/export/storage/navidrome
       - chmod -R 775 /mnt/export/storage/navidrome/music
+      - chown -R 1000:1000 /mnt/export/storage/plex
+      - chmod -R 775 /mnt/export/storage/plex/media
       - chown -R gman:gman /mnt/export/storage/obsidian
 
       # 7. Write export rules to /etc/exports and apply
       - echo "/mnt/export/storage/vaultwarden 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
       - echo "/mnt/export/storage/navidrome/data 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
       - echo "/mnt/export/storage/navidrome/music 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      - echo "/mnt/export/storage/plex/config 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      - echo "/mnt/export/storage/plex/media 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
       - exportfs -rav
 
       # 8. Enable and start NFS server
