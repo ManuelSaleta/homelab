@@ -114,9 +114,9 @@ spec:
                 secretKeyRef:
                   name: grafana-secret
                   key: GRAFANA_PASSWORD
-            # Allowed Hosts: List specific valid addresses
+            # Allowed Hosts: Explicitly whitelist trusted host domains (no wildcards)
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "homepage.freesalty.com,pihole.freesalty.com,localhost,*"
+              value: "homepage.freesalty.com,localhost,127.0.0.1"
           ports:
             - containerPort: 3000
               name: http

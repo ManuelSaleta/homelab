@@ -55,9 +55,9 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - chown -R gman:gman /home/gman/.config
       - systemctl enable --now syncthing@gman.service
 
-      # 4. Modify config to allow GUI access over the Tailscale network
+      # 4. Modify config to allow GUI access over the Tailscale network only
       - sleep 5
-      - sed -i 's/127.0.0.1:8384/0.0.0.0:8384/' /home/gman/.config/syncthing/config.xml
+      - TS_IP=$(tailscale ip -4) && sed -i "s/127.0.0.1:8384/$${TS_IP}:8384/" /home/gman/.config/syncthing/config.xml
       - systemctl restart syncthing@gman.service
 
       # 5. Create persistent application directories under /mnt/export/storage
@@ -72,10 +72,10 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - chmod -R 775 /mnt/export/storage/navidrome/music
       - chown -R gman:gman /mnt/export/storage/obsidian
 
-      # 7. Write export rules to /etc/exports and apply
-      - echo "/mnt/export/storage/vaultwarden 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
-      - echo "/mnt/export/storage/navidrome/data 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
-      - echo "/mnt/export/storage/navidrome/music 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      # 7. Write hardened export rules to /etc/exports (restricted to K3s nodes with all_squash)
+      - echo "/mnt/export/storage/vaultwarden 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.211(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/data 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.211(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/music 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.211(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - exportfs -rav
 
       # 8. Enable and start NFS server
