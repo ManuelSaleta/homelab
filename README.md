@@ -306,6 +306,46 @@ Every single time the primary manager plane node (k3s-control-01) is destroyed a
     pct enter <vmid>         # Drop straight into a root shell inside a running LXC container
 ```
 
+## Proxmox Host Maintenance & Package Upgrades
+
+To keep Proxmox VE secure and updated, execute updates from the Proxmox host CLI over SSH (`root@<proxmox-ip>`).
+
+> [!IMPORTANT]
+> **Always use `apt-get dist-upgrade` (or `apt full-upgrade`)** on Proxmox VE. Never run `apt upgrade`, as standard upgrades will not install new dependency packages or resolve kernel package transitions, which can break Proxmox meta-packages (`proxmox-ve`, `pve-manager`, `qemu-server`).
+
+### 1. Check for Available Updates
+```bash
+apt-get update
+apt list --upgradable
+```
+
+### 2. Execute Distribution Upgrade
+```bash
+# Safe non-interactive upgrade preserving local configuration
+DEBIAN_FRONTEND=noninteractive apt-get update && \
+DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+```
+
+### 3. Verify Installed Versions
+```bash
+pveversion -v
+```
+
+### 4. Kernel Reboot Procedure (When Needed)
+When a new kernel (`proxmox-kernel-*`) is installed, a host reboot is required to activate it:
+```bash
+# 1. Gracefully shut down active workloads
+qm shutdown 100    # k3s-control-01
+qm shutdown 210    # k3s-worker-01
+pct stop 250       # micro-nas
+
+# 2. Reboot Proxmox host
+systemctl reboot
+
+# 3. Verify running kernel post-reboot
+uname -r
+```
+
 ## Kubernetes CLI Commands
 
 Drop these native diagnostic profiles straight into the workstation shell configuration file (e.g., `~/.zshrc` or `~/.bashrc`).
@@ -322,32 +362,9 @@ These are some of the more common kubectl I found myself repeating; turned into 
     alias kinfo="kubectl cluster-info"
     alias kver="kubectl version --client"
     alias knodes="kubectl get nodes -o wide"
-
-    # Resource Lookups
-    alias kall-net="kubectl get all -n networking"
-    alias kpods="kubectl get pods -o wide"
-    alias ksvc="kubectl get svc --all-namespaces"
-    alias kingress="kubectl get ingress --all-namespaces"
-
-    # Real-Time Stream Tailing
-    alias klogs="kubectl logs -f --tail=100"
-    alias klogs-net="kubectl logs -f --tail=100 -n networking"
-
-    # Interactive Pod Shell Drop-In
-    alias kexec="kubectl exec -it"
-
-    alias kcontext-MOTHERSHIP="kubectl config use-context default"
-    alias kcurr-context="kubectl config get-contexts"
-
-    # Global System Diagnostics
-
-    alias kinfo="kubectl cluster-info"
-    alias kver="kubectl version --client"
-    alias knodes="kubectl get nodes -o wide"
     alias khealth="kubectl get componentstatuses"
 
     # Resource Lookups
-
     alias kall-net="kubectl get all -n networking"
     alias kpods="kubectl get pods -o wide"
     alias kdeployments="kubectl get deployment"
@@ -355,44 +372,35 @@ These are some of the more common kubectl I found myself repeating; turned into 
     alias kingress="kubectl get ingress --all-namespaces"
 
     # Ingress Controller Rules
-
     alias kwhitelist="kubectl get configmap -n ingress-nginx-internal ingress-nginx-controller -o jsonpath='{.data.whitelist-source-range}'"
 
     # Cluster Node Endpoint Extractors
-
     alias kips="kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type == \"InternalIP\")].address}'"
     alias kips-external="kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type == \"ExternalIP\")].address}'"
 
     # Real-Time Stream Tailing
-
     alias klogs="kubectl logs -f --tail=100"
     alias klogs-net="kubectl logs -f --tail=100 -n networking"
 
     # Interactive Pod Shell Drop-In
-
     alias kexec="kubectl exec -it"
 
     # Deployment Rollout Revisions Trace
-
     alias krev-pihole="kubectl rollout history deployment/pihole-dns-server -n networking"
     alias krev-tunnel="kubectl rollout history deployment/cloudflared-tunnel -n networking"
 
     # Local Proxy Management
-
     alias kproxy="kubectl proxy"
     alias kkill="pkill -9 -f 'kubectl proxy'"
 
     # Modern On-Demand Token Generator (Valid for 1 hour)
-
     alias ktoken="kubectl -n kubernetes-dashboard create token admin-user"
 
     # Inspect config-map value for a deployment
-
     alias homepage-config="kubectl get configmap homepage-config -n networking -o yaml"
 
     # Search ENVIRONMENT variables for a given service
-
-    kubectl exec -it deployment/karakeep-server -n networking -- env | grep DISABLE
+    # kubectl exec -it deployment/karakeep-server -n networking -- env | grep DISABLE
 ```
 
 # Application Specific
