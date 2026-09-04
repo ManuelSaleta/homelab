@@ -39,6 +39,11 @@ spec:
           volumeMounts:
             - name: uptime-kuma-data
               mountPath: /app/data
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             limits:
               memory: 512Mi

@@ -25,6 +25,8 @@ spec:
           env:
             - name: MAX_CONCURRENT_SESSIONS
               value: "5"
+          securityContext:
+            allowPrivilegeEscalation: false
 ---
 apiVersion: v1
 kind: Service

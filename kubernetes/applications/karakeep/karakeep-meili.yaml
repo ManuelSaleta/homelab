@@ -34,6 +34,11 @@ spec:
           volumeMounts:
             - name: meili-storage
               mountPath: /meili_data
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
       volumes:
         - name: meili-storage
           hostPath:
