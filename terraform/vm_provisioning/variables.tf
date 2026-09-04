@@ -205,3 +205,16 @@ variable "proxmox_vm_auditor_password" {
   description = "Password for the Proxmox VM auditor user. Will be used to power the Homepage Widgets that pull data from the Proxmox API."
   sensitive   = true
 }
+
+variable "domain_name" {
+  type        = string
+  description = "The base root domain name for homelab ingress routing and cluster services (e.g., example.com)."
+  default     = "example.com"
+}
+
+variable "homelab_domain" {
+  type        = string
+  description = "The base root domain name for homelab ingress routing and cluster services (e.g., example.com)."
+  default     = "example.com"
+}
+

@@ -42,7 +42,7 @@ spec:
             - name: DATA_DIR
               value: /data
             - name: NEXTAUTH_URL
-              value: "https://karakeep.freesalty.com"
+              value: "https://karakeep.${DOMAIN_NAME}"
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:
@@ -89,12 +89,12 @@ metadata:
     gethomepage.dev/name: "Karakeep"
     gethomepage.dev/group: "Services"
     gethomepage.dev/icon: "karakeep"
-    gethomepage.dev/href: "https://karakeep.freesalty.com"
+    gethomepage.dev/href: "https://karakeep.${DOMAIN_NAME}"
     gethomepage.dev/pod-selector: "app=karakeep-server"
 spec:
   ingressClassName: traefik
   rules:
-    - host: karakeep.freesalty.com
+    - host: karakeep.${DOMAIN_NAME}
       http:
         paths:
           - path: /

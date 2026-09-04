@@ -154,13 +154,13 @@ metadata:
     gethomepage.dev/name: "Plex"
     gethomepage.dev/group: "Media"
     gethomepage.dev/icon: "plex"
-    gethomepage.dev/href: "https://plex.freesalty.com/"
+    gethomepage.dev/href: "https://plex.${DOMAIN_NAME}/"
     gethomepage.dev/pod-selector: "app=plex-media-server"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik
   rules:
-    - host: plex.freesalty.com
+    - host: plex.${DOMAIN_NAME}
       http:
         paths:
           - path: /

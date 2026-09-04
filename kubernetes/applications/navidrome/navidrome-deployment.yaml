@@ -150,13 +150,13 @@ metadata:
     gethomepage.dev/name: "Navidrome"
     gethomepage.dev/group: "Media"
     gethomepage.dev/icon: "navidrome"
-    gethomepage.dev/href: "https://music.freesalty.com/"
+    gethomepage.dev/href: "https://music.${DOMAIN_NAME}/"
     gethomepage.dev/pod-selector: "app=navidrome-media-server"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik
   rules:
-    - host: music.freesalty.com
+    - host: music.${DOMAIN_NAME}
       http:
         paths:
           - path: /

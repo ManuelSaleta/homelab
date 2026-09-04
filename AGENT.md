@@ -90,7 +90,7 @@ metadata:
     gethomepage.dev/name: "<AppName>"
     gethomepage.dev/group: "<Category>"
     gethomepage.dev/icon: "<icon-name>"
-    gethomepage.dev/href: "https://<app>[.freesalty.com/](https://.freesalty.com/)"
+    gethomepage.dev/href: "https://<app>.example.com/"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 ```
 

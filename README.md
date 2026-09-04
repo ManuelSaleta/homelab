@@ -272,7 +272,7 @@ Every single time the primary manager plane node (k3s-control-01) is destroyed a
 
 - Verify split-horizon route validation loops directly across the local LAN interface:
   ```bash
-      curl -I -H "Host: pihole.freesalty.com" [http://192.168.50.240/admin/](http://192.168.50.240/admin/)
+      curl -I -H "Host: pihole.example.com" [http://192.168.50.240/admin/](http://192.168.50.240/admin/)
   ```
 
 ---
@@ -403,7 +403,7 @@ These are some of the more common kubectl I found myself repeating; turned into 
 
 By default `sign-ups are disabled. To add an additional user:
 
-1. Log into your account at https://karakeep.freesalty.com.
+1. Log into your account at https://karakeep.example.com.
 2. Navigate to the Admin Settings page (located in your profile/settings menu).
 3. Find the Users List tab and click the Create User button.
 4. Input their details (Name, Email, and a temporary password) and hit Create.
@@ -468,7 +468,7 @@ Pane 3: Watch Meilisearch build the full-text index
 
 Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](./kubernetes/applications/homepage/homepage-deployment.yaml) & [kubernetes/applications/homepage/config/](./kubernetes/applications/homepage/config/)
 
-- Web Ingress URL: `https://homepage.freesalty.com`
+- Web Ingress URL: `https://homepage.example.com`
 - Port Profile: `3000/TCP` (ClusterIP Service: `80/TCP`)
 - Key Integrations: Central dashboard with live widgets for Proxmox VE, Pi-hole, Tailscale mesh status, Cloudflare Tunnel health, and Grafana / Kubernetes cluster metrics. Uses ServiceAccount token (`homepage-service-account`) with scoped RBAC for native cluster discovery.
 
@@ -487,7 +487,7 @@ Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](./
   kubectl logs deployment/homepage -n networking -f --tail=50
   ```
 - Fix `403 Forbidden` / Invalid Host Header:
-  Ensure `HOMEPAGE_ALLOWED_HOSTS` includes `homepage.freesalty.com,localhost,127.0.0.1` in the deployment environment.
+  Ensure `HOMEPAGE_ALLOWED_HOSTS` includes `homepage.example.com,localhost,127.0.0.1` (or your `${DOMAIN_NAME}`) in the deployment environment.
 
 ---
 
@@ -495,7 +495,7 @@ Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](./
 
 Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](./kubernetes/applications/monitoring/prometheus-values.yaml), [loki-values.yaml](./kubernetes/applications/monitoring/loki-values.yaml), and [alloy-values.yaml](./kubernetes/applications/monitoring/alloy-values.yaml)
 
-- Web Ingress URL: `https://grafana.freesalty.com/`
+- Web Ingress URL: `https://grafana.example.com/`
 - Port Profile: `80/TCP` (Traefik Ingress routing to Grafana service)
 - Persistent Storage: `5Gi` PVC (`promstack-grafana`) for dashboards, alerts, and settings.
 - Integrated Data Sources: Prometheus (`kube-prometheus-stack`), Loki log aggregation gateway (`http://my-loki-gateway.monitoring.svc.cluster.local`), and Alloy telemetry collectors running as node DaemonSets.
@@ -525,11 +525,11 @@ Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](./
 
 Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](./kubernetes/applications/pihole/pihole-deployment.yaml)
 
-- Web Ingress URL: `https://pihole.freesalty.com/admin/`
+- Web Ingress URL: `https://pihole.example.com/admin/`
 - Dedicated MetalLB VIP: `192.168.50.242`
 - Port Profile: `53/UDP & 53/TCP` (DNS Resolution), `80/TCP` (Admin Web GUI)
 - Persistent Storage: HostPath volume mounted at `/var/data/pihole/config` (mapped to `/etc/pihole` inside the pod)
-- DNS Architecture: Upstream resolvers (`1.1.1.1`, `8.8.8.8`) with custom dnsmasq rule directing local homelab queries (`address=/freesalty.com/192.168.50.240`).
+- DNS Architecture: Upstream resolvers (`1.1.1.1`, `8.8.8.8`) with custom dnsmasq rule directing local homelab queries (`address=/example.com/192.168.50.240`).
 
 ### Pi-hole Troubleshooting
 
@@ -539,7 +539,7 @@ Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](./kube
   ```
 - Test local and upstream DNS queries:
   ```bash
-  dig @192.168.50.242 freesalty.com +short
+  dig @192.168.50.242 example.com +short
   dig @192.168.50.242 google.com +short
   ```
 - Stream FTL live query resolution logs:
@@ -557,7 +557,7 @@ Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](./kube
 
 Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml](./kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml)
 
-- Web Ingress URL: `https://uptime.freesalty.com`
+- Web Ingress URL: `https://uptime.example.com`
 - Port Profile: `3001/TCP` (ClusterIP Service: `80/TCP`)
 - Persistent Storage: `uptime-kuma-pvc` (4Gi RWO PV mapped to `/app/data`)
 - Deployment Strategy: `Recreate` strategy prevents SQLite database concurrent locks during rollout transitions.
@@ -583,7 +583,7 @@ Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.ya
 
 Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml](./kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml)
 
-- Web Ingress URL: `https://vault.freesalty.com`
+- Web Ingress URL: `https://vault.example.com`
 - Dedicated MetalLB VIP: `192.168.50.243`
 - Port Profile: `80/TCP` (HTTP & integrated WebSocket notifications)
 - Persistent Storage: `vaultwarden-nas-pv` (4Gi NFS mount at `/mnt/export/storage/vaultwarden` mapped to `/data` in container, non-root UID `1000:1000`)
@@ -602,7 +602,7 @@ Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.ya
 - Temporarily allow sign-ups for adding new accounts:
   ```bash
   kubectl set env deployment/vaultwarden-server -n networking SIGNUPS_ALLOWED=true
-  # Complete registration at https://vault.freesalty.com, then disable again:
+  # Complete registration at https://vault.example.com, then disable again:
   kubectl set env deployment/vaultwarden-server -n networking SIGNUPS_ALLOWED=false
   ```
 
@@ -612,7 +612,7 @@ Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.ya
 
 Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](./kubernetes/applications/plex/plex-deployment.yaml)
 
-- Web Ingress URL: `https://plex.freesalty.com/`
+- Web Ingress URL: `https://plex.example.com/`
 - Port Profile: `32400/TCP`
 - Persistent Storage:
   - Media Library: `/mnt/export/storage/plex/media` (500Gi NFS PV, read-only mount)
@@ -640,7 +640,7 @@ Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](./kubernet
 
 Resource Context: [kubernetes/applications/navidrome/navidrome-deployment.yaml](./kubernetes/applications/navidrome/navidrome-deployment.yaml)
 
-- Web Ingress URL: `https://music.freesalty.com/`
+- Web Ingress URL: `https://music.example.com/`
 - Port Profile: `4533/TCP`
 - Persistent Storage:
   - Music Library: `/mnt/export/storage/navidrome/music` (200Gi NFS PV, read-only mount)
