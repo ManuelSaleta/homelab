@@ -105,9 +105,9 @@ Secure authentication loops rely entirely on public key checks. Ensure the signa
 
 The target Proxmox host system must have the following configuration targets:
 
-    local: Storage target hosting the baseline Ubuntu installation media image (local:iso/ubuntu-26.04.1-live-server-amd64.iso) and LXC template (local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst).
-
-    local-lvm: Block pool backend allocation targeted for virtual node root disks (scsi0).
+- `local`: Storage target hosting the baseline Ubuntu installation media image (`local:iso/ubuntu-26.04.1-live-server-amd64.iso`) and LXC template (`local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst`).
+- `local-lvm`: Block pool backend allocation targeted for virtual node root disks (`scsi0`) and container root disks (`rootfs`).
+- `ext-hdd-storage`: Dedicated LVM-thin pool (`ext-hdd-vg`) backed by the physical 1TB external HDD (`/dev/sda`), hosting the 900 GB persistent mount point (`/mnt/export/storage`) for `micro-nas` (CT 250).
 
 ---
 
@@ -145,9 +145,9 @@ Directory Context: `terraform/vm_provisioning/*`
 Consumes the golden template image to provision resource-mapped virtual hardware topologies, inject network configurations, and handle automatic node registration using the baked `ID 777` template.
 Compute Fleet Profiles
 
-- Manager Plane (k3s-control-01): 2 Cores, 3GB RAM, DHCP Network Allocation.
-- Worker Pools (k3s-worker-0[1-N]): 2 Cores, 2GB RAM, Static Networking Matrix (starting at .210 / .211).
-- Decentralized Storage Block (micro-nas): Automation target spinning up dedicated sync spaces. Outside of the K3s cluster, this ensures data safety and lets me play around with pods, replicas and svcs without fear of data loss.
+- **Manager Plane (`k3s-control-01`, VM 100)**: 2 Cores, 3GB RAM, DHCP Network Allocation (`192.168.50.185`). Hosts the Kubernetes API server, CoreDNS, and Traefik ingress controller.
+- **Worker Node (`k3s-worker-01`, VM 210)**: 2 Cores, 3GB RAM, Static IP (`192.168.50.210`). Single worker in the streamlined dual-node topology (`worker_count = 1`; `k3s-worker-02` decommissioned).
+- **Decentralized Storage Block (`micro-nas`, CT 250)**: Dedicated lightweight LXC container (1 Core, 512MB RAM, Static IP `192.168.50.250`) providing NFS kernel exports and Syncthing over Tailscale, backed by 900 GB on `ext-hdd-storage`. Decoupled from the K3s cluster lifecycle to ensure data safety.
 
 ---
 
@@ -155,18 +155,16 @@ Compute Fleet Profiles
 
 Directory Context: `kubernetes/infrastructure/*`
 
-Because bare-metal K3s nodes do not feature a native cloud load balancer controller out of the box, core networking elements handle internal service mapping.
-
-1. MetalLB Load Balancer Layer
-
-MetalLB hooks directly into the physical Layer 2 routing fabric to assign real external IP addresses to cluster services.
-Upstream Installation Target:
+Because bare-metal K3s nodes do not feature a native cloud load balancer controller out of the box, core networking elements handle internal and external service mapping. Deploy all core infrastructure components via:
 
 ```bash
-kubectl apply -f kubernetes/infrastructure/metallb-config.yaml
+make infra-up
 ```
 
-Configuration Sync: From the project root, apply localized L2 IP pool definitions via the consolidated configurations (kubernetes/infrastructure/metallb-config.yaml).
+This reconciles the three foundational infrastructure manifests in order:
+1. **MetalLB (`metallb-config.yaml`)**: Hooks directly into the physical Layer 2 routing fabric to assign real external IP addresses (`192.168.50.240 - 192.168.50.249`) to cluster services like Pi-hole and Vaultwarden.
+2. **Traefik DNS (`traefik-dns-config.yaml`)**: Configures Traefik Ingress controller DNS resolver options and routing for cluster endpoints.
+3. **Cloudflare Tunnel (`cloudflared-config.yaml`)**: Runs high-availability `cloudflared` edge routing external HTTPS traffic securely into internal cluster endpoints without opening inbound firewall ports.
 
 ---
 
@@ -180,8 +178,8 @@ Establishes a single service instance that co-locates core DNS filtering network
 
 Dedicated IP Profile: 192.168.50.242 (DNS: 53/UDP & 53/TCP | Web Panel: 80/TCP)
 
-- Web Admin Panel Path: https://pihole.freesatly.com/admin (this will be different for everybody of course)
-- Persistent Storage Architecture: Currently mapped to local node hostPath space (/var/data/pihole/config). Data strictly belongs to the physical worker host running the active pod. For absolute cross-node mobility, transition this layer to a distributed engine (e.g., Longhorn or NFS).
+- Web Admin Panel Path: `https://pihole.freesalty.com/admin` (or `https://pihole.${HOMELAB_DOMAIN}/admin`)
+- Persistent Storage Architecture: Currently mapped to local node hostPath space (`/var/data/pihole/config`). Data strictly belongs to the physical worker host running the active pod.
 - Runtime Administrative Passwords: Update access configurations directly via the execution namespace:
 
 ```bash
@@ -190,13 +188,16 @@ Dedicated IP Profile: 192.168.50.242 (DNS: 53/UDP & 53/TCP | Web Panel: 80/TCP)
 
 ## 2. Observability Suite: Monitoring Stack
 
-Deploys a comprehensive performance tracking layer via clean Helm upgrade and installation operations.
+Deploys a comprehensive performance tracking layer via Helm upgrade and installation operations (`make promstack-install-all`).
+
+> [!NOTE]
+> **Optional / Inactive on 16 GB Topology**: To maintain a comfortable memory footprint on the 16 GB host alongside media workloads, Prometheus, Grafana, Loki, and Alloy are currently undeployed. Deploy them whenever needed via `make promstack-install-all`.
 
 - Engine Scope: Orchestrates Prometheus, Grafana, Loki, and Alloy pipelines securely.
-- Workspace Flush (Danger Target): Wipe all logging workloads in the environment completely:
+- Clean / Uninstall Workloads:
 
 ```bash
-    kubectl delete all --all -n monitoring
+make promstack-clean
 ```
 
 # 📁 Storage Architecture & Decoupling: "What is Where"
@@ -216,8 +217,8 @@ PROXMOX HOST: mothership (16 GB Physical RAM Total)
 │   ├── CT 250 [micro-nas]:      15G NVMe |   512 MB (0.5 GB) RAM (LXC NFS & Syncthing Engine)
 │   └── ⚡ Available Host Headroom: ~9.4 GB RAM for ZFS ARC, Linux page cache, and future workloads
 │
-└── 💽 sda (931.5G / 1TB External HDD) -> Mounted to `/mnt/export/storage`
-    └── CT 250 [micro-nas]: Dedicated Thin Disk Mount Point (Stateful NFS Shares)
+└── 💽 sda (931.5G / 1TB External HDD) -> VG: `ext-hdd-vg` (Pool: `ext-hdd-storage`)
+    └── CT 250 [micro-nas]: 900 GB Thin-Provisioned Mount Point (`/mnt/export/storage`)
 ```
 
 ### 2. Standardized Storage Pattern: `/mnt/export/storage/<application-name>`
@@ -228,7 +229,7 @@ Inside `micro-nas` (`192.168.50.250`), persistent storage is mounted under `/mnt
 | :--- | :--- | :--- | :--- | :--- |
 | **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
 | **Navidrome (Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), cache & artwork |
-| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files |
+| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files (200Gi request) |
 | **Plex (Config & DB)** | `/mnt/export/storage/plex/config` | `/mnt/export/storage/plex/config 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-config-pv`, 20Gi) | Server metadata, SQLite DB, agent state |
 | **Plex (Media Library)**| `/mnt/export/storage/plex/media` | `/mnt/export/storage/plex/media 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-media-pv`, 500Gi) | Movies, TV series, video content |
 | **Obsidian Vault** | `/mnt/export/storage/obsidian` | N/A (Syncthing user space) | Syncthing / Tailscale Mesh | Markdown notes synchronized across devices |
@@ -241,9 +242,19 @@ Inside `micro-nas` (`192.168.50.250`), persistent storage is mounted under `/mnt
 ### 4. Manual Maintenance & Storage Permissions (`micro-nas`)
 
 > [!WARNING]
-> **Manual Changes Required on Existing Micro-NAS**: Because `micro-nas` (CT 250) is persistent and decoupled (never destroyed during compute teardowns or worker rebuilds), cloud-init `runcmd` directives in `micro-nas.tf` **only run once on initial container provisioning**.
+> **Manual Changes Required on Existing Micro-NAS**: `micro-nas` is provisioned as an LXC container (CT 250). Unlike KVM virtual machines, Proxmox LXC containers do not execute cloud-init `user-data` snippets. Initial container setup (installing packages, TUN configuration, mount points) is performed directly inside the container or via `pct enter 250`.
 >
-> Any subsequent directory creation, ownership changes (`chown`), permission adjustments (`chmod`), or `/etc/exports` rule additions on an existing `micro-nas` instance are **manual changes** and must be run directly on `micro-nas` (`192.168.50.250` or via `pct enter 250` on the Proxmox host).
+> Furthermore, because `micro-nas` is persistent and decoupled (never destroyed during compute teardowns or worker rebuilds), directory creation, ownership changes (`chown`), permission adjustments (`chmod`), or `/etc/exports` rule additions on an existing `micro-nas` instance are **manual maintenance changes** and must be run directly on `micro-nas` (`192.168.50.250` or via `pct enter 250` on the Proxmox host).
+
+#### Host Configuration for Tailscale TUN & NFS (Proxmox Host)
+Running Tailscale and the kernel NFS server inside an LXC container requires privileged mode and host TUN passthrough. Ensure `/etc/pve/lxc/250.conf` on the Proxmox host includes:
+
+```conf
+lxc.cgroup2.devices.allow: c 10:200 rwm
+lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
+```
+
+And the container configuration must include `features: nesting=1,mount=nfs` and `unprivileged: 0`.
 
 #### Required Manual Setup / Fix Commands
 
@@ -417,8 +428,9 @@ These are some of the more common kubectl I found myself repeating; turned into 
     alias ksvc="kubectl get svc --all-namespaces"
     alias kingress="kubectl get ingress --all-namespaces"
 
-    # Ingress Controller Rules
-    alias kwhitelist="kubectl get configmap -n ingress-nginx-internal ingress-nginx-controller -o jsonpath='{.data.whitelist-source-range}'"
+    # Ingress Controller Rules & Logs (Traefik)
+    alias ktraefik="kubectl get ingressroute,middleware -A"
+    alias ktraefik-logs="kubectl logs -n kube-system -l app.kubernetes.io/name=traefik -f"
 
     # Cluster Node Endpoint Extractors
     alias kips="kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type == \"InternalIP\")].address}'"
@@ -439,8 +451,8 @@ These are some of the more common kubectl I found myself repeating; turned into 
     alias kproxy="kubectl proxy"
     alias kkill="pkill -9 -f 'kubectl proxy'"
 
-    # Modern On-Demand Token Generator (Valid for 1 hour)
-    alias ktoken="kubectl -n kubernetes-dashboard create token admin-user"
+    # Modern On-Demand Token Generator (Homepage Service Account)
+    alias ktoken-homepage="kubectl -n networking create token homepage-service-account"
 
     # Inspect config-map value for a deployment
     alias homepage-config="kubectl get configmap homepage-config -n networking -o yaml"
@@ -542,12 +554,19 @@ Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](./
   ```
 - Fix `403 Forbidden` / Invalid Host Header:
   Ensure `HOMEPAGE_ALLOWED_HOSTS` includes `homepage.example.com,localhost,127.0.0.1` (or your `${DOMAIN_NAME}`) in the deployment environment.
+- Prevent HTTP 500 / 404 Service Request Storms:
+  In `kubernetes/applications/homepage/config/kubernetes.yaml`, keep `services: false`. Enabling raw service discovery prompts Homepage to probe all discovered Kubernetes Service ports with unauthenticated HTTP GET requests, causing massive console error storms (404, 500, 524).
+- Cluster-Internal Widget Endpoints:
+  Internal widgets in `kubernetes/applications/homepage/config/services.yaml` should use full internal FQDNs (e.g., `http://pihole-dns-server.networking.svc.cluster.local:80/api.php`). Inactive services (such as Grafana when monitoring is undeployed) must be disabled or commented out in `widgets.yaml`.
 
 ---
 
 ## Grafana & Observability Suite
 
 Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](./kubernetes/applications/monitoring/prometheus-values.yaml), [loki-values.yaml](./kubernetes/applications/monitoring/loki-values.yaml), and [alloy-values.yaml](./kubernetes/applications/monitoring/alloy-values.yaml)
+
+> [!NOTE]
+> **Optional / Inactive on 16 GB Host Footprint**: To maintain low memory usage on the single 16 GB laptop host, Prometheus, Grafana, Loki, and Alloy are currently undeployed. The Helm configurations and manifests are ready to deploy whenever desired via `make promstack-install-all`.
 
 - Web Ingress URL: `https://grafana.example.com/`
 - Port Profile: `80/TCP` (Traefik Ingress routing to Grafana service)
