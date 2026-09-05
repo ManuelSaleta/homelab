@@ -22,3 +22,6 @@ crash.log
 
 # Ignore the directory where ISO images are downloaded for VM provisioning
 downloaded_iso_path/
+
+# Local backup archives
+backup/

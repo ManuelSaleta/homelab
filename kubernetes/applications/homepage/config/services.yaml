@@ -13,29 +13,13 @@
             - vms
 - Infrastructure:
     - Cloudflare-Pod:
+        icon: cloudflare.png
+        href: https://one.dash.cloudflare.com/
+        description: Cloudflare Tunnel Daemon
         widget:
           type: kubernetes
           namespace: networking
           podSelector: app=cloudflared
-          cluster:
-            # Shows cluster-wide statistics
-            show: true
-            # Shows the aggregate CPU stats
-            cpu: true
-            # Shows the aggregate memory stats
-            memory: true
-            # Shows a custom label
-            showLabel: true
-            label: "cluster"
-          nodes:
-            # Shows node-specific statistics
-            show: true
-            # Shows the CPU for each node
-            cpu: true
-            # Shows the memory for each node
-            memory: true
-            # Shows the label, which is always the node name
-            showLabel: true
 - Network:
     - Cloudflare-Tunnel:
         icon: cloudflare.png
@@ -66,17 +50,18 @@
           key: "{{HOMEPAGE_VAR_TAILSCALE_API_KEY}}"
           label: "Laptop Status"
           fields: [address, last_seen]
-- Monitoring:
-    - Grafana:
-        icon: grafana.png
-        href: http://promstack-grafana.monitoring.svc.cluster.local:80
-        widget:
-          type: grafana
-          version: 2
-          url: http://promstack-grafana.monitoring.svc.cluster.local:80
-          # Switch from Token to Basic Auth
-          username: "{{HOMEPAGE_VAR_GRAFANA_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
-          show_dashboards: true
-          show_datasources: true
-          show_alerts: true
+# Monitoring stack (kube-prometheus-stack, Grafana) currently uninstalled
+# - Monitoring:
+#     - Grafana:
+#         icon: grafana.png
+#         href: http://promstack-grafana.monitoring.svc.cluster.local:80
+#         widget:
+#           type: grafana
+#           version: 2
+#           url: http://promstack-grafana.monitoring.svc.cluster.local:80
+#           username: "{{HOMEPAGE_VAR_GRAFANA_USERNAME}}"
+#           password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
+#           show_dashboards: true
+#           show_datasources: true
+#           show_alerts: true
+

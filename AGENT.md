@@ -14,7 +14,7 @@ This file serves as the system instruction context and prime directive for AI co
    - `media`: Plex Media Server, Navidrome Music Server.
    - `networking`: Pi-hole DNS, Cloudflared Tunnel, Homepage Dashboard, Karakeep, Uptime Kuma, Vaultwarden.
    - `monitoring`: Kube-Prometheus-Stack, Grafana, Loki, Alloy.
-5. **Dynamic Domain Parameterization**: **Never hardcode static root domains** (e.g., `example.com`, `freesatly.com`) into Kubernetes manifests or ingress rules. Always use `${DOMAIN_NAME}` or `${HOMELAB_DOMAIN}`, which the root `Makefile` dynamically populates via `envsubst` from `terraform.tfvars`.
+5. **Dynamic Domain Parameterization**: **Never hardcode static root domains** (e.g., `example.com`, `freesalty.com`) into Kubernetes manifests or ingress rules. Always use `${DOMAIN_NAME}` or `${HOMELAB_DOMAIN}`, which the root `Makefile` dynamically populates via `envsubst` from `terraform.tfvars`.
 6. **Strict Resource Budgeting**: The physical Proxmox host (`mothership`) has **16 GB of physical RAM**. Memory allocations must be calculated conservatively (~9.4 GB host headroom reserved for ZFS ARC, Linux page cache, and hypervisor overhead).
 
 ---
@@ -106,6 +106,10 @@ Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.
 ### Non-NFS Exceptions
 - **Pi-hole**: Uses local node `hostPath: /var/data/pihole/config` (tied to worker node).
 - **Uptime Kuma**: Uses standard single-pod PVC (`uptime-kuma-pvc`) with deployment strategy `Recreate`.
+
+> [!IMPORTANT]
+> **Manual Micro-NAS Maintenance**: `micro-nas` (CT 250) is stateful and decoupled from cluster teardowns. Because cloud-init only runs on container creation, adding new persistent directories, updating ownership/permissions (`chown -R 1000:1000` / `chmod`), or adjusting `/etc/exports` on an existing `micro-nas` instance must be executed manually over SSH (`gman@192.168.50.250`).
+
 
 ---
 

@@ -103,7 +103,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 
     # KEEP AS HTTP: This is cluster-internal traffic pod-to-pod, so plain text port 80 is correct and faster
-    gethomepage.dev/widget.url: "http://pihole-loadbalancer-service.networking"
+    gethomepage.dev/widget.url: "http://pihole-loadbalancer-service.networking.svc.cluster.local:80"
     gethomepage.dev/widget.version: "6"
     gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"
     gethomepage.dev/pod-selector: "app=pihole-dns-server"

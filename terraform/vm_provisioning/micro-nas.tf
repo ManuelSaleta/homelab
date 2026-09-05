@@ -148,15 +148,24 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
     size         = 15
   }
 
-  # Dedicated persistent storage mount point (maps to /mnt/export/storage in container)
+  # Dedicated persistent storage mount point on the external 1TB HDD pool
   mount_point {
-    volume = "local-lvm"
-    size   = "50G"
+    volume = "ext-hdd-storage"
+    size   = "900G"
     path   = "/mnt/export/storage"
   }
 
   features {
     nesting = true
     mount   = ["nfs"]
+  }
+
+  lifecycle {
+    ignore_changes = [
+      initialization,
+      operating_system,
+      disk,
+      mount_point,
+    ]
   }
 }
