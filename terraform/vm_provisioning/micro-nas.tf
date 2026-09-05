@@ -151,7 +151,7 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
   # Dedicated persistent storage mount point on the external 1TB HDD pool
   mount_point {
     volume = "ext-hdd-storage"
-    size   = "200G"
+    size   = "900G"
     path   = "/mnt/export/storage"
   }
 
