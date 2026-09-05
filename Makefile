@@ -190,6 +190,7 @@ K3S_TARGETS   := kubernetes_secret_v1.vaultwarden_secret \
                  kubernetes_secret_v1.grafana-secret \
                  kubernetes_secret_v1.karakeep_secret \
                  kubernetes_secret_v1.tailscale_secret \
+                 kubernetes_secret_v1.homepage_background \
                  kubernetes_config_map_v1.homepage_config
 
 # ==============================================================================
@@ -263,19 +264,19 @@ destroy-all: ## Completely tear down the entire cluster infrastructure layout (W
 
 # List of core infrastructure manifests (in deployment order)
 INFRA_MANIFESTS := metallb-config.yaml \
-                   tailscale-config.yaml \
-                   cloudflared-tunnel.yaml
+                   traefik-dns-config.yaml \
+                   cloudflared-config.yaml
 
-# Prepend the directory path to each manifest
-INFRA_FILES := $(addprefix $(INFRA_DIR)/,$(INFRA_MANIFESTS))
+# Construct -f argument for each manifest
+INFRA_ARGS := $(addprefix -f ,$(addprefix $(INFRA_DIR)/,$(INFRA_MANIFESTS)))
 
 infra-up: ## Deploy Cluster Infrastructure Core Layers
 	@echo "🚀 Deploying Cluster Infrastructure Core Layers..."
-	kubectl apply -f $(INFRA_FILES)
+	kubectl apply $(INFRA_ARGS)
 
 infra-down: ## Tear down Core Infrastructure Layers
 	@echo "⚠️ Tearing down Core Infrastructure Layers..."
-	kubectl delete -f $(INFRA_FILES) --ignore-not-found
+	kubectl delete $(INFRA_ARGS) --ignore-not-found
 
 infra-status:
 	@echo "🔍 Checking Infrastructure Workloads..."
@@ -315,11 +316,13 @@ pihole-down:
 
 homepage-up:
 	@echo "🏠 Deploying Homepage Dashboard (Domain: $(HOMELAB_DOMAIN))..."
+	kubectl apply -f $(APPS_DIR)/homepage/rbac.yaml
 	$(call APPLY_YAML,$(APPS_DIR)/homepage/homepage-deployment.yaml)
 
 homepage-down:
 	@echo "💥 Removing Homepage Dashboard..."
 	$(call DELETE_YAML,$(APPS_DIR)/homepage/homepage-deployment.yaml)
+	kubectl delete -f $(APPS_DIR)/homepage/rbac.yaml --ignore-not-found
 
 uptime-kuma-up:
 	@echo "🎯 Deploying Uptime Kuma (Domain: $(HOMELAB_DOMAIN))..."
