@@ -50,6 +50,15 @@
           key: "{{HOMEPAGE_VAR_TAILSCALE_API_KEY}}"
           label: "Laptop Status"
           fields: [address, last_seen]
+- Web:
+    - Manuel Saleta:
+        icon: globe.png
+        href: https://manuelsaleta.com
+        description: Personal Portfolio & Website
+    - GitHub:
+        icon: github.png
+        href: https://github.com/ManuelSaleta
+        description: Manuel Saleta on GitHub
 # Monitoring stack (kube-prometheus-stack, Grafana) currently uninstalled
 # - Monitoring:
 #     - Grafana:

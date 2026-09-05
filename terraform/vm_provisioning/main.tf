@@ -47,7 +47,7 @@ provider "kubernetes" {
 resource "proxmox_virtual_environment_vm" "k3s_control" {
   name        = "k3s-control-01"
   description = "Lightweight K3s Kubernetes Control Node cloned from template 777"
-  tags        = ["Kubernetes", "K3s", "manager"]
+  tags        = ["k3s", "kubernetes", "manager"]
   node_name   = "mothership"
   vm_id       = 100
   on_boot     = true
