@@ -99,7 +99,7 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
   node_name     = "mothership"
   vm_id         = 250 # Distinct ID isolated away from manager (100) and worker blocks
   description   = "Managed by Terraform - Micro Private NAS (LXC) for Storage"
-  tags          = ["Storage", "Tailscale", "nas", "lxc"]
+  tags          = ["lxc", "nas", "storage", "tailscale"]
   start_on_boot = true
   started       = true
   unprivileged  = false # Privileged mode required for kernel NFS server operation

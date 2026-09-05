@@ -1,0 +1,25 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/configs/bookmarks
+
+- Developer:
+    - GitHub:
+        - abbr: GH
+          icon: github.png
+          href: https://github.com/ManuelSaleta
+
+- Web:
+    - Manuel Saleta:
+        - abbr: MS
+          icon: globe.png
+          href: https://manuelsaleta.com
+
+- Social:
+    - Reddit:
+        - abbr: RE
+          href: https://reddit.com/
+
+- Entertainment:
+    - YouTube:
+        - abbr: YT
+          href: https://youtube.com/

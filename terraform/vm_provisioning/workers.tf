@@ -39,7 +39,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
   count       = var.worker_count
   name        = "k3s-worker-0${count.index + 1}"
   description = "Managed by Terraform - K3s Worker Node via Golden Template"
-  tags        = ["Kubernetes", "K3s", "worker"]
+  tags        = ["k3s", "kubernetes", "worker"]
   node_name   = "mothership"
   vm_id       = 210 + count.index # Arbitrary starting point for worker VM IDs; matched to the static IP assignment in cloud-init
   on_boot     = true
