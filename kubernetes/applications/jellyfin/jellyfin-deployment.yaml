@@ -1,0 +1,179 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+# 1. Media Library Persistent Volume & Claim (Shares identical NFS library with Plex)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jellyfin-media-pv
+  labels:
+    type: nfs
+    app: jellyfin
+spec:
+  capacity:
+    storage: 500Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/export/storage/plex/media
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-media-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 500Gi
+  volumeName: jellyfin-media-pv
+---
+# 2. Jellyfin Server Configuration & Database Persistent Volume & Claim
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jellyfin-config-pv
+  labels:
+    type: nfs
+    app: jellyfin
+spec:
+  capacity:
+    storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.50.250
+    path: /mnt/export/storage/jellyfin/config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 20Gi
+  volumeName: jellyfin-config-pv
+---
+# 3. Jellyfin Media Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin-media-server
+  namespace: media
+  labels:
+    app: jellyfin-media-server
+    app.kubernetes.io/name: jellyfin
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: jellyfin-media-server
+  template:
+    metadata:
+      labels:
+        app: jellyfin-media-server
+    spec:
+      containers:
+        - name: jellyfin-core-engine
+          image: jellyfin/jellyfin:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: JELLYFIN_PublishedServerUrl
+              value: "https://jellyfin.${DOMAIN_NAME}"
+          ports:
+            - containerPort: 8096
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1500m"
+              memory: "2048Mi"
+          volumeMounts:
+            - name: jellyfin-media-mount
+              mountPath: /media
+              readOnly: true
+            - name: jellyfin-persistent-config
+              mountPath: /config
+            - name: jellyfin-cache-tmp
+              mountPath: /cache
+            - name: jellyfin-transcode-tmp
+              mountPath: /transcode
+      volumes:
+        - name: jellyfin-media-mount
+          persistentVolumeClaim:
+            claimName: jellyfin-media-pvc
+        - name: jellyfin-persistent-config
+          persistentVolumeClaim:
+            claimName: jellyfin-config-pvc
+        - name: jellyfin-cache-tmp
+          emptyDir: {}
+        - name: jellyfin-transcode-tmp
+          emptyDir: {}
+---
+# 4. ClusterIP Service Definition
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-service
+  namespace: media
+  labels:
+    app: jellyfin-media-server
+spec:
+  type: ClusterIP
+  selector:
+    app: jellyfin-media-server
+  ports:
+    - port: 8096
+      targetPort: 8096
+      protocol: TCP
+      name: http
+---
+# 5. Traefik Ingress with Homepage Dashboard Integration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jellyfin-ingress
+  namespace: media
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Jellyfin"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "jellyfin"
+    gethomepage.dev/href: "https://jellyfin.${DOMAIN_NAME}/"
+    gethomepage.dev/pod-selector: "app=jellyfin-media-server"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: jellyfin.${DOMAIN_NAME}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jellyfin-service
+                port:
+                  number: 8096

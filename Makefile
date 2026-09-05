@@ -44,7 +44,7 @@ DELETE_YAML = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) envsubst 
 .PHONY: p-init p-validate p-build p-debug p-clean
 .PHONY: t-init t-validate t-clean t-plan-infra t-apply-infra t-plan-k3s t-apply-k3s
 .PHONY: infra-up infra-down infra-status
-.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down plex-up plex-down uptime-kuma-up uptime-kuma-down
+.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down plex-up plex-down jellyfin-up jellyfin-down uptime-kuma-up uptime-kuma-down
 .PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all drain-worker-02
 .PHONY: install-loki install-alloy install-promstack grafana-pass promstack-install-all promstack-clean
 
@@ -90,6 +90,7 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
 	@echo "  make navidrome-up/down     - Target deployment specifically for Navidrome Music Server"
 	@echo "  make plex-up/down          - Target deployment specifically for Plex Media Server"
+	@echo "  make jellyfin-up/down      - Target deployment specifically for Jellyfin Media Server"
 	@echo ""
 	@echo "Cluster Lifecycle Control Matrix:"
 	@echo "  make deploy-all            - Orchestrate full stack: compute provisioning up to configs"
@@ -356,13 +357,21 @@ plex-down:
 	@echo "💥 Removing Plex Media Server Deployment..."
 	$(call DELETE_YAML,$(APPS_DIR)/plex/plex-deployment.yaml)
 
-apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up uptime-kuma-up navidrome-up plex-up ## Deploy all applications at once
+jellyfin-up:
+	@echo "🍿 Deploying Jellyfin Media Server (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/jellyfin/jellyfin-deployment.yaml)
+
+jellyfin-down:
+	@echo "💥 Removing Jellyfin Media Server Deployment..."
+	$(call DELETE_YAML,$(APPS_DIR)/jellyfin/jellyfin-deployment.yaml)
+
+apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up uptime-kuma-up navidrome-up plex-up jellyfin-up ## Deploy all applications at once
 	@echo "✅ All applications applied successfully with domain: $(HOMELAB_DOMAIN)."
 
 apps-down: ## Tear down all cluster workloads with a safety step
 	@echo "🛑 WARNING: You are about to wipe all apps. Press Ctrl+C to abort, or Enter to continue..."
 	@read _
-	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down uptime-kuma-down navidrome-down plex-down
+	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down uptime-kuma-down navidrome-down plex-down jellyfin-down
 
 apps-status:
 	@echo "🔍 Checking Application Status..."
