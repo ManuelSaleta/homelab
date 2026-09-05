@@ -1,14 +1,15 @@
 mode: cluster
-# Enable the discovery of different resource types
-services: true
+# Enable the discovery of different resource types (use ingress only to prevent 404 flooding on internal cluster services)
+services: false
 ingress: true
-traefik: true # Only if you are using Traefik IngressRoutes
+traefik: false # Only if you are using Traefik IngressRoutes
 gateway: false # Set to true if using Gateway API
 
 # Specify the namespaces to watch
 namespaces:
   - networking
-  - default
+  - media
 # The presence of this block often forces the provider to active state
 kubernetes:
   enabled: true
+

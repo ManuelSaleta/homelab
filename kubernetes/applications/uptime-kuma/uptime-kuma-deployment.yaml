@@ -89,7 +89,7 @@ metadata:
     # Enables Traefik automatic dns reroute to https
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
     # Match the namespace-scoped internal cluster routing pattern
-    gethomepage.dev/widget.url: "http://uptime-kuma-service.networking"
+    gethomepage.dev/widget.url: "http://uptime-kuma-service.networking.svc.cluster.local:80"
     # Pass the required slug parameter for Uptime Kuma to fetch metrics
     gethomepage.dev/widget.slug: "default"
     # Link it to the pod selector so the cluster proxy maps the network path perfectly

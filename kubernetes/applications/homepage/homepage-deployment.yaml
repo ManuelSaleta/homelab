@@ -17,6 +17,10 @@ spec:
     spec:
       automountServiceAccountToken: true
       serviceAccountName: homepage-service-account
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
@@ -117,6 +121,8 @@ spec:
             # Allowed Hosts: Explicitly whitelist trusted host domains (no wildcards)
             - name: HOMEPAGE_ALLOWED_HOSTS
               value: "homepage.${DOMAIN_NAME},localhost,127.0.0.1"
+            - name: NODE_OPTIONS
+              value: "--dns-result-order=ipv4first"
           ports:
             - containerPort: 3000
               name: http

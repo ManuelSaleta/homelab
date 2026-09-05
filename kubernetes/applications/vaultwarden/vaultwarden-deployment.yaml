@@ -85,6 +85,7 @@ metadata:
     gethomepage.dev/group: "Security"
     gethomepage.dev/icon: "vaultwarden"
     gethomepage.dev/href: "https://vault.${DOMAIN_NAME}"
+    gethomepage.dev/pod-selector: "app=vaultwarden-server"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik
