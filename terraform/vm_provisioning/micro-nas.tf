@@ -66,6 +66,7 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - mkdir -p /mnt/export/storage/navidrome/music
       - mkdir -p /mnt/export/storage/plex/config
       - mkdir -p /mnt/export/storage/plex/media
+      - mkdir -p /mnt/export/storage/jellyfin/config
       - mkdir -p /mnt/export/storage/obsidian
 
       # 6. Set permissions (1000 for standard non-root container workloads, gman for Obsidian sync)
@@ -74,6 +75,8 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - chmod -R 775 /mnt/export/storage/navidrome/music
       - chown -R 1000:1000 /mnt/export/storage/plex
       - chmod -R 775 /mnt/export/storage/plex/media
+      - chown -R 1000:1000 /mnt/export/storage/jellyfin
+      - chmod -R 775 /mnt/export/storage/jellyfin/config
       - chown -R gman:gman /mnt/export/storage/obsidian
 
       # 7. Write hardened export rules to /etc/exports (restricted to K3s nodes with all_squash)
@@ -82,6 +85,7 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - echo "/mnt/export/storage/navidrome/music 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - echo "/mnt/export/storage/plex/config 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - echo "/mnt/export/storage/plex/media 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/jellyfin/config 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - exportfs -rav
 
       # 8. Enable and start NFS server
@@ -99,7 +103,7 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
   node_name     = "mothership"
   vm_id         = 250 # Distinct ID isolated away from manager (100) and worker blocks
   description   = "Managed by Terraform - Micro Private NAS (LXC) for Storage"
-  tags          = ["Storage", "Tailscale", "nas", "lxc"]
+  tags          = ["lxc", "nas", "storage", "tailscale"]
   start_on_boot = true
   started       = true
   unprivileged  = false # Privileged mode required for kernel NFS server operation
