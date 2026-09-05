@@ -169,8 +169,14 @@ variable "http_bind_address_ip" {
 
 variable "worker_count" {
   type        = number
-  description = "The number of worker nodes to provision in the cluster."
-  default     = 2
+  description = "The number of worker nodes to provision in the cluster (1 worker + 1 control plane = dual-node setup)."
+  default     = 1
+}
+
+variable "proxmox_lxc_template" {
+  type        = string
+  description = "The Proxmox container template file for micro-nas LXC (e.g. local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst)"
+  default     = "local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst"
 }
 
 variable "k3s_share_token" {
@@ -199,3 +205,16 @@ variable "proxmox_vm_auditor_password" {
   description = "Password for the Proxmox VM auditor user. Will be used to power the Homepage Widgets that pull data from the Proxmox API."
   sensitive   = true
 }
+
+variable "domain_name" {
+  type        = string
+  description = "The base root domain name for homelab ingress routing and cluster services (e.g., example.com)."
+  default     = "example.com"
+}
+
+variable "homelab_domain" {
+  type        = string
+  description = "The base root domain name for homelab ingress routing and cluster services (e.g., example.com)."
+  default     = "example.com"
+}
+

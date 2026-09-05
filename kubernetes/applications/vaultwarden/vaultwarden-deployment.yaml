@@ -38,7 +38,7 @@ spec:
             - name: WEBSOCKET_ENABLED
               value: "true"
             - name: DOMAIN
-              value: "https://vault.freesalty.com"
+              value: "https://vault.${DOMAIN_NAME}"
             - name: ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -84,12 +84,12 @@ metadata:
     gethomepage.dev/name: "Vaultwarden"
     gethomepage.dev/group: "Security"
     gethomepage.dev/icon: "vaultwarden"
-    gethomepage.dev/href: "https://vault.freesalty.com"
+    gethomepage.dev/href: "https://vault.${DOMAIN_NAME}"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik
   rules:
-    - host: vault.freesalty.com
+    - host: vault.${DOMAIN_NAME}
       http:
         paths:
           - path: /

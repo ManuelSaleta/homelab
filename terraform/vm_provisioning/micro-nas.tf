@@ -55,27 +55,33 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - chown -R gman:gman /home/gman/.config
       - systemctl enable --now syncthing@gman.service
 
-      # 4. Modify config to allow GUI access over the Tailscale network
+      # 4. Modify config to allow GUI access over the Tailscale network only
       - sleep 5
-      - sed -i 's/127.0.0.1:8384/0.0.0.0:8384/' /home/gman/.config/syncthing/config.xml
+      - TS_IP=$(tailscale ip -4) && sed -i "s/127.0.0.1:8384/$${TS_IP}:8384/" /home/gman/.config/syncthing/config.xml
       - systemctl restart syncthing@gman.service
 
       # 5. Create persistent application directories under /mnt/export/storage
       - mkdir -p /mnt/export/storage/vaultwarden
       - mkdir -p /mnt/export/storage/navidrome/data
       - mkdir -p /mnt/export/storage/navidrome/music
+      - mkdir -p /mnt/export/storage/plex/config
+      - mkdir -p /mnt/export/storage/plex/media
       - mkdir -p /mnt/export/storage/obsidian
 
       # 6. Set permissions (1000 for standard non-root container workloads, gman for Obsidian sync)
       - chown -R 1000:1000 /mnt/export/storage/vaultwarden
       - chown -R 1000:1000 /mnt/export/storage/navidrome
       - chmod -R 775 /mnt/export/storage/navidrome/music
+      - chown -R 1000:1000 /mnt/export/storage/plex
+      - chmod -R 775 /mnt/export/storage/plex/media
       - chown -R gman:gman /mnt/export/storage/obsidian
 
-      # 7. Write export rules to /etc/exports and apply
-      - echo "/mnt/export/storage/vaultwarden 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
-      - echo "/mnt/export/storage/navidrome/data 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
-      - echo "/mnt/export/storage/navidrome/music 192.168.50.0/24(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+      # 7. Write hardened export rules to /etc/exports (restricted to K3s nodes with all_squash)
+      - echo "/mnt/export/storage/vaultwarden 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/data 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/music 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/plex/config 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/plex/media 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - exportfs -rav
 
       # 8. Enable and start NFS server
@@ -85,73 +91,22 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
 }
 
 # ==============================================================================
-# 2. THE STORAGE VM DEPLOYMENT (Cloned securely from Template 777)
+# 2. THE STORAGE CONTAINER DEPLOYMENT (LXC Container for Minimal Footprint)
+# - Pinpoints 1 CPU core and 512MB of RAM (reclaiming ~1GB+ RAM vs VM)
+# - Privileged container (unprivileged = false) required for nfs-kernel-server
 # ==============================================================================
-resource "proxmox_virtual_environment_vm" "micro_nas" {
-  name        = "micro-nas"
-  description = "Managed by Terraform - Micro Private NAS for Obsidian Vault via Golden Template"
-  tags        = ["Storage", "Tailscale", "nas"]
-  node_name   = "mothership"
-  vm_id       = 250 # Safe, distinct ID isolated away from the manager (100) and worker blocks
-  on_boot     = true
-
-  # Enables the QEMU Guest Agent to communicate IP metadata cleanly
-  agent {
-    enabled = true
-  }
-
-  # Hardware Layout Blocks (Scaled down to maximize available K3s worker footprint)
-  cpu {
-    cores = 1
-    type  = "host"
-  }
-
-  memory {
-    dedicated = 1536 # 1.5 GB RAM is sufficient for a lightweight Tailscale node and file server
-  }
-
-  network_device {
-    bridge = "vmbr0"
-    model  = "virtio"
-  }
-
-  # Target the freshly generated golden Packer template
-  clone {
-    vm_id   = var.proxmox_template_vm_id
-    full    = true
-    retries = 3
-  }
-
-  # Cloned VMs should boot directly straight off their primary OS storage block
-  boot_order = ["scsi0"]
-
-  # OS Disk layer (cloned from the Packer foundation base)
-  disk {
-    datastore_id = "local-lvm"
-    interface    = "scsi0"
-    size         = 20
-    discard      = "on"
-  }
-
-  # 🎯 DEDICATED DATA STORAGE DISK (Maps to /dev/sdb inside the VM)
-  disk {
-    datastore_id = "local-lvm"
-    interface    = "scsi1"
-    size         = 20 # Plenty of space for years of markdown/vault notes
-    discard      = "on"
-  }
+resource "proxmox_virtual_environment_container" "micro_nas" {
+  node_name     = "mothership"
+  vm_id         = 250 # Distinct ID isolated away from manager (100) and worker blocks
+  description   = "Managed by Terraform - Micro Private NAS (LXC) for Storage"
+  tags          = ["Storage", "Tailscale", "nas", "lxc"]
+  start_on_boot = true
+  started       = true
+  unprivileged  = false # Privileged mode required for kernel NFS server operation
 
   initialization {
-    datastore_id      = "local-lvm" # Location where the cloud-init drive ISO spins up
-    user_data_file_id = proxmox_virtual_environment_file.nas_cloud_config.id
+    hostname = "micro-nas"
 
-    # Forces cloud-init to respect gman and locks down the public key file
-    user_account {
-      username = "gman"
-      keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
-    }
-
-    # Static LAN IP mapping to prevent collisions with the K3s cluster blocks
     ip_config {
       ipv4 {
         address = "192.168.50.250/24"
@@ -162,5 +117,46 @@ resource "proxmox_virtual_environment_vm" "micro_nas" {
     dns {
       servers = ["${var.default_gateway_ip}", "1.1.1.1"]
     }
+
+    user_account {
+      keys = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
+    }
+  }
+
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 512 # 500MB allocated for lightweight Syncthing + NFS
+    swap      = 512
+  }
+
+  network_interface {
+    name   = "eth0"
+    bridge = "vmbr0"
+  }
+
+  operating_system {
+    template_file_id = var.proxmox_lxc_template
+    type             = "ubuntu"
+  }
+
+  # Root operating system disk
+  disk {
+    datastore_id = "local-lvm"
+    size         = 15
+  }
+
+  # Dedicated persistent storage mount point (maps to /mnt/export/storage in container)
+  mount_point {
+    volume = "local-lvm"
+    size   = "50G"
+    path   = "/mnt/export/storage"
+  }
+
+  features {
+    nesting = true
+    mount   = ["nfs"]
   }
 }

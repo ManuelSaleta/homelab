@@ -1,0 +1,45 @@
+# ==============================================================================
+# MOTHERSHIP HOMELAB - TERRAFORM EXAMPLE VARIABLES
+# Copy this file to 'terraform.tfvars' and populate with your own credentials.
+# NEVER commit your actual 'terraform.tfvars' file to source control.
+# ==============================================================================
+
+# Root domain name for homelab ingress endpoints (e.g., example.com)
+homelab_domain = "example.com"
+
+# Proxmox Hypervisor Connection
+proxmox_endpoint            = "https://192.168.50.200:8006/"
+proxmox_node_name           = "mothership"
+proxmox_api_user            = "terraform-user-agent@pve"
+proxmox_api_token_id        = "terraform-user-agent@pve!terraform-token-v2"
+proxmox_api_token_secret    = "your-proxmox-api-token-secret"
+proxmox_api_token           = "terraform-user-agent@pve!terraform-token-v2=your-proxmox-api-token-secret"
+proxmox_template_vm_id      = "777"
+proxmox_vm_auditor_password = "your-auditor-password"
+
+# Network & Build Settings
+http_bind_address_ip        = "192.168.50.55"
+k3s_share_token             = "your-k3s-cluster-join-token"
+
+# Cloudflare Zero Trust & DNS Tokens
+cloudflare_tunnel_token     = "your-cloudflare-tunnel-token"
+cloudflare_tunnel_id        = "your-cloudflare-tunnel-id"
+cloudflare_account_id       = "your-cloudflare-account-id"
+cloudflare_api_token        = "your-cloudflare-api-token"
+cloudflare_dns_api_token    = "your-cloudflare-dns-api-token"
+
+# Tailscale Mesh Configuration
+tailscale_auth_key          = "tskey-auth-your-key"
+tailscale_api_token         = "tskey-api-your-key"
+tailscale_device_id_nas     = "your-nas-device-id"
+tailscale_device_id_mac     = "your-laptop-device-id"
+
+# Application Credentials & Secret Keys
+vaultwarden_admin_token     = "your-vaultwarden-admin-token-or-argon2-hash"
+pihole_admin_password       = "your-pihole-admin-password"
+pihole_api_key              = "your-pihole-web-api-key"
+grafana_username            = "admin"
+grafana_password            = "your-grafana-admin-password"
+grafana_api_key             = "your-grafana-service-account-api-key"
+karakeep_meili_master_key   = "your-meilisearch-master-key"
+karakeep_nextauth_secret    = "your-nextauth-secret-string"

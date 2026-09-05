@@ -18,6 +18,22 @@ PACKER_VARS := packer.pkrvars.hcl
 WORKER_TARGET  := proxmox_virtual_environment_vm.k3s_worker
 CONTROL_TARGET := proxmox_virtual_environment_vm.k3s_control
 
+# ==============================================================================
+# HOMELAB DOMAIN VARIABLE
+# ==============================================================================
+# Root domain for ingress and cluster services.
+# Dynamically extracted from terraform.tfvars (checks domain_name, then homelab_domain)
+# or overridden via shell: make apps-up DOMAIN_NAME=mydomain.com
+DOMAIN_NAME ?= $(shell grep -E '^\s*(domain_name|homelab_domain)\s*=' $(TERRAFORM_DIR)/terraform.tfvars 2>/dev/null | head -n 1 | cut -d'=' -f2 | tr -d ' "' || echo "example.com")
+ifeq ($(strip $(DOMAIN_NAME)),)
+DOMAIN_NAME := example.com
+endif
+HOMELAB_DOMAIN ?= $(DOMAIN_NAME)
+
+# Manifest substitution helper macros (substitutes ${DOMAIN_NAME} and ${HOMELAB_DOMAIN} safely anywhere in YAML)
+APPLY_YAML  = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) envsubst '$${DOMAIN_NAME} $${HOMELAB_DOMAIN}' < $(1) | kubectl apply -f -
+DELETE_YAML = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) envsubst '$${DOMAIN_NAME} $${HOMELAB_DOMAIN}' < $(1) | kubectl delete --ignore-not-found -f -
+
 # Default goal when running 'make' without targets
 .DEFAULT_GOAL := help
 
@@ -28,8 +44,8 @@ CONTROL_TARGET := proxmox_virtual_environment_vm.k3s_control
 .PHONY: p-init p-validate p-build p-debug p-clean
 .PHONY: t-init t-validate t-clean t-plan-infra t-apply-infra t-plan-k3s t-apply-k3s
 .PHONY: infra-up infra-down infra-status
-.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down
-.PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all
+.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down plex-up plex-down uptime-kuma-up uptime-kuma-down
+.PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all drain-worker-02
 .PHONY: install-loki install-alloy install-promstack grafana-pass promstack-install-all promstack-clean
 
 # ==============================================================================
@@ -73,6 +89,7 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make homepage-up/down      - Target deployment specifically for Homepage"
 	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
 	@echo "  make navidrome-up/down     - Target deployment specifically for Navidrome Music Server"
+	@echo "  make plex-up/down          - Target deployment specifically for Plex Media Server"
 	@echo ""
 	@echo "Cluster Lifecycle Control Matrix:"
 	@echo "  make deploy-all            - Orchestrate full stack: compute provisioning up to configs"
@@ -164,7 +181,7 @@ t-validate: ## Validate the underlying syntax formatting syntax architecture
 # ==============================================================================
 INFRA_TARGETS := proxmox_virtual_environment_vm.k3s_control \
                  proxmox_virtual_environment_vm.k3s_worker \
-                 proxmox_virtual_environment_vm.micro_nas
+                 proxmox_virtual_environment_container.micro_nas
 
 K3S_TARGETS   := kubernetes_secret_v1.vaultwarden_secret \
                  kubernetes_secret_v1.cloudflare_tunnel_secret \
@@ -220,6 +237,12 @@ t-clean: ## Clear out transient terraform cache footprints and local log locks
 # ☢️ LIFECYCLE DESTRUCTION CONTROLS
 # ==============================================================================
 
+drain-worker-02: ## Safely cordon and drain k3s-worker-02 before scaling down to dual-node
+	@echo "⚠️ Cordoning and draining k3s-worker-02..."
+	-kubectl cordon k3s-worker-02
+	-kubectl drain k3s-worker-02 --delete-emptydir-data --ignore-daemonsets --force
+	@echo "✅ k3s-worker-02 drained safely. Ready for 'make t-apply-infra'."
+
 destroy-workers: ## Target and destroy only the worker nodes pool instantly
 	@echo "⚠️  Targeting worker node destruction..."
 	terraform  -chdir=$(TERRAFORM_DIR) destroy -target="$(WORKER_TARGET)" --auto-approve
@@ -263,38 +286,48 @@ infra-status:
 # ==============================================================================
 
 karakeep-up:
-	@echo "🎯 Deploying Karakeep Application..."
-	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-deployment.yaml
+	@echo "🎯 Deploying Karakeep Application (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/karakeep/karakeep-deployment.yaml)
 	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-meili.yaml
 	kubectl apply -f $(APPS_DIR)/karakeep/karakeep-browser.yaml
 
 karakeep-down:
 	@echo "💥 Removing Karakeep Application..."
-	kubectl delete -f $(APPS_DIR)/karakeep/karakeep-deployment.yaml --ignore-not-found
+	$(call DELETE_YAML,$(APPS_DIR)/karakeep/karakeep-deployment.yaml)
+	kubectl delete -f $(APPS_DIR)/karakeep/karakeep-meili.yaml --ignore-not-found
+	kubectl delete -f $(APPS_DIR)/karakeep/karakeep-browser.yaml --ignore-not-found
 
 vaultwarden-up:
-	@echo "🎯 Deploying Vaultwarden..."
-	kubectl apply -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml
+	@echo "🎯 Deploying Vaultwarden (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml)
 
 vaultwarden-down:
 	@echo "💥 Removing Vaultwarden Deployment..."
-	kubectl delete -f $(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml --ignore-not-found
+	$(call DELETE_YAML,$(APPS_DIR)/vaultwarden/vaultwarden-deployment.yaml)
 
 pihole-up:
-	@echo "🎯 Deploying Pi-hole DNS Engine..."
-	kubectl apply -f $(APPS_DIR)/pihole/pihole-deployment.yaml
+	@echo "🎯 Deploying Pi-hole DNS Engine (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/pihole/pihole-deployment.yaml)
 
 pihole-down:
 	@echo "💥 Removing Pi-hole Deployment..."
-	kubectl delete -f $(APPS_DIR)/pihole/pihole-deployment.yaml --ignore-not-found
+	$(call DELETE_YAML,$(APPS_DIR)/pihole/pihole-deployment.yaml)
 
 homepage-up:
-	@echo "🏠 Deploying Homepage Dashboard..."
-	kubectl apply -f $(APPS_DIR)/homepage/homepage-deployment.yaml
+	@echo "🏠 Deploying Homepage Dashboard (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/homepage/homepage-deployment.yaml)
 
 homepage-down:
 	@echo "💥 Removing Homepage Dashboard..."
-	kubectl delete -f $(APPS_DIR)/homepage/homepage-deployment.yaml --ignore-not-found
+	$(call DELETE_YAML,$(APPS_DIR)/homepage/homepage-deployment.yaml)
+
+uptime-kuma-up:
+	@echo "🎯 Deploying Uptime Kuma (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/uptime-kuma/uptime-kuma-deployment.yaml)
+
+uptime-kuma-down:
+	@echo "💥 Removing Uptime Kuma Deployment..."
+	$(call DELETE_YAML,$(APPS_DIR)/uptime-kuma/uptime-kuma-deployment.yaml)
 
 grafana-up:
 	@echo "📊 Deploying Grafana Exposure Layer..."
@@ -305,24 +338,33 @@ grafana-down:
 	kubectl delete -f $(APPS_DIR)/monitoring/prometheus-stack.yaml --ignore-not-found
 
 navidrome-up:
-	@echo "🎵 Deploying Navidrome Music Server..."
-	kubectl apply -f $(APPS_DIR)/navidrome/navidrome-deployment.yaml
+	@echo "🎵 Deploying Navidrome Music Server (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/navidrome/navidrome-deployment.yaml)
 
 navidrome-down:
 	@echo "💥 Removing Navidrome Deployment..."
-	kubectl delete -f $(APPS_DIR)/navidrome/navidrome-deployment.yaml --ignore-not-found
+	$(call DELETE_YAML,$(APPS_DIR)/navidrome/navidrome-deployment.yaml)
 
-apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up navidrome-up ## Deploy all applications at once
-	@echo "✅ All applications applied successfully."
+plex-up:
+	@echo "🎬 Deploying Plex Media Server (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/plex/plex-deployment.yaml)
+
+plex-down:
+	@echo "💥 Removing Plex Media Server Deployment..."
+	$(call DELETE_YAML,$(APPS_DIR)/plex/plex-deployment.yaml)
+
+apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up uptime-kuma-up navidrome-up plex-up ## Deploy all applications at once
+	@echo "✅ All applications applied successfully with domain: $(HOMELAB_DOMAIN)."
 
 apps-down: ## Tear down all cluster workloads with a safety step
 	@echo "🛑 WARNING: You are about to wipe all apps. Press Ctrl+C to abort, or Enter to continue..."
 	@read _
-	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down navidrome-down
+	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down uptime-kuma-down navidrome-down plex-down
 
 apps-status:
 	@echo "🔍 Checking Application Status..."
 	kubectl get pods,deployments,ingress -n networking
+	kubectl get pods,deployments,ingress -n media
 
 
 
@@ -348,7 +390,10 @@ install-alloy: ## Install Grafana Alloy via Helm with correct path values
 	helm upgrade --install my-alloy grafana/alloy -n $(NAMESPACE) -f $(APPS_DIR)/monitoring/alloy-values.yaml
 
 install-promstack: ## Install Kube-Prometheus-Stack via Helm with correct path values
-	helm upgrade --install promstack prometheus-community/kube-prometheus-stack -n $(NAMESPACE) --create-namespace -f $(APPS_DIR)/monitoring/prometheus-values.yaml
+	helm upgrade --install promstack prometheus-community/kube-prometheus-stack -n $(NAMESPACE) --create-namespace \
+		-f $(APPS_DIR)/monitoring/prometheus-values.yaml \
+		--set-string grafana."grafana\.ini".server.root_url="https://grafana.$(HOMELAB_DOMAIN)/" \
+		--set-string grafana.ingress.hosts[0]="grafana.$(HOMELAB_DOMAIN)"
 
 promstack-clean:
 	helm uninstall my-loki my-alloy promstack -n $(NAMESPACE)

@@ -39,6 +39,11 @@ spec:
           volumeMounts:
             - name: uptime-kuma-data
               mountPath: /app/data
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             limits:
               memory: 512Mi
@@ -76,7 +81,7 @@ metadata:
     gethomepage.dev/name: "Uptime Kuma"
     gethomepage.dev/group: "Monitoring"
     gethomepage.dev/icon: "uptime-kuma"
-    gethomepage.dev/href: "https://uptime.freesalty.com"
+    gethomepage.dev/href: "https://uptime.${DOMAIN_NAME}"
     gethomepage.dev/widget.type: "uptimekuma"
     # Enables Traefik automatic dns reroute to https
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
@@ -89,7 +94,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: uptime.freesalty.com
+    - host: uptime.${DOMAIN_NAME}
       http:
         paths:
           - path: /

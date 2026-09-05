@@ -114,9 +114,9 @@ spec:
                 secretKeyRef:
                   name: grafana-secret
                   key: GRAFANA_PASSWORD
-            # Allowed Hosts: List specific valid addresses
+            # Allowed Hosts: Explicitly whitelist trusted host domains (no wildcards)
             - name: HOMEPAGE_ALLOWED_HOSTS
-              value: "homepage.freesalty.com,pihole.freesalty.com,localhost,*"
+              value: "homepage.${DOMAIN_NAME},localhost,127.0.0.1"
           ports:
             - containerPort: 3000
               name: http
@@ -176,7 +176,7 @@ metadata:
   annotations:
     gethomepage.dev/enabled: "false"
     # 1. Tell Homepage what the actual clickable URL is
-    gethomepage.dev/href: "https://homepage.yourdomain.com"
+    gethomepage.dev/href: "https://homepage.${DOMAIN_NAME}"
     # 2. Tell Homepage where to look for the health check (internal cluster service)
     gethomepage.dev/ping: "http://homepage.networking.svc.cluster.local:3000"
     # Your existing Traefik entrypoints
@@ -186,9 +186,9 @@ spec:
   # 🎯 THE MISSING PIECE: This tells K8s and Traefik to turn on TLS for this domain
   tls:
     - hosts:
-        - homepage.freesalty.com
+        - homepage.${DOMAIN_NAME}
   rules:
-    - host: homepage.freesalty.com
+    - host: homepage.${DOMAIN_NAME}
       http:
         paths:
           - path: /

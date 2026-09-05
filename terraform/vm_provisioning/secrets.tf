@@ -77,7 +77,7 @@ resource "kubernetes_secret_v1" "pihole_secret" {
   type = "Opaque"
 
   data = {
-    # 🎯 Pulls the "AdminHomelabPass123" securely out of plain-text YAML
+    # 🎯 Pulls the "<admin-homelab-pass>" securely out of plain-text YAML
     PIHOLE_PASSWORD = var.pihole_admin_password
     PIHOLE_API_KEY  = var.pihole_api_key
   }
@@ -93,7 +93,7 @@ resource "kubernetes_secret_v1" "proxmox_secret" {
   type = "Opaque"
 
   data = {
-    # 🎯 Pulls the "AdminHomelabPass123" securely out of plain-text YAML
+    # 🎯 Pulls the "<admin-homelab-pass>" securely out of plain-text YAML
     PROXMOX_WIDGET_PASSWORD = var.proxmox_vm_auditor_password
     PROXMOX_URL             = var.proxmox_endpoint
     PROXMOX_NODE_NAME       = var.proxmox_node_name

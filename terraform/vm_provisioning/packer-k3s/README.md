@@ -9,7 +9,7 @@ This module leverages **Packer** and Ubuntu’s native **Autoinstall (Subiquity)
 The pipeline is completely automated through the local `Makefile`. When executing a build, Packer orchestrates the following operations sequentially:
 
 1. **Local HTTP Server Initiation:** Packer boots a temporary HTTP engine bound to `http_bind_address_ip` on port `8688` to expose the `http/user-data` configurations.
-2. **ISO Instantiation:** Provisions a vanilla Ubuntu 24.04 VM, attaches the installer ISO, and handles GRUB boot directives over VNC to catch the hosted automated cloud-config blueprint.
+2. **ISO Instantiation:** Provisions a vanilla Ubuntu 26.04.1 LTS VM, attaches the installer ISO, and handles GRUB boot directives over VNC to catch the hosted automated cloud-config blueprint.
 3. **Unattended Automated Installation:** Subiquity reads the recipe, establishes partitions, seeds the public SSH key (`gman@fedora`), configures passwordless `sudo`, and bakes down the `qemu-guest-agent`.
 4. **Shell Ingestion Pipeline:** \* **Stage 1 (K3s Offline Prep):** Pulls the installer payload script from `get.k3s.io` and pre-runs it using `INSTALL_K3S_SKIP_START=true`. This caches binary hooks and setups paths without caching unique runtime configurations.
 

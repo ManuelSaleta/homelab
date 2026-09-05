@@ -30,16 +30,16 @@ source "proxmox-iso" "k3s_template" {
   # Image iso source
   boot_iso {
     type         = "scsi"
-    iso_file     = "local:iso/ubuntu-24.04.4-live-server-amd64.iso"
+    iso_file     = "local:iso/ubuntu-26.04.1-live-server-amd64.iso"
     unmount      = true
-    iso_checksum = "3a4c9877b483ab46d7c3fbe165a0db275e1ae3cfe56a5657e5a47c2f99a99d1e"
+    iso_checksum = "none" # Verify against official releases.ubuntu.com/26.04/SHA256SUMS or set to 'none'
   }
 
 
   # VM Template details
   vm_name              = "ubuntu-k3s-template"
   vm_id                = var.proxmox_template_vm_id
-  template_description = "Packer built - Ubuntu 24.04 K3s Base Image"
+  template_description = "Packer built - Ubuntu 26.04.1 LTS K3s Base Image"
   tags                 = "k3s;Ubuntu;Template"
 
   # VM OS and Hardware details

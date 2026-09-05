@@ -39,9 +39,9 @@ spec:
             - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;8.8.8.8"
             - name: FTLCONF_misc_dnsmasq_lines
-              value: "address=/freesalty.com/192.168.50.240"
+              value: "address=/${DOMAIN_NAME}/192.168.50.240"
             - name: FTLCONF_webserver_cors_allowedHosts
-              value: "pihole.freesalty.com,freesalty.com"
+              value: "pihole.${DOMAIN_NAME},${DOMAIN_NAME}"
           ports:
             - containerPort: 53
               name: dns-udp
@@ -98,7 +98,7 @@ metadata:
     gethomepage.dev/group: "Network"
     gethomepage.dev/icon: "pi-hole"
     # FIX: Upgraded to https so the dashboard icon targets the secure edge
-    gethomepage.dev/href: "https://pihole.freesalty.com/admin"
+    gethomepage.dev/href: "https://pihole.${DOMAIN_NAME}/admin"
     gethomepage.dev/widget.type: "pihole"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 
@@ -110,7 +110,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: pihole.freesalty.com
+    - host: pihole.${DOMAIN_NAME}
       http:
         paths:
           - path: /

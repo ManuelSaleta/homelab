@@ -1,90 +1,83 @@
-# 🛸 Mothership Homelab: Master Workspace Hub
+# 🛸 Mothership Homelab
+## About
+Declaritive first homelab; Opinionated: ProxMox + K3s + Ubuntu Server
+- Terraform
+- Packer
+- Traefik + CloudFlare tunnel
 
-This centralized repository acts as the single source of truth for the Infrastructure as Code (IaC) blueprints, orchestration configurations, and automation manifests powering the `Mothership` bare-metal homelab environment.
+---
 
-The primary objective is a zero-intervention deployment pipeline that bakes a lightweight base operating system template, provisions high-performance cluster compute nodes on Proxmox VE, and instantly scales a self-healing Kubernetes ecosystem.
+Recently got into homeballing. This is my way of working on my DevOps and automation skills. 
+This is a *declaritive* first approach. I am lazy and configuration drift is something I wanted to avoid as much as possible.
+Everything is IaC, configs + application layer. While I built this project for me. I made it so anyone can hopefully come and grab what they want/need. This is a ProxMox + K3S setup. with Ubuntu server for the VMs & LXCs. Performance is highly important to me, partly because RAM is worth more than gold... literaly. At the time of writing, this entire setup runs on a single laptop with 16GB of RAM + 1TB external. If you like it take it - give it a star tho tha'd be nice :)
 
 ---
 
 ## 🏗️ Architectural Topology
 
-- Originally I thought mermaid was the way to go but might go with draw.io instead no sure yet...
-
 ```mermaid
----
-config:
-  theme: mc
-  themeVariables:
-    fontFamily: ''
-    fontSize: 14px
-  layout: elk
----
-flowchart TD
-    classDef k3s fill:#326ce5,stroke:#fff,color:#fff;
-    classDef cloudflare fill:#f38020,stroke:#fff,color:#fff;
-    classDef proxmox fill:#e46623,stroke:#fff,color:#fff;
-    classDef storage fill:#8d6e63,stroke:#fff,color:#fff;
-    classDef network fill:#4caf50,stroke:#fff,color:#fff;
-    classDef app fill:#607d8b,stroke:#fff,color:#fff;
-    classDef tailscale fill:#0055ff,stroke:#fff,color:#fff;
-    subgraph Proxmox_Mothership["fa:fa-server Proxmox Mothership Node"]
+flowchart TB
+    classDef k3s fill:#326ce5,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef proxmox fill:#e46623,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef storage fill:#8d6e63,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef network fill:#2e7d32,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef app fill:#455a64,stroke:#fff,stroke-width:1px,color:#fff;
+    classDef client fill:#0288d1,stroke:#fff,stroke-width:1px,color:#fff;
+
+    subgraph Clients["fa:fa-globe Ingress & Clients"]
+        direction LR
+        Fedora["fa:fa-desktop Fedora Workstation (LAN)"]:::client
+        MacRemote["fa:fa-laptop Mac Remote (Tailscale)"]:::client
+        CloudflareEdge["fa:fa-cloud Cloudflare Zero Trust"]:::client
+    end
+
+    subgraph Proxmox_Mothership["fa:fa-server Proxmox Host: 'mothership' (16 GB Physical RAM)"]
         direction TB
-        micro_nas[("fa:fa-hdd micro-nas VM")]:::storage
 
-        subgraph K3s_Cluster["fa:fa-microchip K3s Cluster"]
-            direction LR
-            control["fa:fa-server control-01"]:::k3s
-            worker1["fa:fa-server worker-01"]:::k3s
-            worker2["fa:fa-server worker-02"]:::k3s
+        subgraph Storage_Layer["fa:fa-database Storage Decoupling: micro-nas (LXC CT 250)"]
+            MicroNAS["fa:fa-hdd micro-nas LXC (512 MB RAM)\nNFS Kernel Server | Tailscale | Syncthing"]:::storage
+            ExtHDD[("fa:fa-database External 1TB HDD\n/mnt/export/storage")]:::storage
+            MicroNAS --- ExtHDD
         end
-        vm_template["fa:fa-copy k3s-vm-template"]:::proxmox
+
+        subgraph K3s_Cluster["fa:fa-microchip Dual-Node K3s Cluster"]
+            direction LR
+            ControlPlane["fa:fa-shield-alt k3s-control-01 (VM 100)\n3 GB RAM | 2 vCPUs\nAPI Server, Ingress, CoreDNS"]:::k3s
+            WorkerNode["fa:fa-cogs k3s-worker-01 (VM 210)\n3 GB RAM | 2 vCPUs\nCompute & Application Workloads"]:::k3s
+        end
+
+        subgraph Ingress_Networking["fa:fa-network-wired Networking & Routing"]
+            direction LR
+            Traefik["Traefik (Ingress)"]:::network
+            MetalLB["MetalLB (L2 VIPs)"]:::network
+            Cloudflared["Cloudflared (Tunnel)"]:::network
+        end
+
+        subgraph Applications["fa:fa-cubes Kubernetes Application Stack"]
+            direction TB
+            subgraph Media_Namespace["Media Namespace"]
+                Plex["fa:fa-film Plex Media Server (:32400)"]:::app
+                Navidrome["fa:fa-music Navidrome Music (:4533)"]:::app
+            end
+            subgraph Networking_Namespace["Networking Namespace"]
+                Homepage["fa:fa-home Homepage Dashboard (:3000)"]:::app
+                PiHole["fa:fa-shield-virus Pi-hole DNS (:53 / :80)"]:::app
+                Vaultwarden["fa:fa-key Vaultwarden (:80)"]:::app
+                Karakeep["fa:fa-bookmark Karakeep (Meili + Chrome)"]:::app
+                UptimeKuma["fa:fa-heartbeat Uptime Kuma (:3001)"]:::app
+            end
+            subgraph Monitoring_Namespace["Monitoring Namespace"]
+                Monitoring["fa:fa-chart-line Prometheus, Grafana, Loki & Alloy"]:::app
+            end
+        end
     end
 
-    subgraph Local_LAN["fa:fa-network-wired Local Area Network"]
-        fedora["fa:fa-desktop Workstation" ]:::network
-        syncthing[("fa:fa-sync Syncthing")]:::storage
-    end
-
-    subgraph Tailnet["fa:fa-shield-alt Tailscale Mesh"]
-        mac["fa:fa-laptop Mac (Remote)"]:::tailscale
-        nas_node[("fa:fa-sync Syncthing")]:::storage
-    end
-
-    subgraph K3s_Apps["fa:fa-cubes K3s Application Stack"]
-        Traefik["fa:fa-project-diagram Traefik"]:::app
-        MetalLB["fa:fa-balance-scale MetalLB"]:::app
-        Homepage["fa:fa-home Homepage"]:::app
-        Vaultwarden["fa:fa-home Vaultwarden"]:::app
-        Karakeep["fa:fa-home Karakeep"]:::app
-        PiHole["fa:fa-ad Pi-Hole"]:::app
-        Grafana["fa:fa-chart-line Grafana"]:::app
-        Navidrome["fa:fa-chart-line Navidrome"]:::server
-    end
-
-    Traefik --> MetalLB
-    MetalLB --> Homepage & PiHole & Grafana & Vaultwarden & Karakeep & Navidrome
-    K3s_Cluster --- Traefik
-    K3s_Cluster@{ shape: rounded }
-    Proxmox_Mothership@{ shape: rounded }
-    Local_LAN@{ shape: rounded }
-    Tailnet@{ shape: rounded }
-    K3s_Apps@{ shape: rounded }
-    micro_nas@{ shape: stadium }
-    nas_node@{ shape: stadium }
-    control@{ shape: rounded }
-    worker1@{ shape: rounded }
-    worker2@{ shape: rounded }
-    Traefik@{ shape: rounded }
-    MetalLB@{ shape: rounded }
-    Homepage@{ shape: rounded }
-    Vaultwarden@{ shape: rounded }
-    Karakeep@{ shape: rounded }
-    PiHole@{ shape: rounded }
-    Grafana@{ shape: rounded }
-    Navidrome@{ shape: rounded }
-    fedora@{ shape: rounded }
-    mac@{ shape: rounded }
-    vm_template@{ shape: rounded }
+    Clients --> Ingress_Networking
+    Ingress_Networking --> Applications
+    K3s_Cluster --- Ingress_Networking
+    Applications -. "NFS PV Mounts (all_squash, UID 1000)" .-> MicroNAS
+    Fedora -. "Obsidian Sync" .-> MicroNAS
+    MacRemote -. "Tailscale Mesh" .-> MicroNAS
 ```
 
 # 📋 Prerequisites & Local Workstation Setup
@@ -112,7 +105,7 @@ Secure authentication loops rely entirely on public key checks. Ensure the signa
 
 The target Proxmox host system must have the following configuration targets:
 
-    local: Storage target hosting the baseline Ubuntu installation media image (local:iso/ubuntu-24.04.4-live-server-amd64.iso).
+    local: Storage target hosting the baseline Ubuntu installation media image (local:iso/ubuntu-26.04.1-live-server-amd64.iso) and LXC template (local:vztmpl/ubuntu-26.04-standard_26.04-1_amd64.tar.zst).
 
     local-lvm: Block pool backend allocation targeted for virtual node root disks (scsi0).
 
@@ -208,50 +201,64 @@ Deploys a comprehensive performance tracking layer via clean Helm upgrade and in
 
 # 📁 Storage Architecture & Decoupling: "What is Where"
 
-Resource Engine Context: [terraform/vm_provisioning/micro-nas.tf](file:///home/gman/Projects/homelab/terraform/vm_provisioning/micro-nas.tf)
+Resource Engine Context: [terraform/vm_provisioning/micro-nas.tf](./terraform/vm_provisioning/micro-nas.tf)
 
-The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden password database, Navidrome music library and cache) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` VM (`192.168.50.250`).
+The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden passwords, Navidrome music, Plex media/metadata) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` LXC container (`192.168.50.250`, CT 250).
 
-### 1. Physical Hardware & Volume Group Topology
+### 1. Physical Hardware & Memory Allocation (16 GB Host Footprint)
 
 ```text
-PROXMOX HOST (mothership)
+PROXMOX HOST: mothership (16 GB Physical RAM Total)
 ├── 🚀 nvme0n1 (238.5G NVMe SSD) -> VG: `pve` (Pool: `local-lvm`)
-│   ├── Host Root (`/`) & Swap
-│   ├── VM 100 [k3s-control-01]: 30G (OS / Control Plane State)
-│   ├── VM 210 [k3s-worker-01]:  30G (OS / Ephemeral Workload Containers)
-│   ├── VM 211 [k3s-worker-02]:  30G (OS / Ephemeral Workload Containers)
-│   └── VM 250 [micro-nas]:      20G (OS Root `/` on fast NVMe)
+│   ├── Host Root (`/`) & Proxmox Hypervisor Overhead
+│   ├── VM 100 [k3s-control-01]: 30G NVMe | 3,072 MB (3 GB) RAM (Control Plane & Core Services)
+│   ├── VM 210 [k3s-worker-01]:  30G NVMe | 3,072 MB (3 GB) RAM (Workloads & App Stack)
+│   ├── CT 250 [micro-nas]:      15G NVMe |   512 MB (0.5 GB) RAM (LXC NFS & Syncthing Engine)
+│   └── ⚡ Available Host Headroom: ~9.4 GB RAM for ZFS ARC, Linux page cache, and future workloads
 │
-└── 💽 sda (931.5G / 1TB External HDD) -> VG: `ext-hdd-vg` (Pool: `ext-hdd-thin`)
-    └── VM 250 [micro-nas]: Dedicated Thin Disk Allocation (Persistent Storage)
+└── 💽 sda (931.5G / 1TB External HDD) -> Mounted to `/mnt/export/storage`
+    └── CT 250 [micro-nas]: Dedicated Thin Disk Mount Point (Stateful NFS Shares)
 ```
 
 ### 2. Standardized Storage Pattern: `/mnt/export/storage/<application-name>`
 
-Inside `micro-nas` (`192.168.50.250`), the bulk persistent storage block from the external HDD is mounted to `/mnt/export/storage` (or partitioned under `/mnt/export/storage`). Applications consume isolated NFS shares using the uniform pattern `/mnt/export/storage/<application-name>`:
+Inside `micro-nas` (`192.168.50.250`), persistent storage is mounted under `/mnt/export/storage`. Applications consume isolated NFS shares using hardened `all_squash` rules scoped strictly to the K3s node IPs (`192.168.50.185` and `192.168.50.210`):
 
 | Application | Micro-NAS File Path | NFS Export Rule (`/etc/exports`) | Consumer / Protocol | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.50.0/24(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
-| **Navidrome (App Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.50.0/24(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), user cache & artwork |
-| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.0/24(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files |
-| **Obsidian Vault** | `/mnt/export/storage/obsidian` | N/A (Syncthing user space) | Syncthing / Tailscale Mesh | Markdown notes synchronized across workstations & mobile |
+| **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
+| **Navidrome (Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), cache & artwork |
+| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files |
+| **Plex (Config & DB)** | `/mnt/export/storage/plex/config` | `/mnt/export/storage/plex/config 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-config-pv`, 20Gi) | Server metadata, SQLite DB, agent state |
+| **Plex (Media Library)**| `/mnt/export/storage/plex/media` | `/mnt/export/storage/plex/media 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-media-pv`, 500Gi) | Movies, TV series, video content |
+| **Obsidian Vault** | `/mnt/export/storage/obsidian` | N/A (Syncthing user space) | Syncthing / Tailscale Mesh | Markdown notes synchronized across devices |
 
-### 3. File Permissions & Access Standards
-- **Container UID/GID**: NFS exports for K8s container workloads are permissioned with `chown -R 1000:1000` to allow non-root pod processes full read/write access.
-- **Syncthing User Context**: Syncthing operates within the `gman` user space context.
-  - GUI Administration Panel: Route to `http://[TAILSCALE-IP]:8384` over the Tailscale mesh.
-  - Permission Alignment: `sudo chown -R gman:gman /mnt/export/storage/obsidian`
+### 3. File Permissions & Security Hardening
+- **Container UID/GID**: NFS exports for K8s container workloads are permissioned with `chown -R 1000:1000` to match standard non-root container workloads.
+- **Root Squashing**: All NFS exports enforce `all_squash,anonuid=1000,anongid=1000`, ensuring client-side root processes can never execute with root privileges on the NAS host filesystem.
+- **Syncthing Tailscale Isolation**: Syncthing's web admin GUI is bound strictly to the host's private Tailscale IP (`[TAILSCALE-IP]:8384`), keeping port 8384 closed on the physical LAN.
 
 > [!IMPORTANT]
-> **Zero Data Loss Guarantee**: You can safely run `make destroy-workers` or `make destroy-all` to completely nuke and re-provision the K3s cluster. As long as `micro-nas` (VM 250) remains intact, zero persistent data will ever be lost.
+> **Zero Data Loss Guarantee**: You can safely run `make destroy-workers` or `make destroy-all` to completely tear down and re-provision the K3s cluster. As long as `micro-nas` (CT 250) remains intact, zero persistent application or note data will ever be lost.
 
 ---
 
 # 🛑 Operations & Lifecycle Troubleshooting
 
-## 1. Manual K3s Cluster Token Synchronization
+## 1. Safe Dual-Node Migration & Node Draining
+
+When scaling down from 2 workers to 1 worker (transitioning to the dual-node topology), gracefully evict running pods before applying Terraform changes:
+
+```bash
+# 1. Gracefully cordon and drain k3s-worker-02 (evicts pods to worker-01 and control-01)
+make drain-worker-02
+
+# 2. Apply Terraform to decommission VM 211 and reconfigure cluster resources
+make t-apply-infra
+
+# 3. Clean up the node registration from Kubernetes
+kubectl delete node k3s-worker-02
+```
 
 Every single time the primary manager plane node (k3s-control-01) is destroyed and re-provisioned, it mints a fresh, randomized cluster authorization hash. You must manually sync this hash to allow worker nodes to register cleanly.
 
@@ -272,7 +279,7 @@ Every single time the primary manager plane node (k3s-control-01) is destroyed a
 
 - Verify split-horizon route validation loops directly across the local LAN interface:
   ```bash
-      curl -I -H "Host: pihole.freesalty.com" [http://192.168.50.240/admin/](http://192.168.50.240/admin/)
+      curl -I -H "Host: pihole.example.com" [http://192.168.50.240/admin/](http://192.168.50.240/admin/)
   ```
 
 ---
@@ -306,6 +313,46 @@ Every single time the primary manager plane node (k3s-control-01) is destroyed a
     pct enter <vmid>         # Drop straight into a root shell inside a running LXC container
 ```
 
+## Proxmox Host Maintenance & Package Upgrades
+
+To keep Proxmox VE secure and updated, execute updates from the Proxmox host CLI over SSH (`root@<proxmox-ip>`).
+
+> [!IMPORTANT]
+> **Always use `apt-get dist-upgrade` (or `apt full-upgrade`)** on Proxmox VE. Never run `apt upgrade`, as standard upgrades will not install new dependency packages or resolve kernel package transitions, which can break Proxmox meta-packages (`proxmox-ve`, `pve-manager`, `qemu-server`).
+
+### 1. Check for Available Updates
+```bash
+apt-get update
+apt list --upgradable
+```
+
+### 2. Execute Distribution Upgrade
+```bash
+# Safe non-interactive upgrade preserving local configuration
+DEBIAN_FRONTEND=noninteractive apt-get update && \
+DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+```
+
+### 3. Verify Installed Versions
+```bash
+pveversion -v
+```
+
+### 4. Kernel Reboot Procedure (When Needed)
+When a new kernel (`proxmox-kernel-*`) is installed, a host reboot is required to activate it:
+```bash
+# 1. Gracefully shut down active workloads
+qm shutdown 100    # k3s-control-01
+qm shutdown 210    # k3s-worker-01
+pct stop 250       # micro-nas
+
+# 2. Reboot Proxmox host
+systemctl reboot
+
+# 3. Verify running kernel post-reboot
+uname -r
+```
+
 ## Kubernetes CLI Commands
 
 Drop these native diagnostic profiles straight into the workstation shell configuration file (e.g., `~/.zshrc` or `~/.bashrc`).
@@ -322,32 +369,9 @@ These are some of the more common kubectl I found myself repeating; turned into 
     alias kinfo="kubectl cluster-info"
     alias kver="kubectl version --client"
     alias knodes="kubectl get nodes -o wide"
-
-    # Resource Lookups
-    alias kall-net="kubectl get all -n networking"
-    alias kpods="kubectl get pods -o wide"
-    alias ksvc="kubectl get svc --all-namespaces"
-    alias kingress="kubectl get ingress --all-namespaces"
-
-    # Real-Time Stream Tailing
-    alias klogs="kubectl logs -f --tail=100"
-    alias klogs-net="kubectl logs -f --tail=100 -n networking"
-
-    # Interactive Pod Shell Drop-In
-    alias kexec="kubectl exec -it"
-
-    alias kcontext-MOTHERSHIP="kubectl config use-context default"
-    alias kcurr-context="kubectl config get-contexts"
-
-    # Global System Diagnostics
-
-    alias kinfo="kubectl cluster-info"
-    alias kver="kubectl version --client"
-    alias knodes="kubectl get nodes -o wide"
     alias khealth="kubectl get componentstatuses"
 
     # Resource Lookups
-
     alias kall-net="kubectl get all -n networking"
     alias kpods="kubectl get pods -o wide"
     alias kdeployments="kubectl get deployment"
@@ -355,44 +379,35 @@ These are some of the more common kubectl I found myself repeating; turned into 
     alias kingress="kubectl get ingress --all-namespaces"
 
     # Ingress Controller Rules
-
     alias kwhitelist="kubectl get configmap -n ingress-nginx-internal ingress-nginx-controller -o jsonpath='{.data.whitelist-source-range}'"
 
     # Cluster Node Endpoint Extractors
-
     alias kips="kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type == \"InternalIP\")].address}'"
     alias kips-external="kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type == \"ExternalIP\")].address}'"
 
     # Real-Time Stream Tailing
-
     alias klogs="kubectl logs -f --tail=100"
     alias klogs-net="kubectl logs -f --tail=100 -n networking"
 
     # Interactive Pod Shell Drop-In
-
     alias kexec="kubectl exec -it"
 
     # Deployment Rollout Revisions Trace
-
     alias krev-pihole="kubectl rollout history deployment/pihole-dns-server -n networking"
     alias krev-tunnel="kubectl rollout history deployment/cloudflared-tunnel -n networking"
 
     # Local Proxy Management
-
     alias kproxy="kubectl proxy"
     alias kkill="pkill -9 -f 'kubectl proxy'"
 
     # Modern On-Demand Token Generator (Valid for 1 hour)
-
     alias ktoken="kubectl -n kubernetes-dashboard create token admin-user"
 
     # Inspect config-map value for a deployment
-
     alias homepage-config="kubectl get configmap homepage-config -n networking -o yaml"
 
     # Search ENVIRONMENT variables for a given service
-
-    kubectl exec -it deployment/karakeep-server -n networking -- env | grep DISABLE
+    # kubectl exec -it deployment/karakeep-server -n networking -- env | grep DISABLE
 ```
 
 # Application Specific
@@ -403,7 +418,7 @@ These are some of the more common kubectl I found myself repeating; turned into 
 
 By default `sign-ups are disabled. To add an additional user:
 
-1. Log into your account at https://karakeep.freesalty.com.
+1. Log into your account at https://karakeep.example.com.
 2. Navigate to the Admin Settings page (located in your profile/settings menu).
 3. Find the Users List tab and click the Create User button.
 4. Input their details (Name, Email, and a temporary password) and hit Create.
@@ -464,52 +479,195 @@ Pane 3: Watch Meilisearch build the full-text index
 
 ---
 
-# Homepage:
+## Homepage
 
-todo
+Resource Context: [kubernetes/applications/homepage/homepage-deployment.yaml](./kubernetes/applications/homepage/homepage-deployment.yaml) & [kubernetes/applications/homepage/config/](./kubernetes/applications/homepage/config/)
 
-## Homepage Troubleshooting
+- Web Ingress URL: `https://homepage.example.com`
+- Port Profile: `3000/TCP` (ClusterIP Service: `80/TCP`)
+- Key Integrations: Central dashboard with live widgets for Proxmox VE, Pi-hole, Tailscale mesh status, Cloudflare Tunnel health, and Grafana / Kubernetes cluster metrics. Uses ServiceAccount token (`homepage-service-account`) with scoped RBAC for native cluster discovery.
 
-todo
+### Homepage Troubleshooting
 
----
-
-# Grafana:
-
-todo
-
-## Grafana Troubleshooting
-
-todo
-
----
-
-# Pihole:
-
-todo
-
-## Pihole Troubleshooting
-
-todo
+- Inspect rendered ConfigMap files:
+  ```bash
+  kubectl get configmap homepage-config -n networking -o yaml
+  ```
+- Verify environment variables and secret injections:
+  ```bash
+  kubectl exec -it deployment/homepage -n networking -- env | grep HOMEPAGE_VAR_
+  ```
+- Stream live application runtime logs:
+  ```bash
+  kubectl logs deployment/homepage -n networking -f --tail=50
+  ```
+- Fix `403 Forbidden` / Invalid Host Header:
+  Ensure `HOMEPAGE_ALLOWED_HOSTS` includes `homepage.example.com,localhost,127.0.0.1` (or your `${DOMAIN_NAME}`) in the deployment environment.
 
 ---
 
-# Uptime-kuma:
+## Grafana & Observability Suite
 
-todo
+Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](./kubernetes/applications/monitoring/prometheus-values.yaml), [loki-values.yaml](./kubernetes/applications/monitoring/loki-values.yaml), and [alloy-values.yaml](./kubernetes/applications/monitoring/alloy-values.yaml)
 
-## Uptime-kuma Troubleshooting
+- Web Ingress URL: `https://grafana.example.com/`
+- Port Profile: `80/TCP` (Traefik Ingress routing to Grafana service)
+- Persistent Storage: `5Gi` PVC (`promstack-grafana`) for dashboards, alerts, and settings.
+- Integrated Data Sources: Prometheus (`kube-prometheus-stack`), Loki log aggregation gateway (`http://my-loki-gateway.monitoring.svc.cluster.local`), and Alloy telemetry collectors running as node DaemonSets.
 
-todo
+### Grafana Troubleshooting
+
+- Retrieve the auto-generated Grafana admin password:
+  ```bash
+  kubectl get secret -n monitoring promstack-grafana -o jsonpath="{.data.admin-password}" | base64 --decode; echo
+  ```
+- Verify cluster monitoring pods and daemonsets:
+  ```bash
+  kubectl get pods -n monitoring -o wide
+  ```
+- Stream Alloy log collection & pipeline ingestion:
+  ```bash
+  kubectl logs -n monitoring daemonset/alloy -f --tail=50
+  ```
+- Port-forward Prometheus server UI for direct query/rule inspection:
+  ```bash
+  kubectl port-forward -n monitoring svc/promstack-kube-prometheus-prometheus 9090:9090
+  ```
 
 ---
 
-# VaultWarden (Bitwarden):
+## Pi-hole DNS & Ad-Blocker
 
-todo
+Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](./kubernetes/applications/pihole/pihole-deployment.yaml)
 
-## VaultWarden (Bitwarden) Troubleshooting
+- Web Ingress URL: `https://pihole.example.com/admin/`
+- Dedicated MetalLB VIP: `192.168.50.242`
+- Port Profile: `53/UDP & 53/TCP` (DNS Resolution), `80/TCP` (Admin Web GUI)
+- Persistent Storage: HostPath volume mounted at `/var/data/pihole/config` (mapped to `/etc/pihole` inside the pod)
+- DNS Architecture: Upstream resolvers (`1.1.1.1`, `8.8.8.8`) with custom dnsmasq rule directing local homelab queries (`address=/example.com/192.168.50.240`).
 
-todo
+### Pi-hole Troubleshooting
+
+- Reset / update Web GUI admin password:
+  ```bash
+  kubectl exec -it -n networking deployment/pihole-dns-server -- pihole setpassword
+  ```
+- Test local and upstream DNS queries:
+  ```bash
+  dig @192.168.50.242 example.com +short
+  dig @192.168.50.242 google.com +short
+  ```
+- Stream FTL live query resolution logs:
+  ```bash
+  kubectl exec -it -n networking deployment/pihole-dns-server -- tail -f /var/log/pihole/pihole.log
+  ```
+- Inspect FTL daemon service status:
+  ```bash
+  kubectl exec -it -n networking deployment/pihole-dns-server -- pihole status
+  ```
 
 ---
+
+## Uptime Kuma Status Monitor
+
+Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml](./kubernetes/applications/uptime-kuma/uptime-kuma-deployment.yaml)
+
+- Web Ingress URL: `https://uptime.example.com`
+- Port Profile: `3001/TCP` (ClusterIP Service: `80/TCP`)
+- Persistent Storage: `uptime-kuma-pvc` (4Gi RWO PV mapped to `/app/data`)
+- Deployment Strategy: `Recreate` strategy prevents SQLite database concurrent locks during rollout transitions.
+
+### Uptime Kuma Troubleshooting
+
+- Stream monitor probe logs and heartbeat events:
+  ```bash
+  kubectl logs deployment/uptime-kuma -n networking -f --tail=50
+  ```
+- Reset admin credentials via internal CLI:
+  ```bash
+  kubectl exec -it deployment/uptime-kuma -n networking -- npm run reset-password
+  ```
+- Inspect SQLite database file integrity and size:
+  ```bash
+  kubectl exec -it deployment/uptime-kuma -n networking -- ls -lh /app/data/
+  ```
+
+---
+
+## Vaultwarden (Bitwarden)
+
+Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml](./kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml)
+
+- Web Ingress URL: `https://vault.example.com`
+- Dedicated MetalLB VIP: `192.168.50.243`
+- Port Profile: `80/TCP` (HTTP & integrated WebSocket notifications)
+- Persistent Storage: `vaultwarden-nas-pv` (4Gi NFS mount at `/mnt/export/storage/vaultwarden` mapped to `/data` in container, non-root UID `1000:1000`)
+- Security Baseline: `SIGNUPS_ALLOWED: "false"`, `WEBSOCKET_ENABLED: "true"`, `ADMIN_TOKEN` protected via Kubernetes Secret.
+
+### Vaultwarden Troubleshooting
+
+- Retrieve Admin Token for `/admin` portal login:
+  ```bash
+  kubectl get secret vaultwarden-secret -n networking -o jsonpath="{.data.ADMIN_TOKEN}" | base64 --decode; echo
+  ```
+- Check NFS file ownership and permissions:
+  ```bash
+  kubectl exec -it deployment/vaultwarden-server -n networking -- ls -la /data
+  ```
+- Temporarily allow sign-ups for adding new accounts:
+  ```bash
+  kubectl set env deployment/vaultwarden-server -n networking SIGNUPS_ALLOWED=true
+  # Complete registration at https://vault.example.com, then disable again:
+  kubectl set env deployment/vaultwarden-server -n networking SIGNUPS_ALLOWED=false
+  ```
+
+---
+
+## Plex Media Server
+
+Resource Context: [kubernetes/applications/plex/plex-deployment.yaml](./kubernetes/applications/plex/plex-deployment.yaml)
+
+- Web Ingress URL: `https://plex.example.com/`
+- Port Profile: `32400/TCP`
+- Persistent Storage:
+  - Media Library: `/mnt/export/storage/plex/media` (500Gi NFS PV, read-only mount)
+  - Config & DB: `/mnt/export/storage/plex/config` (20Gi NFS PV)
+  - Transcoding Scratch Space: Dedicated ephemeral `emptyDir` mounted at `/transcode` (preserves NAS I/O)
+
+### Plex Troubleshooting
+
+- Stream Plex server logs:
+  ```bash
+  kubectl logs deployment/plex-media-server -n media -f --tail=50
+  ```
+- Check transcode directory disk usage:
+  ```bash
+  kubectl exec -it deployment/plex-media-server -n media -- df -h /transcode
+  ```
+- Verify NFS media mount accessibility:
+  ```bash
+  kubectl exec -it deployment/plex-media-server -n media -- ls -la /media
+  ```
+
+---
+
+## Navidrome Music Server
+
+Resource Context: [kubernetes/applications/navidrome/navidrome-deployment.yaml](./kubernetes/applications/navidrome/navidrome-deployment.yaml)
+
+- Web Ingress URL: `https://music.example.com/`
+- Port Profile: `4533/TCP`
+- Persistent Storage:
+  - Music Library: `/mnt/export/storage/navidrome/music` (200Gi NFS PV, read-only mount)
+  - Application Data: `/mnt/export/storage/navidrome/data` (5Gi NFS PV)
+
+### Navidrome Troubleshooting
+
+- Stream music indexing and scanner logs:
+  ```bash
+  kubectl logs deployment/navidrome -n media -f --tail=50
+  ```
+- Verify music library files and permissions:
+  ```bash
+  kubectl exec -it deployment/navidrome -n media -- ls -la /music
+  ```

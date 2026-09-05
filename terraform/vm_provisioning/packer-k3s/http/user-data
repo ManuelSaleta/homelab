@@ -9,6 +9,7 @@ autoinstall:
 
   user-data:
     disable_root: true
+    lock_passwd: true
 
   shutdown: reboot
 
