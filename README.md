@@ -1,8 +1,15 @@
-# 🛸 Mothership Homelab: Master Workspace Hub
+# 🛸 Mothership Homelab
+## About
+Declaritive first homelab; Opinionated: ProxMox + K3s + Ubuntu Server
+- Terraform
+- Packer
+- Traefik + CloudFlare tunnel
 
-This centralized repository acts as the single source of truth for the Infrastructure as Code (IaC) blueprints, orchestration configurations, and automation manifests powering the `Mothership` bare-metal homelab environment.
+---
 
-The primary objective is a zero-intervention deployment pipeline that bakes a lightweight base operating system template, provisions high-performance cluster compute nodes on Proxmox VE, and instantly scales a self-healing Kubernetes ecosystem.
+Recently got into homeballing. This is my way of working on my DevOps and automation skills. 
+This is a *declaritive* first approach. I am lazy and configuration drift is something I wanted to avoid as much as possible.
+Everything is IaC, configs + application layer. While I built this project for me. I made it so anyone can hopefully come and grab what they want/need. This is a ProxMox + K3S setup. with Ubuntu server for the VMs & LXCs. Performance is highly important to me, partly because RAM is worth more than gold... literaly. At the time of writing, this entire setup runs on a single laptop with 16GB of RAM + 1TB external. If you like it take it - give it a star tho tha'd be nice :)
 
 ---
 
