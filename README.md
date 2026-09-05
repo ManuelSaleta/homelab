@@ -238,6 +238,45 @@ Inside `micro-nas` (`192.168.50.250`), persistent storage is mounted under `/mnt
 - **Root Squashing**: All NFS exports enforce `all_squash,anonuid=1000,anongid=1000`, ensuring client-side root processes can never execute with root privileges on the NAS host filesystem.
 - **Syncthing Tailscale Isolation**: Syncthing's web admin GUI is bound strictly to the host's private Tailscale IP (`[TAILSCALE-IP]:8384`), keeping port 8384 closed on the physical LAN.
 
+### 4. Manual Maintenance & Storage Permissions (`micro-nas`)
+
+> [!WARNING]
+> **Manual Changes Required on Existing Micro-NAS**: Because `micro-nas` (CT 250) is persistent and decoupled (never destroyed during compute teardowns or worker rebuilds), cloud-init `runcmd` directives in `micro-nas.tf` **only run once on initial container provisioning**.
+>
+> Any subsequent directory creation, ownership changes (`chown`), permission adjustments (`chmod`), or `/etc/exports` rule additions on an existing `micro-nas` instance are **manual changes** and must be run directly on `micro-nas` (`192.168.50.250` or via `pct enter 250` on the Proxmox host).
+
+#### Required Manual Setup / Fix Commands
+
+```bash
+# 1. Connect to micro-nas
+ssh gman@192.168.50.250
+# Or from Proxmox host: pct enter 250
+
+# 2. Create persistent directories
+sudo mkdir -p /mnt/export/storage/{vaultwarden,navidrome/data,navidrome/music,plex/config,plex/media,obsidian}
+
+# 3. Apply ownership (1000:1000 for K8s container workloads, gman for Obsidian sync)
+sudo chown -R 1000:1000 /mnt/export/storage/vaultwarden
+sudo chown -R 1000:1000 /mnt/export/storage/navidrome
+sudo chmod -R 775 /mnt/export/storage/navidrome/music
+sudo chmod -R 775 /mnt/export/storage/navidrome/data
+sudo chown -R 1000:1000 /mnt/export/storage/plex
+sudo chmod -R 775 /mnt/export/storage/plex/media
+sudo chown -R gman:gman /mnt/export/storage/obsidian
+
+# 4. Configure /etc/exports for the dual-node cluster IPs (192.168.50.185 & 192.168.50.210)
+sudo tee /etc/exports > /dev/null << 'EOF'
+/mnt/export/storage/vaultwarden 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/navidrome/data 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/navidrome/music 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/plex/config 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/plex/media 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+EOF
+
+# 5. Apply and reload export rules
+sudo exportfs -rav
+```
+
 > [!IMPORTANT]
 > **Zero Data Loss Guarantee**: You can safely run `make destroy-workers` or `make destroy-all` to completely tear down and re-provision the K3s cluster. As long as `micro-nas` (CT 250) remains intact, zero persistent application or note data will ever be lost.
 

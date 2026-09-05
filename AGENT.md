@@ -107,6 +107,10 @@ Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.
 - **Pi-hole**: Uses local node `hostPath: /var/data/pihole/config` (tied to worker node).
 - **Uptime Kuma**: Uses standard single-pod PVC (`uptime-kuma-pvc`) with deployment strategy `Recreate`.
 
+> [!IMPORTANT]
+> **Manual Micro-NAS Maintenance**: `micro-nas` (CT 250) is stateful and decoupled from cluster teardowns. Because cloud-init only runs on container creation, adding new persistent directories, updating ownership/permissions (`chown -R 1000:1000` / `chmod`), or adjusting `/etc/exports` on an existing `micro-nas` instance must be executed manually over SSH (`gman@192.168.50.250`).
+
+
 ---
 
 ## 6. Kubernetes Manifest Standards & Blueprints
