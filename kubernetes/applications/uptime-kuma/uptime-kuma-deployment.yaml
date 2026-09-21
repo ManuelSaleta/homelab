@@ -29,6 +29,13 @@ spec:
       labels:
         app: uptime-kuma
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
         - name: uptime-kuma
           image: louislam/uptime-kuma:1

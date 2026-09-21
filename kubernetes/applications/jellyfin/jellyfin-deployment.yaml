@@ -92,6 +92,13 @@ spec:
       labels:
         app: jellyfin-media-server
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
         - name: jellyfin-core-engine
           image: jellyfin/jellyfin:latest

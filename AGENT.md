@@ -191,6 +191,24 @@ spec:
                   number: <port>
 ```
 
+### Rule 4: Workload Placement & Control Plane Isolation
+All application compute workloads must specify `nodeAffinity` excluding the control plane to guarantee API server stability and prevent memory contention on `k3s-control-01` (3GB RAM):
+```yaml
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+```
+
+### Rule 5: Dedicated MetalLB Load Balancing
+K3s built-in Klipper ServiceLB is disabled (`disable: [servicelb]`) in favor of MetalLB (`IPAddressPool` 192.168.50.240-250) to prevent port collisions (e.g. ports 53 and 80) and redundant hostPort proxies.
+
 ---
 
 ## 7. Proxmox Hypervisor Host Maintenance Rules
