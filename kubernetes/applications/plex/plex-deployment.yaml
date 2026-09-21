@@ -86,6 +86,26 @@ spec:
         app: plex-media-server
     spec:
       hostNetwork: false
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      hostAliases:
+        - ip: 172.64.151.205
+          hostnames:
+            - servers.plex.tv
+            - meta.plex.tv
+            - metadata.provider.plex.tv
+            - vod.provider.plex.tv
+            - provider-static.plex.tv
+            - scrobbles.plex.tv
+        - ip: 54.156.171.78
+          hostnames:
+            - v4.plex.tv
+        - ip: 66.228.61.220
+          hostnames:
+            - pubsub.plex.tv
       containers:
         - name: plex-core-engine
           image: lscr.io/linuxserver/plex:latest
