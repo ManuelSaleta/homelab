@@ -371,13 +371,13 @@ jellyfin-down:
 	@echo "💥 Removing Jellyfin Media Server Deployment..."
 	$(call DELETE_YAML,$(APPS_DIR)/jellyfin/jellyfin-deployment.yaml)
 
-apps-up: pihole-up homepage-up grafana-up vaultwarden-up karakeep-up uptime-kuma-up navidrome-up plex-up jellyfin-up ## Deploy all applications at once
+apps-up: pihole-up homepage-up vaultwarden-up karakeep-up uptime-kuma-up navidrome-up plex-up jellyfin-up ## Deploy all applications at once
 	@echo "✅ All applications applied successfully with domain: $(HOMELAB_DOMAIN)."
 
 apps-down: ## Tear down all cluster workloads with a safety step
 	@echo "🛑 WARNING: You are about to wipe all apps. Press Ctrl+C to abort, or Enter to continue..."
 	@read _
-	$(MAKE) pihole-down homepage-down grafana-down vaultwarden-down karakeep-down uptime-kuma-down navidrome-down plex-down jellyfin-down
+	$(MAKE) pihole-down homepage-down vaultwarden-down karakeep-down uptime-kuma-down navidrome-down plex-down jellyfin-down
 
 apps-status:
 	@echo "🔍 Checking Application Status..."
