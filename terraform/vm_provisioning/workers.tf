@@ -23,7 +23,7 @@ resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
       - until curl -k -s https://192.168.50.185:6443/readyz; do echo "Waiting for control plane..."; sleep 5; done
       
       # 3. Join the cluster
-      - curl -sfL https://get.k3s.io | K3S_URL="https://192.168.50.185:6443" K3S_TOKEN="${var.k3s_share_token}" INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent --node-name=k3s-worker-0${count.index + 1}" sh -
+      - curl -sfL https://get.k3s.io | K3S_URL="https://192.168.50.185:6443" K3S_TOKEN="${var.k3s_share_token}" INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent --node-name=k3s-worker-0${count.index + 1} --node-label node-role.kubernetes.io/worker=true" sh -
       
       # 4. Reload and restart
       - systemctl daemon-reload

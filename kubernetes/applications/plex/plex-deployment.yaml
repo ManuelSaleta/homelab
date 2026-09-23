@@ -85,6 +85,13 @@ spec:
       labels:
         app: plex-media-server
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       hostNetwork: false
       dnsPolicy: ClusterFirst
       dnsConfig:
