@@ -227,7 +227,7 @@ t-apply-k3s: ## Apply Kubernetes configurations with auto-approval
 
 wait-for-cluster: ## Block execution until the K3s cluster API endpoints respond green
 	@echo "=> Waiting for K3s API to come online..."
-	@until curl -k -s https://192.168.50.185:6443/readyz; do sleep 5; done
+	@until curl -k -s https://192.168.1.185:6443/readyz; do sleep 5; done
 	@echo "=> Cluster is ready for configuration!"
 
 t-clean: ## Clear out transient terraform cache footprints and local log locks

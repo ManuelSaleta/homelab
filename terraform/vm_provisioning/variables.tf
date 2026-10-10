@@ -43,7 +43,7 @@ variable "grafana_password" {
 variable "proxmox_endpoint" {
   type        = string
   description = "The full HTTPS URL API endpoint for the Proxmox VE host."
-  default     = "https://192.168.50.200:8006/"
+  default     = "https://192.168.1.200:8006/"
 }
 
 # Use this for Terraform
@@ -145,26 +145,26 @@ variable "proxmox_node_name" {
 variable "proxmox_host_ip" {
   type        = string
   description = "The IP address of the Proxmox host."
-  default     = "192.168.50.200"
+  default     = "192.168.1.200"
 }
 
 
 variable "k3s_manager_ip" {
   type        = string
   description = "The IP address of the K3s control manager node for worker registration. Match this IP with the KUBECONFIG"
-  default     = "192.168.50.185" # 🎯 Formatted to point directly to the static manager node address
+  default     = "192.168.1.185" # 🎯 Formatted to point directly to the static manager node address
 }
 
 variable "default_gateway_ip" {
   type        = string
   description = "The network default gateway."
-  default     = "192.168.50.1"
+  default     = "192.168.1.254"
 }
 
 variable "http_bind_address_ip" {
   type        = string
   description = "The IP of the machine from which packer hcl and terraform will be executed from."
-  default     = "192.168.50.55"
+  default     = "192.168.1.111"
 }
 
 variable "worker_count" {

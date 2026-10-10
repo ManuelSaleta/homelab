@@ -1,11 +1,11 @@
 - Management:
     - Proxmox:
         icon: proxmox
-        href: https://192.168.50.200:8006
+        href: https://192.168.1.200:8006
         description: Proxmox Virtual Environment
         widget:
           type: proxmox
-          url: https://192.168.50.200:8006
+          url: https://192.168.1.200:8006
           username: "homepage-widgets-api@pve!homepage-proxmox-widgets"
           password: "{{HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD}}"
           node: mothership

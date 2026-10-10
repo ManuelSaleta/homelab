@@ -8,7 +8,7 @@
 homelab_domain = "example.com"
 
 # Proxmox Hypervisor Connection
-proxmox_endpoint            = "https://192.168.50.200:8006/"
+proxmox_endpoint            = "https://192.168.1.200:8006/"
 proxmox_node_name           = "mothership"
 proxmox_api_user            = "terraform-user-agent@pve"
 proxmox_api_token_id        = "terraform-user-agent@pve!terraform-token-v2"
@@ -18,7 +18,7 @@ proxmox_template_vm_id      = "777"
 proxmox_vm_auditor_password = "your-auditor-password"
 
 # Network & Build Settings
-http_bind_address_ip        = "192.168.50.55"
+http_bind_address_ip        = "192.168.1.111"
 k3s_share_token             = "your-k3s-cluster-join-token"
 
 # Cloudflare Zero Trust & DNS Tokens

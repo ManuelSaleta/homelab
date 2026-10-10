@@ -109,7 +109,7 @@ The `boot_command` property simulates a human physically typing on a keyboard co
 
 4. **`"\"ds=nocloud;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/\" <wait3>"`**
 
-- **Action:** Types the data-source parameter string, escaping the quotes. Packer automatically substitutes `{{ .HTTPIP }}` and `{{ .HTTPPort }}` with its local temporary web server details (e.g., `http://192.168.50.55:8688/`).
+- **Action:** Types the data-source parameter string, escaping the quotes. Packer automatically substitutes `{{ .HTTPIP }}` and `{{ .HTTPPort }}` with its local temporary web server details (e.g., `http://192.168.1.111:8688/`).
 - **Purpose:** Directs the kernel's `cloud-init` subsystem to search for structural `user-data` and `meta-data` instruction files hosted remotely on the network instead of searching local storage arrays.
 
 5. **`"---<enter><wait3>"`**
