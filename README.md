@@ -7,7 +7,7 @@ Declaritive first homelab; Opinionated: ProxMox + K3s + Ubuntu Server
 
 ---
 
-Recently got into homeballing. This is my way of working on my DevOps and automation skills. 
+Recently got into homeballing. This is my way of working on my DevOps and automation skills.
 This is a *declaritive* first approach. I am lazy and configuration drift is something I wanted to avoid as much as possible.
 Everything is IaC, configs + application layer. While I built this project for me. I made it so anyone can hopefully come and grab what they want/need. This is a ProxMox + K3S setup. with Ubuntu server for the VMs & LXCs. Performance is highly important to me, partly because RAM is worth more than gold... literaly. At the time of writing, this entire setup runs on a single laptop with 16GB of RAM + 1TB external. If you like it take it - give it a star tho tha'd be nice :)
 
@@ -145,9 +145,9 @@ Directory Context: `terraform/vm_provisioning/*`
 Consumes the golden template image to provision resource-mapped virtual hardware topologies, inject network configurations, and handle automatic node registration using the baked `ID 777` template.
 Compute Fleet Profiles
 
-- **Manager Plane (`k3s-control-01`, VM 100)**: 2 Cores, 3GB RAM, DHCP Network Allocation (`192.168.50.185`). Hosts the Kubernetes API server, CoreDNS, and Traefik ingress controller.
-- **Worker Node (`k3s-worker-01`, VM 210)**: 2 Cores, 3GB RAM, Static IP (`192.168.50.210`). Single worker in the streamlined dual-node topology (`worker_count = 1`; `k3s-worker-02` decommissioned).
-- **Decentralized Storage Block (`micro-nas`, CT 250)**: Dedicated lightweight LXC container (1 Core, 512MB RAM, Static IP `192.168.50.250`) providing NFS kernel exports and Syncthing over Tailscale, backed by 900 GB on `ext-hdd-storage`. Decoupled from the K3s cluster lifecycle to ensure data safety.
+- **Manager Plane (`k3s-control-01`, VM 100)**: 2 Cores, 3GB RAM, DHCP Network Allocation (`192.168.1.185`). Hosts the Kubernetes API server, CoreDNS, and Traefik ingress controller.
+- **Worker Node (`k3s-worker-01`, VM 210)**: 2 Cores, 3GB RAM, Static IP (`192.168.1.210`). Single worker in the streamlined dual-node topology (`worker_count = 1`; `k3s-worker-02` decommissioned).
+- **Decentralized Storage Block (`micro-nas`, CT 250)**: Dedicated lightweight LXC container (1 Core, 512MB RAM, Static IP `192.168.1.250`) providing NFS kernel exports and Syncthing over Tailscale, backed by 900 GB on `ext-hdd-storage`. Decoupled from the K3s cluster lifecycle to ensure data safety.
 
 ---
 
@@ -162,7 +162,7 @@ make infra-up
 ```
 
 This reconciles the three foundational infrastructure manifests in order:
-1. **MetalLB (`metallb-config.yaml`)**: Hooks directly into the physical Layer 2 routing fabric to assign real external IP addresses (`192.168.50.240 - 192.168.50.249`) to cluster services like Pi-hole and Vaultwarden.
+1. **MetalLB (`metallb-config.yaml`)**: Hooks directly into the physical Layer 2 routing fabric to assign real external IP addresses (`192.168.1.240 - 192.168.1.249`) to cluster services like Pi-hole and Vaultwarden.
 2. **Traefik DNS (`traefik-dns-config.yaml`)**: Configures Traefik Ingress controller DNS resolver options and routing for cluster endpoints.
 3. **Cloudflare Tunnel (`cloudflared-config.yaml`)**: Runs high-availability `cloudflared` edge routing external HTTPS traffic securely into internal cluster endpoints without opening inbound firewall ports.
 
@@ -176,7 +176,7 @@ Directory Context: `kubernetes/applications/*`
 
 Establishes a single service instance that co-locates core DNS filtering networks and web administration interfaces.
 
-Dedicated IP Profile: 192.168.50.242 (DNS: 53/UDP & 53/TCP | Web Panel: 80/TCP)
+Dedicated IP Profile: 192.168.1.242 (DNS: 53/UDP & 53/TCP | Web Panel: 80/TCP)
 
 - Web Admin Panel Path: `https://pihole.freesalty.com/admin` (or `https://pihole.${HOMELAB_DOMAIN}/admin`)
 - Persistent Storage Architecture: Currently mapped to local node hostPath space (`/var/data/pihole/config`). Data strictly belongs to the physical worker host running the active pod.
@@ -204,7 +204,7 @@ make promstack-clean
 
 Resource Engine Context: [terraform/vm_provisioning/micro-nas.tf](./terraform/vm_provisioning/micro-nas.tf)
 
-The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden passwords, Navidrome music, Plex media/metadata) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` LXC container (`192.168.50.250`, CT 250).
+The core principle of this homelab is **Cluster & Storage Decoupling**: Compute is transient, but persistent data is static. Sensitive and stateful data (Obsidian notes, Vaultwarden passwords, Navidrome music, Plex media/metadata) live strictly **outside** the K3s cluster lifecycle on the dedicated `micro-nas` LXC container (`192.168.1.250`, CT 250).
 
 ### 1. Physical Hardware & Memory Allocation (16 GB Host Footprint)
 
@@ -223,15 +223,15 @@ PROXMOX HOST: mothership (16 GB Physical RAM Total)
 
 ### 2. Standardized Storage Pattern: `/mnt/export/storage/<application-name>`
 
-Inside `micro-nas` (`192.168.50.250`), persistent storage is mounted under `/mnt/export/storage`. Applications consume isolated NFS shares using hardened `all_squash` rules scoped strictly to the K3s node IPs (`192.168.50.185` and `192.168.50.210`):
+Inside `micro-nas` (`192.168.1.250`), persistent storage is mounted under `/mnt/export/storage`. Applications consume isolated NFS shares using hardened `all_squash` rules scoped strictly to the K3s node IPs (`192.168.1.185` and `192.168.1.210`):
 
 | Application | Micro-NAS File Path | NFS Export Rule (`/etc/exports`) | Consumer / Protocol | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
-| **Navidrome (Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), cache & artwork |
-| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files (200Gi request) |
-| **Plex (Config & DB)** | `/mnt/export/storage/plex/config` | `/mnt/export/storage/plex/config 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-config-pv`, 20Gi) | Server metadata, SQLite DB, agent state |
-| **Plex (Media Library)**| `/mnt/export/storage/plex/media` | `/mnt/export/storage/plex/media 192.168.50.185(...) 192.168.50.210(...)` | K3s NFS PV (`plex-media-pv`, 500Gi) | Movies, TV series, video content |
+| **Vaultwarden** | `/mnt/export/storage/vaultwarden` | `/mnt/export/storage/vaultwarden 192.168.1.185(...) 192.168.1.210(...)` | K3s NFS PV (`vaultwarden-nas-pv`) | Encrypted password vault database & RSA keys |
+| **Navidrome (Data)** | `/mnt/export/storage/navidrome/data` | `/mnt/export/storage/navidrome/data 192.168.1.185(...) 192.168.1.210(...)` | K3s NFS PV (`navidrome-config-pv`) | SQLite database (`navidrome.db`), cache & artwork |
+| **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `/mnt/export/storage/navidrome/music 192.168.1.185(...) 192.168.1.210(...)` | K3s NFS PV (`navidrome-music-pv`) | Audio tracks, albums, and FLAC/MP3 files (200Gi request) |
+| **Plex (Config & DB)** | `/mnt/export/storage/plex/config` | `/mnt/export/storage/plex/config 192.168.1.185(...) 192.168.1.210(...)` | K3s NFS PV (`plex-config-pv`, 20Gi) | Server metadata, SQLite DB, agent state |
+| **Plex (Media Library)**| `/mnt/export/storage/plex/media` | `/mnt/export/storage/plex/media 192.168.1.185(...) 192.168.1.210(...)` | K3s NFS PV (`plex-media-pv`, 500Gi) | Movies, TV series, video content |
 | **Obsidian Vault** | `/mnt/export/storage/obsidian` | N/A (Syncthing user space) | Syncthing / Tailscale Mesh | Markdown notes synchronized across devices |
 
 ### 3. File Permissions & Security Hardening
@@ -244,7 +244,7 @@ Inside `micro-nas` (`192.168.50.250`), persistent storage is mounted under `/mnt
 > [!WARNING]
 > **Manual Changes Required on Existing Micro-NAS**: `micro-nas` is provisioned as an LXC container (CT 250). Unlike KVM virtual machines, Proxmox LXC containers do not execute cloud-init `user-data` snippets. Initial container setup (installing packages, TUN configuration, mount points) is performed directly inside the container or via `pct enter 250`.
 >
-> Furthermore, because `micro-nas` is persistent and decoupled (never destroyed during compute teardowns or worker rebuilds), directory creation, ownership changes (`chown`), permission adjustments (`chmod`), or `/etc/exports` rule additions on an existing `micro-nas` instance are **manual maintenance changes** and must be run directly on `micro-nas` (`192.168.50.250` or via `pct enter 250` on the Proxmox host).
+> Furthermore, because `micro-nas` is persistent and decoupled (never destroyed during compute teardowns or worker rebuilds), directory creation, ownership changes (`chown`), permission adjustments (`chmod`), or `/etc/exports` rule additions on an existing `micro-nas` instance are **manual maintenance changes** and must be run directly on `micro-nas` (`192.168.1.250` or via `pct enter 250` on the Proxmox host).
 
 #### Host Configuration for Tailscale TUN & NFS (Proxmox Host)
 Running Tailscale and the kernel NFS server inside an LXC container requires privileged mode and host TUN passthrough. Ensure `/etc/pve/lxc/250.conf` on the Proxmox host includes:
@@ -260,7 +260,7 @@ And the container configuration must include `features: nesting=1,mount=nfs` and
 
 ```bash
 # 1. Connect to micro-nas
-ssh gman@192.168.50.250
+ssh gman@192.168.1.250
 # Or from Proxmox host: pct enter 250
 
 # 2. Create persistent directories
@@ -275,13 +275,13 @@ sudo chown -R 1000:1000 /mnt/export/storage/plex
 sudo chmod -R 775 /mnt/export/storage/plex/media
 sudo chown -R gman:gman /mnt/export/storage/obsidian
 
-# 4. Configure /etc/exports for the dual-node cluster IPs (192.168.50.185 & 192.168.50.210)
+# 4. Configure /etc/exports for the dual-node cluster IPs (192.168.1.185 & 192.168.1.210)
 sudo tee /etc/exports > /dev/null << 'EOF'
-/mnt/export/storage/vaultwarden 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
-/mnt/export/storage/navidrome/data 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
-/mnt/export/storage/navidrome/music 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
-/mnt/export/storage/plex/config 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
-/mnt/export/storage/plex/media 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/vaultwarden 192.168.1.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/navidrome/data 192.168.1.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/navidrome/music 192.168.1.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/plex/config 192.168.1.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+/mnt/export/storage/plex/media 192.168.1.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
 EOF
 
 # 5. Apply and reload export rules
@@ -329,7 +329,7 @@ Every single time the primary manager plane node (k3s-control-01) is destroyed a
 
 - Verify split-horizon route validation loops directly across the local LAN interface:
   ```bash
-      curl -I -H "Host: pihole.example.com" [http://192.168.50.240/admin/](http://192.168.50.240/admin/)
+      curl -I -H "Host: pihole.example.com" [http://192.168.1.240/admin/](http://192.168.1.240/admin/)
   ```
 
 ---
@@ -599,10 +599,10 @@ Resource Context: [kubernetes/applications/monitoring/prometheus-values.yaml](./
 Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](./kubernetes/applications/pihole/pihole-deployment.yaml)
 
 - Web Ingress URL: `https://pihole.example.com/admin/`
-- Dedicated MetalLB VIP: `192.168.50.242`
+- Dedicated MetalLB VIP: `192.168.1.242`
 - Port Profile: `53/UDP & 53/TCP` (DNS Resolution), `80/TCP` (Admin Web GUI)
 - Persistent Storage: HostPath volume mounted at `/var/data/pihole/config` (mapped to `/etc/pihole` inside the pod)
-- DNS Architecture: Upstream resolvers (`1.1.1.1`, `8.8.8.8`) with custom dnsmasq rule directing local homelab queries (`address=/example.com/192.168.50.240`).
+- DNS Architecture: Upstream resolvers (`1.1.1.1`, `8.8.8.8`) with custom dnsmasq rule directing local homelab queries (`address=/example.com/192.168.1.240`).
 
 ### Pi-hole Troubleshooting
 
@@ -612,8 +612,8 @@ Resource Context: [kubernetes/applications/pihole/pihole-deployment.yaml](./kube
   ```
 - Test local and upstream DNS queries:
   ```bash
-  dig @192.168.50.242 example.com +short
-  dig @192.168.50.242 google.com +short
+  dig @192.168.1.242 example.com +short
+  dig @192.168.1.242 google.com +short
   ```
 - Stream FTL live query resolution logs:
   ```bash
@@ -657,7 +657,7 @@ Resource Context: [kubernetes/applications/uptime-kuma/uptime-kuma-deployment.ya
 Resource Context: [kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml](./kubernetes/applications/vaultwarden/vaultwarden-deployment.yaml)
 
 - Web Ingress URL: `https://vault.example.com`
-- Dedicated MetalLB VIP: `192.168.50.243`
+- Dedicated MetalLB VIP: `192.168.1.243`
 - Port Profile: `80/TCP` (HTTP & integrated WebSocket notifications)
 - Persistent Storage: `vaultwarden-nas-pv` (4Gi NFS mount at `/mnt/export/storage/vaultwarden` mapped to `/data` in container, non-root UID `1000:1000`)
 - Security Baseline: `SIGNUPS_ALLOWED: "false"`, `WEBSOCKET_ENABLED: "true"`, `ADMIN_TOKEN` protected via Kubernetes Secret.

@@ -80,12 +80,12 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - chown -R gman:gman /mnt/export/storage/obsidian
 
       # 7. Write hardened export rules to /etc/exports (restricted to K3s nodes with all_squash)
-      - echo "/mnt/export/storage/vaultwarden 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
-      - echo "/mnt/export/storage/navidrome/data 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
-      - echo "/mnt/export/storage/navidrome/music 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
-      - echo "/mnt/export/storage/plex/config 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
-      - echo "/mnt/export/storage/plex/media 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
-      - echo "/mnt/export/storage/jellyfin/config 192.168.50.185(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.50.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/vaultwarden ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/data ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/navidrome/music ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/plex/config ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/plex/media ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/jellyfin/config ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - exportfs -rav
 
       # 8. Enable and start NFS server
@@ -113,7 +113,7 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
 
     ip_config {
       ipv4 {
-        address = "192.168.50.250/24"
+        address = "192.168.1.250/24"
         gateway = var.default_gateway_ip
       }
     }

@@ -8,7 +8,7 @@ This file serves as the system instruction context and prime directive for AI co
 ## 1. Repository Philosophy & Core Principles
 
 1. **Zero-Intervention Pipeline**: IaC manifests must favor automated provisioners (`Packer` -> `Terraform` -> `K3s`) over manual runtime steps.
-2. **Cluster & Storage Decoupling**: Compute is transient; persistent data is static. Sensitive and stateful data lives **outside** the K3s cluster lifecycle on dedicated infrastructure (`micro-nas` LXC container `CT 250` at `192.168.50.250`).
+2. **Cluster & Storage Decoupling**: Compute is transient; persistent data is static. Sensitive and stateful data lives **outside** the K3s cluster lifecycle on dedicated infrastructure (`micro-nas` LXC container `CT 250` at `192.168.1.250`).
 3. **NFS Over Local Storage**: Stateful workloads in K3s must consume remote NFS exports from `micro-nas` rather than `hostPath` or local volumes to guarantee cross-node workload mobility and zero data loss on cluster teardown.
 4. **Strict Namespace Isolation**: Workloads must be isolated by functional domain:
    - `media`: Plex Media Server, Navidrome Music Server.
@@ -23,10 +23,10 @@ This file serves as the system instruction context and prime directive for AI co
 
 | Node Name | Type & ID | IP Address | vCPU / RAM | Role & Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **mothership** | Physical Host | `192.168.50.200` | Physical (16 GB) | Proxmox VE Hypervisor, NVMe (`local-lvm`) + 1TB HDD (`sda`) |
-| **k3s-control-01** | VM `100` | `192.168.50.185` | 2 vCPUs / 3 GB RAM | K3s Manager, API Server (`:6443`), CoreDNS, Traefik Ingress |
-| **k3s-worker-01** | VM `210` | `192.168.50.210` | 2 vCPUs / 3 GB RAM | K3s Worker Node, Application compute workloads |
-| **micro-nas** | LXC `CT 250` | `192.168.50.250` | 1 Core / 512 MB RAM | Dedicated Storage Node: NFS Kernel Server, Syncthing, Tailscale |
+| **mothership** | Physical Host | `192.168.1.200` | Physical (16 GB) | Proxmox VE Hypervisor, NVMe (`local-lvm`) + 1TB HDD (`sda`) |
+| **k3s-control-01** | VM `100` | `192.168.1.185` | 2 vCPUs / 3 GB RAM | K3s Manager, API Server (`:6443`), CoreDNS, Traefik Ingress |
+| **k3s-worker-01** | VM `210` | `192.168.1.210` | 2 vCPUs / 3 GB RAM | K3s Worker Node, Application compute workloads |
+| **micro-nas** | LXC `CT 250` | `192.168.1.250` | 1 Core / 512 MB RAM | Dedicated Storage Node: NFS Kernel Server, Syncthing, Tailscale |
 
 > [!NOTE]
 > **Base OS Standards**: All VM compute nodes are cloned from golden Packer template **ID 777** running **Ubuntu 26.04.1 LTS** (`ubuntu-26.04.1-live-server-amd64.iso`). The `micro-nas` LXC uses container template `ubuntu-26.04-standard_26.04-1_amd64.tar.zst`.
@@ -45,7 +45,7 @@ This file serves as the system instruction context and prime directive for AI co
 │   └── container-provisioning/    # Standalone Docker container orchestration (future/edge)
 ├── kubernetes/
 │   ├── infrastructure/            # Core L2/L3 networking & ingress controllers
-│   │   ├── metallb-config.yaml    # MetalLB IPAddressPool (192.168.50.240-250) & L2Advertisement
+│   │   ├── metallb-config.yaml    # MetalLB IPAddressPool (192.168.1.240-249) & L2Advertisement
 │   │   ├── traefik-dns-config.yaml # Traefik HelmChartConfig (Cloudflare DNS ACME / TLS)
 │   │   └── cloudflared-config.yaml # Cloudflare Zero Trust tunnel deployment
 │   └── applications/              # Workload manifests grouped by application folder
@@ -82,14 +82,14 @@ This file serves as the system instruction context and prime directive for AI co
      runAsGroup: 1000
      fsGroup: 1000
    ```
-5. **NFS Root Squashing & Network Isolation**: All NFS shares on `micro-nas` enforce `all_squash,anonuid=1000,anongid=1000` and restrict access strictly to the K3s node IPs (`192.168.50.185` and `192.168.50.210`).
+5. **NFS Root Squashing & Network Isolation**: All NFS shares on `micro-nas` enforce `all_squash,anonuid=1000,anongid=1000` and restrict access strictly to the K3s node IPs (`192.168.1.185` and `192.168.1.210`).
 6. **Syncthing Network Isolation**: Syncthing GUI administration is strictly bound to the host's private Tailscale IP (`[TAILSCALE-IP]:8384`), keeping port 8384 closed on the physical LAN.
 
 ---
 
 ## 5. Storage Architecture & Decoupling ("What Lives Where")
 
-Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.50.250`). As long as `micro-nas` (CT 250) remains intact, the entire K3s cluster can be destroyed and rebuilt with **zero data loss**.
+Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.1.250`). As long as `micro-nas` (CT 250) remains intact, the entire K3s cluster can be destroyed and rebuilt with **zero data loss**.
 
 | Application | Micro-NAS Target Path | PV Name | PVC Name | Access Mode | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -108,7 +108,7 @@ Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.
 - **Uptime Kuma**: Uses standard single-pod PVC (`uptime-kuma-pvc`) with deployment strategy `Recreate`.
 
 > [!IMPORTANT]
-> **Manual Micro-NAS Maintenance**: `micro-nas` (CT 250) is stateful and decoupled from cluster teardowns. Because cloud-init only runs on container creation, adding new persistent directories, updating ownership/permissions (`chown -R 1000:1000` / `chmod`), or adjusting `/etc/exports` on an existing `micro-nas` instance must be executed manually over SSH (`gman@192.168.50.250`).
+> **Manual Micro-NAS Maintenance**: `micro-nas` (CT 250) is stateful and decoupled from cluster teardowns. Because cloud-init only runs on container creation, adding new persistent directories, updating ownership/permissions (`chown -R 1000:1000` / `chmod`), or adjusting `/etc/exports` on an existing `micro-nas` instance must be executed manually over SSH (`gman@192.168.1.250`).
 
 
 ---
@@ -143,7 +143,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   nfs:
-    server: 192.168.50.250
+    server: 192.168.1.250
     path: /mnt/export/storage/<target-folder>
 ---
 apiVersion: v1
@@ -195,7 +195,7 @@ spec:
 
 ## 7. Proxmox Hypervisor Host Maintenance Rules
 
-When generating instructions or scripts for maintaining the Proxmox VE hypervisor host (`root@192.168.50.200`):
+When generating instructions or scripts for maintaining the Proxmox VE hypervisor host (`root@192.168.1.200`):
 
 > [!CAUTION]
 > **Always use `apt-get dist-upgrade` (or `apt full-upgrade`) on Proxmox VE.**

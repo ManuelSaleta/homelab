@@ -20,10 +20,10 @@ resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
       - echo 'K3S_NODE_NAME="k3s-worker-0${count.index + 1}"' > /etc/systemd/system/k3s-agent.service.env
       
       # 2. WAIT for the control plane to be reachable before trying to join
-      - until curl -k -s https://192.168.50.185:6443/readyz; do echo "Waiting for control plane..."; sleep 5; done
+      - until curl -k -s https://${var.k3s_manager_ip}:6443/readyz; do echo "Waiting for control plane..."; sleep 5; done
       
       # 3. Join the cluster
-      - curl -sfL https://get.k3s.io | K3S_URL="https://192.168.50.185:6443" K3S_TOKEN="${var.k3s_share_token}" INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent --node-name=k3s-worker-0${count.index + 1}" sh -
+      - curl -sfL https://get.k3s.io | K3S_URL="https://${var.k3s_manager_ip}:6443" K3S_TOKEN="${var.k3s_share_token}" INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent --node-name=k3s-worker-0$${count.index + 1}" sh -
       
       # 4. Reload and restart
       - systemctl daemon-reload
@@ -95,10 +95,10 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
       keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
     }
 
-    # Set static IPs for worker nodes 192.168.50.X starting at .210
+    # Set static IPs for worker nodes 192.168.1.X starting at .210
     ip_config {
       ipv4 {
-        address = "192.168.50.${210 + count.index}/24"
+        address = "192.168.1.${210 + count.index}/24"
         gateway = var.default_gateway_ip
       }
     }

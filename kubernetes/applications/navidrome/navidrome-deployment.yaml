@@ -17,7 +17,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   nfs:
-    server: 192.168.50.250
+    server: 192.168.1.250
     path: /mnt/export/storage/navidrome/music
 ---
 apiVersion: v1
@@ -48,7 +48,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   nfs:
-    server: 192.168.50.250
+    server: 192.168.1.250
     path: /mnt/export/storage/navidrome/data
 ---
 apiVersion: v1

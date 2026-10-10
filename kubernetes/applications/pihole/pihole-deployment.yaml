@@ -39,7 +39,7 @@ spec:
             - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;8.8.8.8"
             - name: FTLCONF_misc_dnsmasq_lines
-              value: "address=/${DOMAIN_NAME}/192.168.50.240"
+              value: "address=/${DOMAIN_NAME}/192.168.1.240"
             - name: FTLCONF_webserver_cors_allowedHosts
               value: "pihole.${DOMAIN_NAME},${DOMAIN_NAME}"
           ports:
@@ -67,7 +67,7 @@ metadata:
   name: pihole-loadbalancer-service
   namespace: networking
   annotations:
-    metallb.universe.tf/loadBalancerIPs: "192.168.50.242"
+    metallb.universe.tf/loadBalancerIPs: "192.168.1.242"
 spec:
   type: LoadBalancer
   selector:
