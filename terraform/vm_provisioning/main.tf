@@ -1,7 +1,7 @@
 # ==============================================================================
 # Purpose: Provision the baseline infrastructure for the k3s cluster manager
 # - Clones cleanly from the golden Packer template (ID 777)
-# - Pinpoints 2 CPU cores and 3GB of RAM.
+# - Pinpoints 2 CPU cores and 2GB of RAM.
 # - Leverages Cloud-init to pass unique network definitions and settings.
 # Docs: https://registry.terraform.io/providers/bpg/proxmox/latest/docs
 # ==============================================================================
@@ -97,7 +97,7 @@ resource "proxmox_virtual_environment_vm" "k3s_control" {
   }
 
   memory {
-    dedicated = 3072 # 3 GB RAM
+    dedicated = 2048 # 2 GB RAM (optimized control plane footprint)
   }
 
   # Storage Mapping (Must point to the exact target block you laid down in Packer)

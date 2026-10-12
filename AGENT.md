@@ -24,8 +24,8 @@ This file serves as the system instruction context and prime directive for AI co
 | Node Name | Type & ID | IP Address | vCPU / RAM | Role & Scope |
 | :--- | :--- | :--- | :--- | :--- |
 | **mothership** | Physical Host | `192.168.1.200` | Physical (16 GB) | Proxmox VE Hypervisor, NVMe (`local-lvm`) + 1TB HDD (`sda`) |
-| **k3s-control-01** | VM `100` | `192.168.1.185` | 2 vCPUs / 3 GB RAM | K3s Manager, API Server (`:6443`), CoreDNS, Traefik Ingress |
-| **k3s-worker-01** | VM `210` | `192.168.1.210` | 2 vCPUs / 3 GB RAM | K3s Worker Node, Application compute workloads |
+| **k3s-control-01** | VM `100` | `192.168.1.185` | 2 vCPUs / 2 GB RAM | K3s Manager, API Server (`:6443`), CoreDNS, Traefik Ingress |
+| **k3s-worker-01** | VM `210` | `192.168.1.210` | 2 vCPUs / 4 GB RAM | K3s Worker Node, Application compute workloads |
 | **micro-nas** | LXC `CT 250` | `192.168.1.250` | 1 Core / 512 MB RAM | Dedicated Storage Node: NFS Kernel Server, Syncthing, Tailscale |
 
 > [!NOTE]
@@ -202,7 +202,7 @@ spec:
 
 ### Rule 4: Workload Placement & Control Plane Isolation
 
-All application compute workloads must specify `nodeAffinity` excluding the control plane to guarantee API server stability and prevent memory contention on `k3s-control-01` (3GB RAM):
+All application compute workloads must specify `nodeAffinity` excluding the control plane to guarantee API server stability and prevent memory contention on `k3s-control-01` (2GB RAM):
 
 ```yaml
 spec:

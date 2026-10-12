@@ -56,7 +56,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
   }
 
   memory {
-    dedicated = 3072 # Scaled to 3GB RAM for dual-node deployment
+    dedicated = 4096 # Scaled to 4GB RAM for consolidated application workloads
   }
 
   network_device {
