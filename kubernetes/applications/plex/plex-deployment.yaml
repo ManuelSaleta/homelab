@@ -85,8 +85,8 @@ spec:
       labels:
         app: plex-media-server
     spec:
-      hostNetwork: false
-      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       dnsConfig:
         options:
           - name: ndots
