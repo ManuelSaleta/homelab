@@ -132,8 +132,8 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
   }
 
   memory {
-    dedicated = 512 # 500MB allocated for lightweight Syncthing + NFS
-    swap      = 512
+    dedicated = 1536 # 1.5 GB RAM allocated for Syncthing indexing database + NFS buffer cache
+    swap      = 1024
   }
 
   network_interface {

@@ -35,7 +35,7 @@ flowchart TB
         direction TB
 
         subgraph Storage_Layer["fa:fa-database Storage Decoupling: micro-nas (LXC CT 250)"]
-            MicroNAS["fa:fa-hdd micro-nas LXC (512 MB RAM)\nNFS Kernel Server | Tailscale | Syncthing"]:::storage
+            MicroNAS["fa:fa-hdd micro-nas LXC (1.5 GB RAM)\nNFS Kernel Server | Tailscale | Syncthing"]:::storage
             ExtHDD[("fa:fa-database External 1TB HDD\n/mnt/export/storage")]:::storage
             MicroNAS --- ExtHDD
         end
@@ -43,7 +43,7 @@ flowchart TB
         subgraph K3s_Cluster["fa:fa-microchip Dual-Node K3s Cluster"]
             direction LR
             ControlPlane["fa:fa-shield-alt k3s-control-01 (VM 100)\n2 GB RAM | 2 vCPUs\nAPI Server, Ingress, CoreDNS"]:::k3s
-            WorkerNode["fa:fa-cogs k3s-worker-01 (VM 210)\n4 GB RAM | 2 vCPUs\nCompute & Application Workloads"]:::k3s
+            WorkerNode["fa:fa-cogs k3s-worker-01 (VM 210)\n10 GB RAM | 2 vCPUs\nCompute & Application Workloads"]:::k3s
         end
 
         subgraph Ingress_Networking["fa:fa-network-wired Networking & Routing"]
@@ -146,8 +146,8 @@ Consumes the golden template image to provision resource-mapped virtual hardware
 Compute Fleet Profiles
 
 - **Manager Plane (`k3s-control-01`, VM 100)**: 2 Cores, 2GB RAM, DHCP Network Allocation (`192.168.1.185`). Hosts the Kubernetes API server, CoreDNS, and Traefik ingress controller.
-- **Worker Node (`k3s-worker-01`, VM 210)**: 2 Cores, 4GB RAM, Static IP (`192.168.1.210`). Single worker in the streamlined dual-node topology (`worker_count = 1`; `k3s-worker-02` decommissioned).
-- **Decentralized Storage Block (`micro-nas`, CT 250)**: Dedicated lightweight LXC container (1 Core, 512MB RAM, Static IP `192.168.1.250`) providing NFS kernel exports and Syncthing over Tailscale, backed by 900 GB on `ext-hdd-storage`. Decoupled from the K3s cluster lifecycle to ensure data safety.
+- **Worker Node (`k3s-worker-01`, VM 210)**: 2 Cores, 10GB RAM, Static IP (`192.168.1.210`). Single worker in the streamlined dual-node topology (`worker_count = 1`; `k3s-worker-02` decommissioned).
+- **Decentralized Storage Block (`micro-nas`, CT 250)**: Dedicated lightweight LXC container (1 Core, 1.5GB RAM, Static IP `192.168.1.250`) providing NFS kernel exports and Syncthing over Tailscale, backed by 900 GB on `ext-hdd-storage`. Decoupled from the K3s cluster lifecycle to ensure data safety.
 
 ---
 
@@ -212,10 +212,10 @@ The core principle of this homelab is **Cluster & Storage Decoupling**: Compute 
 PROXMOX HOST: mothership (16 GB Physical RAM Total)
 ├── 🚀 nvme0n1 (238.5G NVMe SSD) -> VG: `pve` (Pool: `local-lvm`)
 │   ├── Host Root (`/`) & Proxmox Hypervisor Overhead
-│   ├── VM 100 [k3s-control-01]: 30G NVMe | 2,048 MB (2 GB) RAM (Control Plane & Core Services)
-│   ├── VM 210 [k3s-worker-01]:  30G NVMe | 4,096 MB (4 GB) RAM (Workloads & App Stack)
-│   ├── CT 250 [micro-nas]:      15G NVMe |   512 MB (0.5 GB) RAM (LXC NFS & Syncthing Engine)
-│   └── ⚡ Available Host Headroom: ~9.4 GB RAM for ZFS ARC, Linux page cache, and future workloads
+│   ├── VM 100 [k3s-control-01]: 30G NVMe |  2,048 MB (2.0 GB) RAM (Control Plane & Core Services)
+│   ├── VM 210 [k3s-worker-01]:  30G NVMe | 10,240 MB (10.0 GB) RAM (Workloads & App Stack)
+│   ├── CT 250 [micro-nas]:      15G NVMe |  1,536 MB (1.5 GB) RAM (LXC NFS & Syncthing Engine)
+│   └── ⚡ Available Host Headroom: ~2.5 GB RAM for Proxmox VE, hypervisor overhead, and Linux page cache
 │
 └── 💽 sda (931.5G / 1TB External HDD) -> VG: `ext-hdd-vg` (Pool: `ext-hdd-storage`)
     └── CT 250 [micro-nas]: 900 GB Thin-Provisioned Mount Point (`/mnt/export/storage`)

@@ -15,7 +15,7 @@ This file serves as the system instruction context and prime directive for AI co
    - `networking`: Pi-hole DNS, Cloudflared Tunnel, Homepage Dashboard, Karakeep, Uptime Kuma, Vaultwarden.
    - `monitoring`: Kube-Prometheus-Stack, Grafana, Loki, Alloy.
 5. **Dynamic Domain Parameterization**: **Never hardcode static root domains** (e.g., `example.com`, `freesalty.com`) into Kubernetes manifests or ingress rules. Always use `${DOMAIN_NAME}` or `${HOMELAB_DOMAIN}`, which the root `Makefile` dynamically populates via `envsubst` from `terraform.tfvars`.
-6. **Strict Resource Budgeting**: The physical Proxmox host (`mothership`) has **16 GB of physical RAM**. Memory allocations must be calculated conservatively (~9.4 GB host headroom reserved for ZFS ARC, Linux page cache, and hypervisor overhead).
+6. **Strict Resource Budgeting**: The physical Proxmox host (`mothership`) has **16 GB of physical RAM**. Memory allocations prioritize guest compute (13.5 GB allocated across VMs/LXC: 2 GB Control, 10 GB Worker, 1.5 GB Micro-NAS), reserving ~2.5 GB host headroom for Proxmox VE, QEMU overhead, and Linux page cache.
 
 ---
 
@@ -25,8 +25,8 @@ This file serves as the system instruction context and prime directive for AI co
 | :--- | :--- | :--- | :--- | :--- |
 | **mothership** | Physical Host | `192.168.1.200` | Physical (16 GB) | Proxmox VE Hypervisor, NVMe (`local-lvm`) + 1TB HDD (`sda`) |
 | **k3s-control-01** | VM `100` | `192.168.1.185` | 2 vCPUs / 2 GB RAM | K3s Manager, API Server (`:6443`), CoreDNS, Traefik Ingress |
-| **k3s-worker-01** | VM `210` | `192.168.1.210` | 2 vCPUs / 4 GB RAM | K3s Worker Node, Application compute workloads |
-| **micro-nas** | LXC `CT 250` | `192.168.1.250` | 1 Core / 512 MB RAM | Dedicated Storage Node: NFS Kernel Server, Syncthing, Tailscale |
+| **k3s-worker-01** | VM `210` | `192.168.1.210` | 2 vCPUs / 10 GB RAM | K3s Worker Node, Application compute workloads |
+| **micro-nas** | LXC `CT 250` | `192.168.1.250` | 1 Core / 1.5 GB RAM | Dedicated Storage Node: NFS Kernel Server, Syncthing, Tailscale |
 
 > [!NOTE]
 > **Base OS Standards**: All VM compute nodes are cloned from golden Packer template **ID 777** running **Ubuntu 26.04.1 LTS** (`ubuntu-26.04.1-live-server-amd64.iso`). The `micro-nas` LXC uses container template `ubuntu-26.04-standard_26.04-1_amd64.tar.zst`.

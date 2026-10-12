@@ -56,7 +56,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
   }
 
   memory {
-    dedicated = 4096 # Scaled to 4GB RAM for consolidated application workloads
+    dedicated = 10240 # 10 GB RAM for consolidated application workloads (Plex, Jellyfin, Karakeep, Observability)
   }
 
   network_device {
