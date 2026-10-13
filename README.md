@@ -172,6 +172,30 @@ This reconciles the three foundational infrastructure manifests in order:
 
 Directory Context: `kubernetes/applications/*`
 
+## Workload Placement & Control Plane Isolation (`nodeAffinity`)
+
+All application compute manifests enforce a strict scheduling rule preventing the Kubernetes scheduler from deploying application workloads onto the lightweight control plane node (`k3s-control-01`, 2 GB RAM):
+
+```yaml
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+```
+
+### Why This Is Enforced:
+- **Control Plane Stability**: Guards the control plane against memory contention, CPU spikes, and worker pod Out-Of-Memory (OOM) cascades. `k3s-control-01` is strictly reserved for core Kubernetes operations (`kube-apiserver`, `coredns`, and Traefik ingress routing).
+- **Consolidated Worker Compute**: Forces compute-heavy applications (`plex`, `jellyfin`, `navidrome`, `karakeep`, `uptime-kuma`, `vaultwarden`, `pihole`, `homepage`) to schedule onto the dedicated worker node (`k3s-worker-01`, 10 GB RAM).
+- **Scalable Node Selection**: Using `operator: DoesNotExist` on the `node-role.kubernetes.io/control-plane` label allows workloads to dynamically balance across any existing or future worker nodes without hardcoding static node hostnames.
+
+---
+
 ## 1. Ad-Blocking Engine: Pi-hole Deployment
 
 Establishes a single service instance that co-locates core DNS filtering networks and web administration interfaces.
