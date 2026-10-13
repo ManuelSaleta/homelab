@@ -1,7 +1,7 @@
 # ==============================================================================
 # Purpose: Provision the baseline infrastructure for the k3s cluster manager
 # - Clones cleanly from the golden Packer template (ID 777)
-# - Pinpoints 2 CPU cores and 3GB of RAM.
+# - Pinpoints 2 CPU cores and 2GB of RAM.
 # - Leverages Cloud-init to pass unique network definitions and settings.
 # Docs: https://registry.terraform.io/providers/bpg/proxmox/latest/docs
 # ==============================================================================
@@ -42,6 +42,35 @@ provider "kubernetes" {
 }
 
 # ==============================================================================
+# 0. CONTROL PLANE CLOUD CONFIG (Disables Klipper ServiceLB in favor of MetalLB)
+# ==============================================================================
+resource "proxmox_virtual_environment_file" "k3s_control_cloud_config" {
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = "mothership"
+
+  source_raw {
+    file_name = "k3s-control-01-cloud-config.yaml"
+
+    data = <<-EOF
+    #cloud-config
+    hostname: "k3s-control-01"
+
+    write_files:
+      - path: /etc/rancher/k3s/config.yaml
+        permissions: "0644"
+        owner: "root:root"
+        content: |
+          disable:
+            - servicelb
+
+    runcmd:
+      - systemctl restart k3s
+    EOF
+  }
+}
+
+# ==============================================================================
 # 1. CLUSTER CONTROL PLANE MANAGEMENT
 # ==============================================================================
 resource "proxmox_virtual_environment_vm" "k3s_control" {
@@ -68,7 +97,7 @@ resource "proxmox_virtual_environment_vm" "k3s_control" {
   }
 
   memory {
-    dedicated = 3072 # 3 GB RAM
+    dedicated = 2048 # 2 GB RAM (optimized control plane footprint)
   }
 
   # Storage Mapping (Must point to the exact target block you laid down in Packer)
@@ -91,9 +120,10 @@ resource "proxmox_virtual_environment_vm" "k3s_control" {
   # INITIALIZATION MATRICES (Cloud-Init customization layer)
   # ============================================================================
   initialization {
-    datastore_id = "local-lvm" # Tells Proxmox where to spawn the ephemeral cloud-init drive
+    datastore_id      = "local-lvm" # Tells Proxmox where to spawn the ephemeral cloud-init drive
+    user_data_file_id = proxmox_virtual_environment_file.k3s_control_cloud_config.id
 
-    # Forces cloud-init to respect gman and locks down the public key file 
+    # Forces cloud-init to respect gman and locks down the public key file
     user_account {
       username = "gman"
       keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
