@@ -298,6 +298,7 @@ disable-servicelb: ## Disable K3s Klipper ServiceLB and taint control-plane node
 	@ssh -o StrictHostKeyChecking=accept-new gman@192.168.1.185 "sudo mkdir -p /etc/rancher/k3s && EXISTING_TOKEN=\$$(sudo grep -E '^token:' /etc/rancher/k3s/config.yaml 2>/dev/null || true) && sudo install -m 0600 -o root -g root /dev/null /etc/rancher/k3s/config.yaml && { [ -n \"\$$EXISTING_TOKEN\" ] && printf '%s\n' \"\$$EXISTING_TOKEN\"; printf 'disable:\n  - servicelb\nnode-taint:\n  - \"node-role.kubernetes.io/control-plane=true:NoSchedule\"\n'; } | sudo tee /etc/rancher/k3s/config.yaml > /dev/null && sudo chmod 0600 /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s"
 	@$(MAKE) wait-for-cluster
 	@kubectl taint nodes k3s-control-01 node-role.kubernetes.io/control-plane=true:NoSchedule --overwrite
+	@kubectl label nodes -l '!node-role.kubernetes.io/control-plane' node-role.kubernetes.io/worker=worker --overwrite
 	@echo "✅ K3s restarted with ServiceLB disabled and control-plane taint applied. MetalLB now manages LoadBalancers."
 
 

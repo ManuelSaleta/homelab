@@ -23,8 +23,6 @@ resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
           server: "https://${var.k3s_manager_ip}:6443"
           token: "${var.k3s_share_token}"
           node-name: "k3s-worker-0${count.index + 1}"
-          node-label:
-            - "node-role.kubernetes.io/worker=true"
 
     runcmd:
       # 1. Set the individual node name with restricted permissions
