@@ -97,7 +97,6 @@ metadata:
   annotations:
     # Traefik router entrypoints matching your Pi-hole ingress style
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
-    traefik.ingress.kubernetes.io/router.tls.certresolver: le-resolver
 
     # Homepage Auto-Discovery configuration
     gethomepage.dev/enabled: "true"
@@ -108,9 +107,6 @@ metadata:
     gethomepage.dev/pod-selector: "app=karakeep-server"
 spec:
   ingressClassName: traefik
-  tls:
-    - hosts:
-        - karakeep.${DOMAIN_NAME}
   rules:
     - host: karakeep.${DOMAIN_NAME}
       http:

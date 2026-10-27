@@ -209,13 +209,8 @@ metadata:
     gethomepage.dev/ping: "http://homepage.networking.svc.cluster.local:3000"
     # Your existing Traefik entrypoints
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
-    traefik.ingress.kubernetes.io/router.tls.certresolver: le-resolver
 spec:
   ingressClassName: traefik
-  # 🎯 THE MISSING PIECE: This tells K8s and Traefik to turn on TLS for this domain
-  tls:
-    - hosts:
-        - homepage.${DOMAIN_NAME}
   rules:
     - host: homepage.${DOMAIN_NAME}
       http:
