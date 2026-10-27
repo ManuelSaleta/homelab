@@ -15,6 +15,13 @@ spec:
       labels:
         app: karakeep-browser
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
         - name: browserless
           image: ghcr.io/browserless/chromium:latest
@@ -27,6 +34,13 @@ spec:
               value: "5"
           securityContext:
             allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
 ---
 apiVersion: v1
 kind: Service

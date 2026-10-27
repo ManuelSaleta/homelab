@@ -1,9 +1,9 @@
 # ==============================================================================
-# Purpose: Provision a micro private NAS for secure Obsidian Vault storage
-# - Clones cleanly from the golden Packer template (ID 777)
-# - Pinpoints 1 CPU core and 512MB of RAM to save resources for K3s.
-# - Attaches a dedicated secondary storage block for note persistence.
-# - Leverages Cloud-init to auto-join the private Tailscale mesh network.
+# Purpose: Provision a micro private NAS for secure Obsidian Vault & NFS storage
+# - Deploys lightweight Ubuntu LXC container (CT 250)
+# - Pinpoints 1 CPU core and 1.5GB of RAM for Syncthing indexing + NFS cache.
+# - Attaches a dedicated secondary storage block for persistent exports.
+# - Reference cloud-config snippet documents bootstrap steps (manual SSH on LXC).
 # Docs: https://registry.terraform.io/providers/bpg/proxmox/latest/docs
 # ==============================================================================
 
@@ -123,7 +123,7 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
     }
 
     user_account {
-      keys = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
+      keys = [trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
   }
 
@@ -132,8 +132,8 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
   }
 
   memory {
-    dedicated = 512 # 500MB allocated for lightweight Syncthing + NFS
-    swap      = 512
+    dedicated = 1536 # 1.5 GB RAM allocated for Syncthing indexing database + NFS buffer cache
+    swap      = 1024
   }
 
   network_interface {

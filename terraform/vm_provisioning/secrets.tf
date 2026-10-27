@@ -94,6 +94,7 @@ resource "kubernetes_secret_v1" "proxmox_secret" {
 
   data = {
     # 🎯 Pulls the "<admin-homelab-pass>" securely out of plain-text YAML
+    PROXMOX_WIDGET_USER     = var.proxmox_widget_user
     PROXMOX_WIDGET_PASSWORD = var.proxmox_vm_auditor_password
     PROXMOX_URL             = var.proxmox_endpoint
     PROXMOX_NODE_NAME       = var.proxmox_node_name
@@ -115,6 +116,21 @@ resource "kubernetes_secret_v1" "grafana-secret" {
     GRAFANA_API_KEY  = var.grafana_api_key
     GRAFANA_USERNAME = var.grafana_username
     GRAFANA_PASSWORD = var.grafana_password
+  }
+}
+
+resource "kubernetes_secret_v1" "promstack_grafana_secret" {
+  metadata {
+    name      = "promstack-grafana"
+    namespace = "monitoring"
+  }
+
+  type = "Opaque"
+
+  data = {
+    "admin-user"     = var.grafana_username
+    "admin-password" = var.grafana_password
+    "ldap-toml"      = ""
   }
 }
 
@@ -142,5 +158,18 @@ resource "kubernetes_secret_v1" "karakeep_secret" {
   data = {
     NEXTAUTH_SECRET  = var.karakeep_nextauth_secret
     MEILI_MASTER_KEY = var.karakeep_meili_master_key
+  }
+}
+
+resource "kubernetes_secret_v1" "plex_secret" {
+  metadata {
+    name      = "plex-secret"
+    namespace = "media"
+  }
+
+  type = "Opaque"
+
+  data = {
+    PLEX_CLAIM = var.plex_claim_token
   }
 }

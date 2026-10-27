@@ -15,7 +15,7 @@ This file serves as the system instruction context and prime directive for AI co
    - `networking`: Pi-hole DNS, Cloudflared Tunnel, Homepage Dashboard, Karakeep, Uptime Kuma, Vaultwarden.
    - `monitoring`: Kube-Prometheus-Stack, Grafana, Loki, Alloy.
 5. **Dynamic Domain Parameterization**: **Never hardcode static root domains** (e.g., `example.com`, `freesalty.com`) into Kubernetes manifests or ingress rules. Always use `${DOMAIN_NAME}` or `${HOMELAB_DOMAIN}`, which the root `Makefile` dynamically populates via `envsubst` from `terraform.tfvars`.
-6. **Strict Resource Budgeting**: The physical Proxmox host (`mothership`) has **16 GB of physical RAM**. Memory allocations must be calculated conservatively (~9.4 GB host headroom reserved for ZFS ARC, Linux page cache, and hypervisor overhead).
+6. **Strict Resource Budgeting**: The physical Proxmox host (`mothership`) has **16 GB of physical RAM**. Memory allocations prioritize guest compute (13.5 GB allocated across VMs/LXC: 2 GB Control, 10 GB Worker, 1.5 GB Micro-NAS), reserving ~2.5 GB host headroom for Proxmox VE, QEMU overhead, and Linux page cache.
 
 ---
 
@@ -24,9 +24,9 @@ This file serves as the system instruction context and prime directive for AI co
 | Node Name | Type & ID | IP Address | vCPU / RAM | Role & Scope |
 | :--- | :--- | :--- | :--- | :--- |
 | **mothership** | Physical Host | `192.168.1.200` | Physical (16 GB) | Proxmox VE Hypervisor, NVMe (`local-lvm`) + 1TB HDD (`sda`) |
-| **k3s-control-01** | VM `100` | `192.168.1.185` | 2 vCPUs / 3 GB RAM | K3s Manager, API Server (`:6443`), CoreDNS, Traefik Ingress |
-| **k3s-worker-01** | VM `210` | `192.168.1.210` | 2 vCPUs / 3 GB RAM | K3s Worker Node, Application compute workloads |
-| **micro-nas** | LXC `CT 250` | `192.168.1.250` | 1 Core / 512 MB RAM | Dedicated Storage Node: NFS Kernel Server, Syncthing, Tailscale |
+| **k3s-control-01** | VM `100` | `192.168.1.185` | 2 vCPUs / 2 GB RAM | K3s Manager, API Server (`:6443`), CoreDNS, Traefik Ingress |
+| **k3s-worker-01** | VM `210` | `192.168.1.210` | 2 vCPUs / 10 GB RAM | K3s Worker Node, Application compute workloads |
+| **micro-nas** | LXC `CT 250` | `192.168.1.250` | 1 Core / 1.5 GB RAM | Dedicated Storage Node: NFS Kernel Server, Syncthing, Tailscale |
 
 > [!NOTE]
 > **Base OS Standards**: All VM compute nodes are cloned from golden Packer template **ID 777** running **Ubuntu 26.04.1 LTS** (`ubuntu-26.04.1-live-server-amd64.iso`). The `micro-nas` LXC uses container template `ubuntu-26.04-standard_26.04-1_amd64.tar.zst`.
@@ -76,12 +76,14 @@ This file serves as the system instruction context and prime directive for AI co
 2. **Secret Lifecycle Pipeline**: Secrets are declared in local `terraform.tfvars` -> injected into Kubernetes via Terraform `kubernetes_secret_v1` (`secrets.tf`) -> consumed securely by application pods via `secretKeyRef` or Secret volume projections.
 3. **PersistentVolume Immutability**: Kubernetes PersistentVolume sources (e.g., modifying NFS paths or server IPs) cannot be updated in-place. If changing PV/PVC definitions, always instruct deletion (`kubectl delete pvc,pv`) followed by re-creation.
 4. **Container Non-Root Context**: Stateful application containers must enforce standard non-root UID/GID `1000:1000`:
+
    ```yaml
    securityContext:
      runAsUser: 1000
      runAsGroup: 1000
      fsGroup: 1000
    ```
+
 5. **NFS Root Squashing & Network Isolation**: All NFS shares on `micro-nas` enforce `all_squash,anonuid=1000,anongid=1000` and restrict access strictly to the K3s node IPs (`192.168.1.185` and `192.168.1.210`).
 6. **Syncthing Network Isolation**: Syncthing GUI administration is strictly bound to the host's private Tailscale IP (`[TAILSCALE-IP]:8384`), keeping port 8384 closed on the physical LAN.
 
@@ -101,15 +103,16 @@ Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.
 | **Obsidian Vault** | `/mnt/export/storage/obsidian` | *N/A (Syncthing)* | *N/A* | User Space | Markdown notes synchronized via Syncthing over Tailscale |
 
 ### Ephemeral Scratch Spaces
+
 - **Plex Transcoding**: Transcoding must **never** write to NFS shares (to avoid saturating network I/O). Always mount a dedicated ephemeral `emptyDir: {}` volume to `/transcode`.
 
 ### Non-NFS Exceptions
+
 - **Pi-hole**: Uses local node `hostPath: /var/data/pihole/config` (tied to worker node).
 - **Uptime Kuma**: Uses standard single-pod PVC (`uptime-kuma-pvc`) with deployment strategy `Recreate`.
 
 > [!IMPORTANT]
 > **Manual Micro-NAS Maintenance**: `micro-nas` (CT 250) is stateful and decoupled from cluster teardowns. Because cloud-init only runs on container creation, adding new persistent directories, updating ownership/permissions (`chown -R 1000:1000` / `chmod`), or adjusting `/etc/exports` on an existing `micro-nas` instance must be executed manually over SSH (`gman@192.168.1.250`).
-
 
 ---
 
@@ -118,7 +121,9 @@ Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.
 When authoring or modifying Kubernetes manifests in this repository, strictly adhere to these patterns:
 
 ### Rule 1: Dynamic Domain Substitution
+
 Ingress hosts and environment variables must reference `${DOMAIN_NAME}` or `${HOMELAB_DOMAIN}`:
+
 ```yaml
 spec:
   rules:
@@ -126,7 +131,9 @@ spec:
 ```
 
 ### Rule 2: NFS PersistentVolume & PersistentVolumeClaim Blueprint
+
 Always set `storageClassName: ""` to prevent default dynamic provisioner conflicts:
+
 ```yaml
 apiVersion: v1
 kind: PersistentVolume
@@ -162,7 +169,9 @@ spec:
 ```
 
 ### Rule 3: Ingress & Homepage Dashboard Integration
+
 All Ingress manifests must include `gethomepage.dev` annotations for auto-discovery and Traefik routing entrypoints:
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -191,6 +200,27 @@ spec:
                   number: <port>
 ```
 
+### Rule 4: Workload Placement & Control Plane Isolation
+
+The control plane (`k3s-control-01`, 2 GB RAM) is tainted with `node-role.kubernetes.io/control-plane=true:NoSchedule`, and all application compute workloads must specify `nodeAffinity` excluding the control plane to guarantee API server stability and prevent memory contention:
+
+```yaml
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+```
+
+### Rule 5: Dedicated MetalLB Load Balancing
+
+K3s built-in Klipper ServiceLB is disabled (`disable: [servicelb]`) in favor of MetalLB (`IPAddressPool` 192.168.1.240-249) to prevent port collisions (e.g. ports 53 and 80) and redundant hostPort proxies.
+
 ---
 
 ## 7. Proxmox Hypervisor Host Maintenance Rules
@@ -202,6 +232,7 @@ When generating instructions or scripts for maintaining the Proxmox VE hyperviso
 > **NEVER run `apt upgrade`**. Standard upgrades will fail to install new kernel transitions or Proxmox meta-packages (`proxmox-ve`, `pve-manager`, `qemu-server`), which can corrupt the hypervisor package state.
 
 Safe upgrade command sequence:
+
 ```bash
 DEBIAN_FRONTEND=noninteractive apt-get update && \
 DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"

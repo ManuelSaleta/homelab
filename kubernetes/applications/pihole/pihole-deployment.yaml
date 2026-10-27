@@ -23,6 +23,13 @@ spec:
       labels:
         app: pihole-dns-server
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
         - name: pihole-ftl-engine
           image: pihole/pihole:latest
@@ -55,6 +62,13 @@ spec:
           volumeMounts:
             - name: pihole-persistent-config
               mountPath: /etc/pihole
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
       volumes:
         - name: pihole-persistent-config
           hostPath:

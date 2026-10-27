@@ -2,7 +2,7 @@
 # 1. THE USER DATA SNIPPETS (Streamlined for Golden VM Template )
 # ==============================================================================
 resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
-  count        = 2
+  count        = var.worker_count
   content_type = "snippets"
   datastore_id = "local"
   node_name    = "mothership"
@@ -14,16 +14,26 @@ resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
     data = <<-EOF
     #cloud-config
     hostname: "k3s-worker-0${count.index + 1}"
-    
+
+    write_files:
+      - path: /etc/rancher/k3s/config.yaml
+        permissions: "0600"
+        owner: "root:root"
+        content: |
+          server: "https://${var.k3s_manager_ip}:6443"
+          token: "${var.k3s_share_token}"
+          node-name: "k3s-worker-0${count.index + 1}"
+
     runcmd:
-      # 1. Set the individual node name
+      # 1. Set the individual node name with restricted permissions
+      - install -m 0600 /dev/null /etc/systemd/system/k3s-agent.service.env
       - echo 'K3S_NODE_NAME="k3s-worker-0${count.index + 1}"' > /etc/systemd/system/k3s-agent.service.env
       
       # 2. WAIT for the control plane to be reachable before trying to join
       - until curl -k -s https://${var.k3s_manager_ip}:6443/readyz; do echo "Waiting for control plane..."; sleep 5; done
       
-      # 3. Join the cluster
-      - curl -sfL https://get.k3s.io | K3S_URL="https://${var.k3s_manager_ip}:6443" K3S_TOKEN="${var.k3s_share_token}" INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent --node-name=k3s-worker-0$${count.index + 1}" sh -
+      # 3. Join the cluster using local baked installer (reads /etc/rancher/k3s/config.yaml without leaking token to logs)
+      - if [ -x /home/gman/install.sh ]; then INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent" /home/gman/install.sh; else curl -sfL https://get.k3s.io | INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent" sh -; fi
       
       # 4. Reload and restart
       - systemctl daemon-reload
@@ -56,7 +66,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
   }
 
   memory {
-    dedicated = 3072 # Scaled to 3GB RAM for dual-node deployment
+    dedicated = 10240 # 10 GB RAM for consolidated application workloads (Plex, Jellyfin, Karakeep, Observability)
   }
 
   network_device {
@@ -91,8 +101,8 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
 
     # Forces cloud-init to pass the exact parameters instead of the "ubuntu" fallback
     user_account {
-      username = "gman"
-      keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
+      username = var.ssh_username
+      keys     = [trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
 
     # Set static IPs for worker nodes 192.168.1.X starting at .210
@@ -106,5 +116,11 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
     dns {
       servers = ["${var.default_gateway_ip}", "1.1.1.1"]
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      initialization,
+    ]
   }
 }

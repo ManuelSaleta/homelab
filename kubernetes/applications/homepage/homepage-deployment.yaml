@@ -15,6 +15,13 @@ spec:
       labels:
         app: homepage
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       automountServiceAccountToken: true
       serviceAccountName: homepage-service-account
       dnsConfig:
@@ -27,7 +34,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: LOG_LEVEL
-              value: debug
+              value: info
             # Cloudflare Secrets
             - name: HOMEPAGE_VAR_CF_API_TOKEN
               valueFrom:
@@ -72,6 +79,11 @@ spec:
                   name: tailscale-secret
                   key: TS_LAPTOP_DEVICE_ID
             # Proxmox Secrets
+            - name: HOMEPAGE_VAR_PROXMOX_WIDGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_WIDGET_USER
             - name: HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -126,6 +138,13 @@ spec:
           ports:
             - containerPort: 3000
               name: http
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
           # livenessProbe:
           #   httpGet:
           #     path: /api/healthcheck
@@ -192,10 +211,6 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
 spec:
   ingressClassName: traefik
-  # 🎯 THE MISSING PIECE: This tells K8s and Traefik to turn on TLS for this domain
-  tls:
-    - hosts:
-        - homepage.${DOMAIN_NAME}
   rules:
     - host: homepage.${DOMAIN_NAME}
       http:

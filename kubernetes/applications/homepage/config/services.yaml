@@ -1,14 +1,14 @@
 - Management:
     - Proxmox:
         icon: proxmox
-        href: https://192.168.1.200:8006
+        href: "{{HOMEPAGE_VAR_PROXMOX_URL}}"
         description: Proxmox Virtual Environment
         widget:
           type: proxmox
-          url: https://192.168.1.200:8006
-          username: "homepage-widgets-api@pve!homepage-proxmox-widgets"
+          url: "{{HOMEPAGE_VAR_PROXMOX_URL}}"
+          username: "{{HOMEPAGE_VAR_PROXMOX_WIDGET_USER}}"
           password: "{{HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD}}"
-          node: mothership
+          node: "{{HOMEPAGE_VAR_PROXMOX_NODE_NAME}}"
           show:
             - vms
 - Infrastructure:

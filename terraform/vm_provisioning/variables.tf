@@ -13,6 +13,7 @@ variable "karakeep_meili_master_key" {
 variable "karakeep_nextauth_secret" {
   type        = string
   description = "A random secret string used by NextAuth to encrypt tokens and secure sessions for Karakeep."
+  sensitive   = true
 }
 
 variable "vaultwarden_admin_token" {
@@ -198,12 +199,38 @@ variable "pihole_admin_password" {
 variable "pihole_api_key" {
   type        = string
   description = "Api token to enable widget access"
+  sensitive   = true
 }
 
 variable "proxmox_vm_auditor_password" {
   type        = string
   description = "Password for the Proxmox VM auditor user. Will be used to power the Homepage Widgets that pull data from the Proxmox API."
   sensitive   = true
+}
+
+variable "proxmox_widget_user" {
+  type        = string
+  description = "Proxmox API token user/ID for Homepage widget metrics."
+  default     = "homepage-widgets-api@pve!homepage-proxmox-widgets"
+}
+
+variable "plex_claim_token" {
+  type        = string
+  description = "Optional Plex claim token from https://plex.tv/claim for initial server setup."
+  default     = ""
+  sensitive   = true
+}
+
+variable "ssh_username" {
+  type        = string
+  description = "Default non-root SSH administrative username for cluster nodes."
+  default     = "gman"
+}
+
+variable "ssh_public_key_path" {
+  type        = string
+  description = "Path to the local SSH public key injected into nodes via cloud-init."
+  default     = "~/.ssh/id_ed25519.pub"
 }
 
 variable "domain_name" {

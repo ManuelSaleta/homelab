@@ -85,6 +85,13 @@ spec:
       labels:
         app: plex-media-server
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       dnsConfig:
@@ -119,7 +126,11 @@ spec:
             - name: VERSION
               value: "docker"
             - name: PLEX_CLAIM
-              value: "" # Optional: Add your claim token from https://plex.tv/claim here on initial setup
+              valueFrom:
+                secretKeyRef:
+                  name: plex-secret
+                  key: PLEX_CLAIM
+                  optional: true
           ports:
             - containerPort: 32400
               name: pms-http
