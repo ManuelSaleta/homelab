@@ -19,6 +19,10 @@ kube-state-metrics:
               - key: node-role.kubernetes.io/control-plane
                 operator: DoesNotExist
 grafana:
+  admin:
+    existingSecret: "promstack-grafana"
+    userKey: admin-user
+    passwordKey: admin-password
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:

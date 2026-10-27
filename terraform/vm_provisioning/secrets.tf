@@ -118,6 +118,21 @@ resource "kubernetes_secret_v1" "grafana-secret" {
   }
 }
 
+resource "kubernetes_secret_v1" "promstack_grafana_secret" {
+  metadata {
+    name      = "promstack-grafana"
+    namespace = "monitoring"
+  }
+
+  type = "Opaque"
+
+  data = {
+    "admin-user"     = var.grafana_username
+    "admin-password" = var.grafana_password
+    "ldap-toml"      = ""
+  }
+}
+
 # The background image asset
 resource "kubernetes_secret_v1" "homepage_background" {
   metadata {
