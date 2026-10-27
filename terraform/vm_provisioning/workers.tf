@@ -119,4 +119,10 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
       servers = ["${var.default_gateway_ip}", "1.1.1.1"]
     }
   }
+
+  lifecycle {
+    ignore_changes = [
+      initialization,
+    ]
+  }
 }

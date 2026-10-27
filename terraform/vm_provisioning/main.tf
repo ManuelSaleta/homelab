@@ -141,4 +141,10 @@ resource "proxmox_virtual_environment_vm" "k3s_control" {
       }
     }
   }
+
+  lifecycle {
+    ignore_changes = [
+      initialization,
+    ]
+  }
 }
