@@ -99,6 +99,10 @@ spec:
               - matchExpressions:
                   - key: node-role.kubernetes.io/control-plane
                     operator: DoesNotExist
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: jellyfin-core-engine
           image: jellyfin/jellyfin:latest
@@ -171,8 +175,12 @@ metadata:
     gethomepage.dev/href: "https://jellyfin.${DOMAIN_NAME}/"
     gethomepage.dev/pod-selector: "app=jellyfin-media-server"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le-resolver
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - jellyfin.${DOMAIN_NAME}
   rules:
     - host: jellyfin.${DOMAIN_NAME}
       http:

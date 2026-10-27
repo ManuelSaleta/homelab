@@ -78,16 +78,17 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make infra-up         - Deploy MetalLB, Tailscale, Cloudflare tunnels"
 	@echo "  make infra-down       - Remove core network infrastructure workloads"
 	@echo "  make infra-status     - Check networking stack resource health"
+	@echo "  make disable-servicelb - Disable Klipper ServiceLB and taint control plane"
 	@echo ""
 	@echo "Kubernetes Shared Applications:"
 	@echo "  make apps-up               - Ship entire user-facing cluster software stack"
 	@echo "  make apps-down             - Complete cluster software stacks wipe"
 	@echo "  make apps-status           - Check status of running application pods"
-	@echo "  make karakeep-up/down - Target deployment specifically for Karakeep"
+	@echo "  make karakeep-up/down      - Target deployment specifically for Karakeep"
 	@echo "  make vaultwarden-up/down   - Target deployment specifically for Vaultwarden"
 	@echo "  make pihole-up/down        - Target deployment specifically for Pi-hole"
 	@echo "  make homepage-up/down      - Target deployment specifically for Homepage"
-	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
+	@echo "  make uptime-kuma-up/down   - Target deployment specifically for Uptime Kuma"
 	@echo "  make navidrome-up/down     - Target deployment specifically for Navidrome Music Server"
 	@echo "  make plex-up/down          - Target deployment specifically for Plex Media Server"
 	@echo "  make jellyfin-up/down      - Target deployment specifically for Jellyfin Media Server"
@@ -105,6 +106,7 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make install-promstack     - Spin up Kube-Prometheus-Stack core infrastructure"
 	@echo "  make install-loki          - Deploy Grafana Loki log aggregation engine"
 	@echo "  make install-alloy         - Deploy Grafana Alloy telemetry collection agent"
+	@echo "  make grafana-up/down       - Target deployment specifically for Grafana layer"
 	@echo "  make promstack-clean       - Complete teardown of Loki, Alloy, and Prom-Stack"
 	@echo "  make grafana-pass          - Fetch and decode the active Grafana admin password"
 	@echo "========================================================================"
@@ -186,6 +188,7 @@ INFRA_TARGETS := proxmox_virtual_environment_vm.k3s_control \
 
 K3S_TARGETS   := kubernetes_secret_v1.vaultwarden_secret \
                  kubernetes_secret_v1.cloudflare_tunnel_secret \
+                 kubernetes_secret_v1.traefik_cloudflare_api_token \
                  kubernetes_secret_v1.pihole_secret \
                  kubernetes_secret_v1.proxmox_secret \
                  kubernetes_secret_v1.grafana-secret \
@@ -225,15 +228,24 @@ t-apply-k3s: ## Apply Kubernetes configurations with auto-approval
 	@echo "=> Applying Kubernetes configuration layer..."
 	$(TF) apply -auto-approve $(K3S_FLAGS)
 
-wait-for-cluster: ## Block execution until the K3s cluster API endpoints respond green
-	@echo "=> Waiting for K3s API to come online..."
-	@until curl -k -s https://192.168.1.185:6443/readyz; do sleep 5; done
-	@echo "=> Cluster is ready for configuration!"
+wait-for-cluster: ## Block execution until the K3s cluster API endpoints respond green (max 60s)
+	@echo "=> Waiting for K3s API (https://192.168.1.185:6443/readyz) to come online..."
+	@for i in $$(seq 1 30); do \
+		if curl -k -s --max-time 3 https://192.168.1.185:6443/readyz > /dev/null && kubectl get --raw='/readyz' > /dev/null 2>&1; then \
+			echo "=> Cluster is ready for configuration!"; \
+			exit 0; \
+		fi; \
+		if [ $$i -eq 30 ]; then \
+			echo "❌ Timed out after 60s waiting for https://192.168.1.185:6443/readyz"; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done
 
 t-clean: ## Clear out transient terraform cache footprints and local log locks
 	@echo "=> Clearing local terraform execution cache..."
-	rm -rf -chdir=$(TERRAFORM_DIR)/.terraform/providers/
-	rm -f -chdir=$(TERRAFORM_DIR)/.terraform.lock.hcl
+	rm -rf $(TERRAFORM_DIR)/.terraform/providers/
+	rm -f $(TERRAFORM_DIR)/.terraform.lock.hcl
 
 # ==============================================================================
 # ☢️ LIFECYCLE DESTRUCTION CONTROLS
@@ -263,30 +275,28 @@ destroy-all: ## Completely tear down the entire cluster infrastructure layout (W
 # 🌐 KUBERNETES INFRASTRUCTURE CORE
 # ==============================================================================
 
-# List of core infrastructure manifests (in deployment order)
-INFRA_MANIFESTS := metallb-config.yaml \
-                   traefik-dns-config.yaml \
-                   cloudflared-config.yaml
-
-# Construct -f argument for each manifest
-INFRA_ARGS := $(addprefix -f ,$(addprefix $(INFRA_DIR)/,$(INFRA_MANIFESTS)))
-
 infra-up: ## Deploy Cluster Infrastructure Core Layers
-	@echo "🚀 Deploying Cluster Infrastructure Core Layers..."
-	kubectl apply $(INFRA_ARGS)
+	@echo "🚀 Deploying Cluster Infrastructure Core Layers (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(INFRA_DIR)/metallb-config.yaml)
+	$(call APPLY_YAML,$(INFRA_DIR)/traefik-dns-config.yaml)
+	$(call APPLY_YAML,$(INFRA_DIR)/cloudflared-config.yaml)
 
 infra-down: ## Tear down Core Infrastructure Layers
 	@echo "⚠️ Tearing down Core Infrastructure Layers..."
-	kubectl delete $(INFRA_ARGS) --ignore-not-found
+	$(call DELETE_YAML,$(INFRA_DIR)/metallb-config.yaml)
+	$(call DELETE_YAML,$(INFRA_DIR)/traefik-dns-config.yaml)
+	$(call DELETE_YAML,$(INFRA_DIR)/cloudflared-config.yaml)
 
 infra-status:
 	@echo "🔍 Checking Infrastructure Workloads..."
 	kubectl get pods,svc,endpointslices -n networking
 
-disable-servicelb: ## Disable K3s Klipper ServiceLB on live control-plane node (requires passwordless sudo)
-	@echo "=> Disabling K3s Klipper ServiceLB on control-plane node..."
-	@ssh -o StrictHostKeyChecking=no gman@192.168.1.185 "sudo mkdir -p /etc/rancher/k3s && echo -e 'disable:\n  - servicelb' | sudo tee /etc/rancher/k3s/config.yaml > /dev/null && sudo systemctl restart k3s"
-	@echo "✅ K3s restarted with ServiceLB disabled. MetalLB now manages LoadBalancers."
+disable-servicelb: ## Disable K3s Klipper ServiceLB and taint control-plane node (requires passwordless sudo)
+	@echo "=> Disabling K3s Klipper ServiceLB and tainting control-plane node..."
+	@ssh -o StrictHostKeyChecking=accept-new gman@192.168.1.185 "sudo mkdir -p /etc/rancher/k3s && EXISTING_TOKEN=\$$(sudo grep -E '^token:' /etc/rancher/k3s/config.yaml 2>/dev/null || true) && sudo install -m 0600 -o root -g root /dev/null /etc/rancher/k3s/config.yaml && { [ -n \"\$$EXISTING_TOKEN\" ] && printf '%s\n' \"\$$EXISTING_TOKEN\"; printf 'disable:\n  - servicelb\nnode-taint:\n  - \"node-role.kubernetes.io/control-plane=true:NoSchedule\"\n'; } | sudo tee /etc/rancher/k3s/config.yaml > /dev/null && sudo chmod 0600 /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s"
+	@$(MAKE) wait-for-cluster
+	@kubectl taint nodes k3s-control-01 node-role.kubernetes.io/control-plane=true:NoSchedule --overwrite
+	@echo "✅ K3s restarted with ServiceLB disabled and control-plane taint applied. MetalLB now manages LoadBalancers."
 
 
 # ==============================================================================

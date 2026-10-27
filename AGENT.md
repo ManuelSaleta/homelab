@@ -202,7 +202,7 @@ spec:
 
 ### Rule 4: Workload Placement & Control Plane Isolation
 
-All application compute workloads must specify `nodeAffinity` excluding the control plane to guarantee API server stability and prevent memory contention on `k3s-control-01` (2GB RAM):
+The control plane (`k3s-control-01`, 2 GB RAM) is tainted with `node-role.kubernetes.io/control-plane=true:NoSchedule`, and all application compute workloads must specify `nodeAffinity` excluding the control plane to guarantee API server stability and prevent memory contention:
 
 ```yaml
 spec:

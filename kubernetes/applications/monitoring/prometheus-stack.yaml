@@ -102,7 +102,7 @@ type: Opaque
 data:
   
   admin-user: "YWRtaW4="
-  admin-password: "QnNmR0lLMDVLb0J1SU1rU3lMaUp0ZEg3SlJ1TDFjNTlrUjFFeERiYw=="
+  admin-password: "Y2hhbmdlbWU="
   ldap-toml: ""
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/configmap-dashboard-provider.yaml
@@ -1713,7 +1713,13 @@ spec:
         checksum/secret: 93b1f471b17959e4d2c9e4834fed243b619373e2f946fd58ed469874f12e6f79
         kubectl.kubernetes.io/default-container: grafana
     spec:
-      
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       serviceAccountName: promstack-grafana
       automountServiceAccountToken: true
       shareProcessNamespace: false
@@ -1954,6 +1960,13 @@ spec:
         app.kubernetes.io/version: "2.19.1"
         release: promstack
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       automountServiceAccountToken: true
       hostNetwork: false
       serviceAccountName: promstack-kube-state-metrics
@@ -2048,6 +2061,13 @@ spec:
         app.kubernetes.io/name: kube-prometheus-stack-prometheus-operator
         app.kubernetes.io/component: prometheus-operator
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
         - name: kube-prometheus-stack
           image: "quay.io/prometheus-operator/prometheus-operator:v0.92.0"
@@ -2242,6 +2262,13 @@ metadata:
     release: "promstack"
     heritage: "Helm"
 spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
   automountServiceAccountToken: true
   image: "quay.io/prometheus/prometheus:v3.12.0-distroless"
   imagePullPolicy: "IfNotPresent"

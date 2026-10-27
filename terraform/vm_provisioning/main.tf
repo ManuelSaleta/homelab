@@ -42,7 +42,7 @@ provider "kubernetes" {
 }
 
 # ==============================================================================
-# 0. CONTROL PLANE CLOUD CONFIG (Disables Klipper ServiceLB in favor of MetalLB)
+# 0. CONTROL PLANE CLOUD CONFIG (Disables Klipper ServiceLB & Taints Control Plane)
 # ==============================================================================
 resource "proxmox_virtual_environment_file" "k3s_control_cloud_config" {
   content_type = "snippets"
@@ -58,13 +58,17 @@ resource "proxmox_virtual_environment_file" "k3s_control_cloud_config" {
 
     write_files:
       - path: /etc/rancher/k3s/config.yaml
-        permissions: "0644"
+        permissions: "0600"
         owner: "root:root"
         content: |
+          token: "${var.k3s_share_token}"
           disable:
             - servicelb
+          node-taint:
+            - "node-role.kubernetes.io/control-plane=true:NoSchedule"
 
     runcmd:
+      - systemctl enable k3s
       - systemctl restart k3s
     EOF
   }

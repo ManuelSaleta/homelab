@@ -46,6 +46,13 @@ spec:
             capabilities:
               drop:
                 - ALL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "1024Mi"
       volumes:
         - name: meili-storage
           hostPath:

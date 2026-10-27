@@ -145,7 +145,7 @@ Directory Context: `terraform/vm_provisioning/*`
 Consumes the golden template image to provision resource-mapped virtual hardware topologies, inject network configurations, and handle automatic node registration using the baked `ID 777` template.
 Compute Fleet Profiles
 
-- **Manager Plane (`k3s-control-01`, VM 100)**: 2 Cores, 2GB RAM, DHCP Network Allocation (`192.168.1.185`). Hosts the Kubernetes API server, CoreDNS, and Traefik ingress controller.
+- **Manager Plane (`k3s-control-01`, VM 100)**: 2 Cores, 2GB RAM, Static IP (`192.168.1.185`). Hosts the Kubernetes API server, CoreDNS, and Traefik ingress controller.
 - **Worker Node (`k3s-worker-01`, VM 210)**: 2 Cores, 10GB RAM, Static IP (`192.168.1.210`). Single worker in the streamlined dual-node topology (`worker_count = 1`; `k3s-worker-02` decommissioned).
 - **Decentralized Storage Block (`micro-nas`, CT 250)**: Dedicated lightweight LXC container (1 Core, 1.5GB RAM, Static IP `192.168.1.250`) providing NFS kernel exports and Syncthing over Tailscale, backed by 900 GB on `ext-hdd-storage`. Decoupled from the K3s cluster lifecycle to ensure data safety.
 
@@ -172,9 +172,9 @@ This reconciles the three foundational infrastructure manifests in order:
 
 Directory Context: `kubernetes/applications/*`
 
-## Workload Placement & Control Plane Isolation (`nodeAffinity`)
+## Workload Placement & Control Plane Isolation (`nodeAffinity` & Taints)
 
-All application compute manifests enforce a strict scheduling rule preventing the Kubernetes scheduler from deploying application workloads onto the lightweight control plane node (`k3s-control-01`, 2 GB RAM):
+The control plane node (`k3s-control-01`, 2 GB RAM) is tainted with `node-role.kubernetes.io/control-plane=true:NoSchedule` via `/etc/rancher/k3s/config.yaml`, and all application compute manifests enforce a strict `nodeAffinity` rule excluding the control plane:
 
 ```yaml
 spec:
@@ -202,7 +202,7 @@ Establishes a single service instance that co-locates core DNS filtering network
 
 Dedicated IP Profile: 192.168.1.242 (DNS: 53/UDP & 53/TCP | Web Panel: 80/TCP)
 
-- Web Admin Panel Path: `https://pihole.freesalty.com/admin` (or `https://pihole.${HOMELAB_DOMAIN}/admin`)
+- Web Admin Panel Path: `https://pihole.${HOMELAB_DOMAIN}/admin`
 - Persistent Storage Architecture: Currently mapped to local node hostPath space (`/var/data/pihole/config`). Data strictly belongs to the physical worker host running the active pod.
 - Runtime Administrative Passwords: Update access configurations directly via the execution namespace:
 

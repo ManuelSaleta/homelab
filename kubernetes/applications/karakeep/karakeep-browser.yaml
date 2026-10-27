@@ -34,6 +34,13 @@ spec:
               value: "5"
           securityContext:
             allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
 ---
 apiVersion: v1
 kind: Service

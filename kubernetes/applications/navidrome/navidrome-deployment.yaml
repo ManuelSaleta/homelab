@@ -92,6 +92,10 @@ spec:
               - matchExpressions:
                   - key: node-role.kubernetes.io/control-plane
                     operator: DoesNotExist
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: navidrome-core-engine
           image: deluan/navidrome:latest
@@ -160,8 +164,12 @@ metadata:
     gethomepage.dev/href: "https://music.${DOMAIN_NAME}/"
     gethomepage.dev/pod-selector: "app=navidrome-media-server"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le-resolver
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - music.${DOMAIN_NAME}
   rules:
     - host: music.${DOMAIN_NAME}
       http:

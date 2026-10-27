@@ -58,6 +58,13 @@ spec:
           volumeMounts:
             - name: vaultwarden-persistent-config
               mountPath: /data
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
       volumes:
         - name: vaultwarden-persistent-config
           persistentVolumeClaim:
@@ -94,8 +101,12 @@ metadata:
     gethomepage.dev/href: "https://vault.${DOMAIN_NAME}"
     gethomepage.dev/pod-selector: "app=vaultwarden-server"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le-resolver
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - vault.${DOMAIN_NAME}
   rules:
     - host: vault.${DOMAIN_NAME}
       http:

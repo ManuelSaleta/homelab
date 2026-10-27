@@ -11,6 +11,13 @@ resultsCache:
 # Keep the gateway enabled
 gateway:
   enabled: true
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
 
 loki:
   auth_enabled: false
@@ -31,6 +38,13 @@ loki:
 # This chart handles Single Binary mode by default if you don't define extra components
 singleBinary:
   replicas: 1
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
   persistence:
     enabled: true
     size: 10Gi

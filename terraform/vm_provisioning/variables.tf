@@ -13,6 +13,7 @@ variable "karakeep_meili_master_key" {
 variable "karakeep_nextauth_secret" {
   type        = string
   description = "A random secret string used by NextAuth to encrypt tokens and secure sessions for Karakeep."
+  sensitive   = true
 }
 
 variable "vaultwarden_admin_token" {
@@ -198,6 +199,7 @@ variable "pihole_admin_password" {
 variable "pihole_api_key" {
   type        = string
   description = "Api token to enable widget access"
+  sensitive   = true
 }
 
 variable "proxmox_vm_auditor_password" {

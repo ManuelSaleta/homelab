@@ -9,13 +9,22 @@ packer {
 
 # --- DECLARE VARIABLES (No defaults, values come from tfvars) ---
 variable "proxmox_endpoint" { type = string }
-variable "proxmox_api_token" { type = string }
+variable "proxmox_api_token" {
+  type      = string
+  sensitive = true
+}
 variable "proxmox_api_token_id" { type = string }
-variable "proxmox_api_token_secret" { type = string }
+variable "proxmox_api_token_secret" {
+  type      = string
+  sensitive = true
+}
 variable "proxmox_template_vm_id" { type = string }
 variable "proxmox_node_name" { type = string }
 variable "http_bind_address_ip" { type = string }
-variable "k3s_share_token" { type = string }
+variable "k3s_share_token" {
+  type      = string
+  sensitive = true
+}
 
 # --- BUILDER CONFIGURATION ---
 source "proxmox-iso" "k3s_template" {
