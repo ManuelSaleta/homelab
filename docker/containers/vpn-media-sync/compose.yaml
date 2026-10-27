@@ -1,0 +1,33 @@
+# ==============================================================================
+# Container: vpn-media-sync (.NET 10 Media Acquisition & Rsync Orchestrator)
+# Role:      Verifies NordLynx tunnel status, queries Prowlarr (/api/v1/search),
+#            dispatches magnets to qBittorrent, validates completed media with
+#            ffprobe, and executes restricted rsync (rrsync -wo) to micro-nas.
+# ==============================================================================
+services:
+  vpn-media-sync:
+    build:
+      context: ../containers/vpn-media-sync
+      dockerfile: Dockerfile
+    image: homelab/vpn-media-sync:latest
+    container_name: media-sync-worker
+    network_mode: "service:nordlynx"
+    depends_on:
+      - nordlynx
+      - prowlarr
+      - qbittorrent
+    user: "${PUID:-1000}:${PGID:-1000}"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - CONFIG_PATH=/app/config.toml
+    volumes:
+      - ${SYNC_STATE_DIR:-./data/sync-state}:/state
+      - ${DOWNLOADS_STAGING_DIR:-./data/downloads}:/downloads
+      - ${SYNC_CONFIG_FILE:-../containers/vpn-media-sync/config.example.toml}:/app/config.toml:ro
+      - ${MEDIASYNC_SSH_KEY_PATH:-/home/gman/.ssh/id_ed25519_mediasync}:/home/appuser/.ssh/id_ed25519_mediasync:ro
+      - ${SSH_KNOWN_HOSTS_PATH:-/home/gman/.ssh/known_hosts}:/home/appuser/.ssh/known_hosts:ro
+    restart: unless-stopped

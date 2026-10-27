@@ -25,3 +25,8 @@ downloaded_iso_path/
 
 # Local backup archives
 backup/
+
+# Docker local secrets, runtime state, and staging data
+docker/**/.env
+docker/**/data/
+docker/**/config.toml

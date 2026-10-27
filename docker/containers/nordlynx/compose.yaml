@@ -1,0 +1,33 @@
+# ==============================================================================
+# Container: nordlynx (Dedicated NordVPN WireGuard Gateway & Killswitch)
+# Image:     ghcr.io/bubuntux/nordlynx:latest
+# Role:      Owns the isolated network namespace shared by prowlarr, qbittorrent,
+#            and vpn-media-sync. Enforces an iptables killswitch while allowing
+#            outbound LAN traffic (NET_LOCAL) for rsync to micro-nas.
+# ==============================================================================
+services:
+  nordlynx:
+    image: ghcr.io/bubuntux/nordlynx:latest
+    container_name: media-nordlynx
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      # WebUIs for containers sharing this network namespace (bound strictly to localhost)
+      - "127.0.0.1:${PROWLARR_PORT:-9696}:9696"
+      - "127.0.0.1:${QBIT_WEBUI_PORT:-8080}:8080"
+    environment:
+      # Unconfigured placeholder: Set NORDLYNX_PRIVATE_KEY in .env
+      - PRIVATE_KEY=${NORDLYNX_PRIVATE_KEY:-UNCONFIGURED_NORDLYNX_PRIVATE_KEY}
+      # Automatically select fastest NordVPN P2P-optimized server
+      - QUERY=${NORDVPN_QUERY:-filters\[servers_groups\]\[identifier\]=legacy_p2p}
+      # Allow LAN traffic so rsync over SSH can reach micro-nas (192.168.1.250)
+      - NET_LOCAL=${NET_LOCAL:-192.168.1.0/24}
+      - TZ=${TZ:-America/New_York}
+    restart: unless-stopped

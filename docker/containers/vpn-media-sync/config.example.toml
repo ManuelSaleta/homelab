@@ -1,0 +1,54 @@
+# ==============================================================================
+# vpn-media-sync Configuration Template (Unconfigured)
+# Copy to config.toml and populate credentials before running in production.
+# ==============================================================================
+
+[schedule]
+interval_minutes = 30
+cron_expression = "*/30 * * * *"
+lock_file = "/tmp/vpn-media-sync.lock"
+
+[vpn]
+provider = "nordlynx"
+required_interface = "wg0"
+pause_torrents_when_disconnected = true
+
+[indexer]
+type = "prowlarr"
+base_url = "http://127.0.0.1:9696"
+api_key = "UNCONFIGURED_PROWLARR_API_KEY"
+min_seeders = 50
+max_grab_per_run = 3
+
+[filters.movies]
+category_ids = [2000, 2040, 2045]
+min_size_mb = 1500
+max_size_mb = 16000
+allowed_patterns = ["1080p", "2160p", "x265", "HEVC", "WEB-DL", "BluRay"]
+blocked_patterns = ["CAM", "HDCAM", "TS", "TELESYNC", "\\.exe$", "\\.scr$", "\\.rar$", "\\.zip$", "\\.lnk$"]
+
+[filters.tv]
+category_ids = [5000, 5040, 5045]
+min_size_mb = 250
+max_size_mb = 6000
+allowed_patterns = ["1080p", "x265", "HEVC", "WEB-DL"]
+blocked_patterns = ["CAM", "TS", "\\.exe$", "\\.scr$", "\\.rar$", "\\.zip$"]
+
+[downloader]
+client = "qbittorrent"
+base_url = "http://127.0.0.1:8080"
+username = "admin"
+password = "UNCONFIGURED_QBIT_PASSWORD"
+staging_dir = "/downloads"
+ratio_limit = 1.0
+seeding_time_limit_minutes = 1440
+
+[rsync]
+enabled = false # Set to true once restricted SSH key (rrsync -wo) is configured on micro-nas
+verify_with_ffprobe = true
+ssh_user = "gman"
+ssh_host = "192.168.1.250"
+ssh_key = "/home/appuser/.ssh/id_ed25519_mediasync"
+dest_movies_dir = "/mnt/export/storage/plex/media/Movies"
+dest_tv_dir = "/mnt/export/storage/plex/media/TV Shows"
+chown = "1000:1000"

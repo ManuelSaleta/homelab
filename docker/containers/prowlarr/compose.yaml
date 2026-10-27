@@ -1,0 +1,22 @@
+# ==============================================================================
+# Container: prowlarr (Centralized Indexer Aggregator & Proxy)
+# Image:     lscr.io/linuxserver/prowlarr:latest
+# Role:      Exposes unified REST search endpoint (/api/v1/search) on :9696.
+#            Routed strictly through the nordlynx container network namespace.
+# ==============================================================================
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: media-prowlarr
+    network_mode: "service:nordlynx"
+    depends_on:
+      - nordlynx
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-America/New_York}
+    volumes:
+      - ${PROWLARR_CONFIG_DIR:-./data/prowlarr}:/config
+    restart: unless-stopped

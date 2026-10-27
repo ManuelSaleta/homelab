@@ -1,0 +1,24 @@
+# ==============================================================================
+# Container: qbittorrent (Headless BitTorrent Client)
+# Image:     lscr.io/linuxserver/qbittorrent:latest
+# Role:      Downloads approved media torrents to local staging storage.
+#            Routed strictly through the nordlynx container network namespace.
+# ==============================================================================
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: media-qbittorrent
+    network_mode: "service:nordlynx"
+    depends_on:
+      - nordlynx
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-America/New_York}
+      - WEBUI_PORT=${QBIT_WEBUI_PORT:-8080}
+    volumes:
+      - ${QBIT_CONFIG_DIR:-./data/qbittorrent}:/config
+      - ${DOWNLOADS_STAGING_DIR:-./data/downloads}:/downloads
+    restart: unless-stopped
