@@ -194,6 +194,7 @@ K3S_TARGETS   := kubernetes_secret_v1.vaultwarden_secret \
                  kubernetes_secret_v1.grafana-secret \
                  kubernetes_secret_v1.promstack_grafana_secret \
                  kubernetes_secret_v1.karakeep_secret \
+                 kubernetes_secret_v1.plex_secret \
                  kubernetes_secret_v1.tailscale_secret \
                  kubernetes_secret_v1.homepage_background \
                  kubernetes_config_map_v1.homepage_config

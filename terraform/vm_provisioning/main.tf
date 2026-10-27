@@ -127,10 +127,10 @@ resource "proxmox_virtual_environment_vm" "k3s_control" {
     datastore_id      = "local-lvm" # Tells Proxmox where to spawn the ephemeral cloud-init drive
     user_data_file_id = proxmox_virtual_environment_file.k3s_control_cloud_config.id
 
-    # Forces cloud-init to respect gman and locks down the public key file
+    # Forces cloud-init to respect ssh_username and locks down the public key file
     user_account {
-      username = "gman"
-      keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
+      username = var.ssh_username
+      keys     = [trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
 
     # 🎯 FORCE STATIC IP CONFIGURATION FOR THE MANAGER

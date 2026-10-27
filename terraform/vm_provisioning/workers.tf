@@ -103,8 +103,8 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
 
     # Forces cloud-init to pass the exact parameters instead of the "ubuntu" fallback
     user_account {
-      username = "gman"
-      keys     = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
+      username = var.ssh_username
+      keys     = [trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
 
     # Set static IPs for worker nodes 192.168.1.X starting at .210

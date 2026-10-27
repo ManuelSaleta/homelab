@@ -123,7 +123,7 @@ resource "proxmox_virtual_environment_container" "micro_nas" {
     }
 
     user_account {
-      keys = [trimspace(file("/home/gman/.ssh/id_ed25519.pub"))]
+      keys = [trimspace(file(pathexpand(var.ssh_public_key_path)))]
     }
   }
 

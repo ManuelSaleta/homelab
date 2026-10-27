@@ -4,8 +4,8 @@ autoinstall:
 
   identity:
     hostname: k3s-node
-    username: gman
-    password: "$6$OzvpOTrNEeKURrtX$gLANADZep4xZ1c71Y8juTyVF5D.PVvBzzqJLPyYzqPOOF9jd.rxirrNhqsIvOYtDNDsNOu7yf3icoI7zSRWtB."
+    username: ${ssh_username}
+    password: "${vm_password_hash}"
 
   user-data:
     disable_root: true
@@ -17,7 +17,7 @@ autoinstall:
     install-server: true
     allow-pw: false
     authorized-keys:
-      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAtFXTp71ak5E6bNvrT5qyVN7PzfZXN7CCLthWPqvJVh gman@fedora"
+      - "${ssh_public_key}"
 
   storage:
     layout:
@@ -35,6 +35,6 @@ autoinstall:
     # 1. Clear cloud-init states so it treats the first real boot cleanly
     - curtin in-target -- cloud-init clean
     # 2. Fix passwordless sudo by writing a dedicated drop-in file directly into the target filesystem
-    - echo "gman ALL=(ALL) NOPASSWD:ALL" > /target/etc/sudoers.d/gman
-    - chmod 440 /target/etc/sudoers.d/gman
+    - echo "${ssh_username} ALL=(ALL) NOPASSWD:ALL" > /target/etc/sudoers.d/${ssh_username}
+    - chmod 440 /target/etc/sudoers.d/${ssh_username}
     - echo 'Autoinstall complete'

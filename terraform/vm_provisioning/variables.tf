@@ -208,6 +208,31 @@ variable "proxmox_vm_auditor_password" {
   sensitive   = true
 }
 
+variable "proxmox_widget_user" {
+  type        = string
+  description = "Proxmox API token user/ID for Homepage widget metrics."
+  default     = "homepage-widgets-api@pve!homepage-proxmox-widgets"
+}
+
+variable "plex_claim_token" {
+  type        = string
+  description = "Optional Plex claim token from https://plex.tv/claim for initial server setup."
+  default     = ""
+  sensitive   = true
+}
+
+variable "ssh_username" {
+  type        = string
+  description = "Default non-root SSH administrative username for cluster nodes."
+  default     = "gman"
+}
+
+variable "ssh_public_key_path" {
+  type        = string
+  description = "Path to the local SSH public key injected into nodes via cloud-init."
+  default     = "~/.ssh/id_ed25519.pub"
+}
+
 variable "domain_name" {
   type        = string
   description = "The base root domain name for homelab ingress routing and cluster services (e.g., example.com)."

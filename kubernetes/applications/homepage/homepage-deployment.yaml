@@ -79,6 +79,11 @@ spec:
                   name: tailscale-secret
                   key: TS_LAPTOP_DEVICE_ID
             # Proxmox Secrets
+            - name: HOMEPAGE_VAR_PROXMOX_WIDGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-secret
+                  key: PROXMOX_WIDGET_USER
             - name: HOMEPAGE_VAR_PROXMOX_WIDGET_PASSWORD
               valueFrom:
                 secretKeyRef:

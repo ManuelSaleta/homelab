@@ -25,6 +25,19 @@ variable "k3s_share_token" {
   type      = string
   sensitive = true
 }
+variable "ssh_username" {
+  type    = string
+  default = "gman"
+}
+variable "ssh_public_key_path" {
+  type    = string
+  default = "~/.ssh/id_ed25519.pub"
+}
+variable "vm_password_hash" {
+  type      = string
+  default   = "!"
+  sensitive = true
+}
 
 # --- BUILDER CONFIGURATION ---
 source "proxmox-iso" "k3s_template" {
@@ -74,7 +87,14 @@ source "proxmox-iso" "k3s_template" {
   # Using the same min and max port forces it to use a specific port, which we can reference in the autoinstall config.
   http_port_min     = 8688
   http_port_max     = 8688
-  http_directory    = "http"
+  http_content = {
+    "/meta-data" = ""
+    "/user-data" = templatefile("${path.root}/http/user-data", {
+      ssh_username     = var.ssh_username
+      ssh_public_key   = trimspace(file(pathexpand(var.ssh_public_key_path)))
+      vm_password_hash = var.vm_password_hash
+    })
+  }
   http_bind_address = var.http_bind_address_ip # This should be the IP of the machine running Packer, reachable by the Proxmox host and the VM during build.
 
   # Boot command sequence to automate the installation process using the autoinstall config served by the HTTP server.
@@ -92,9 +112,9 @@ source "proxmox-iso" "k3s_template" {
   ]
 
   #TODO: document QEMU Instructs Proxmox to provision a virtual QEMU Guest Agent interface channel
-  qemu_agent = true
+  qemu_agent   = true
   communicator = "ssh"
-  ssh_username = "gman"
+  ssh_username = var.ssh_username
   ssh_timeout  = "20m"
 
   # Point Packer directly to the local private key file on the Fedora workstation

@@ -15,7 +15,12 @@ proxmox_api_token_id        = "terraform-user-agent@pve!terraform-token-v2"
 proxmox_api_token_secret    = "your-proxmox-api-token-secret"
 proxmox_api_token           = "terraform-user-agent@pve!terraform-token-v2=your-proxmox-api-token-secret"
 proxmox_template_vm_id      = "777"
+proxmox_widget_user         = "homepage-widgets-api@pve!homepage-proxmox-widgets"
 proxmox_vm_auditor_password = "your-auditor-password"
+
+# SSH & Node Access
+ssh_username                = "gman"
+ssh_public_key_path         = "~/.ssh/id_ed25519.pub"
 
 # Network & Build Settings
 http_bind_address_ip        = "192.168.1.111"
@@ -43,3 +48,4 @@ grafana_password            = "your-grafana-admin-password"
 grafana_api_key             = "your-grafana-service-account-api-key"
 karakeep_meili_master_key   = "your-meilisearch-master-key"
 karakeep_nextauth_secret    = "your-nextauth-secret-string"
+plex_claim_token            = ""
