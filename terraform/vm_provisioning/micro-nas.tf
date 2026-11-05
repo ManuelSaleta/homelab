@@ -68,6 +68,9 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - mkdir -p /mnt/export/storage/plex/media
       - mkdir -p /mnt/export/storage/jellyfin/config
       - mkdir -p /mnt/export/storage/obsidian
+      - mkdir -p /mnt/export/storage/media-sync/prowlarr
+      - mkdir -p /mnt/export/storage/media-sync/qbittorrent
+      - mkdir -p /mnt/export/storage/media-sync/state
 
       # 6. Set permissions (1000 for standard non-root container workloads, gman for Obsidian sync)
       - chown -R 1000:1000 /mnt/export/storage/vaultwarden
@@ -78,6 +81,8 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - chown -R 1000:1000 /mnt/export/storage/jellyfin
       - chmod -R 775 /mnt/export/storage/jellyfin/config
       - chown -R gman:gman /mnt/export/storage/obsidian
+      - chown -R 1000:1000 /mnt/export/storage/media-sync
+      - chmod -R 775 /mnt/export/storage/media-sync
 
       # 7. Write hardened export rules to /etc/exports (restricted to K3s nodes with all_squash)
       - echo "/mnt/export/storage/vaultwarden ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
@@ -86,6 +91,9 @@ resource "proxmox_virtual_environment_file" "nas_cloud_config" {
       - echo "/mnt/export/storage/plex/config ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - echo "/mnt/export/storage/plex/media ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - echo "/mnt/export/storage/jellyfin/config ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/media-sync/prowlarr ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/media-sync/qbittorrent ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
+      - echo "/mnt/export/storage/media-sync/state ${var.k3s_manager_ip}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000) 192.168.1.210(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)" >> /etc/exports
       - exportfs -rav
 
       # 8. Enable and start NFS server

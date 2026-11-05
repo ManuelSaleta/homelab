@@ -19,6 +19,6 @@ services:
       - TZ=${TZ:-America/New_York}
       - WEBUI_PORT=${QBIT_WEBUI_PORT:-8080}
     volumes:
-      - ${QBIT_CONFIG_DIR:-./data/qbittorrent}:/config
-      - ${DOWNLOADS_STAGING_DIR:-./data/downloads}:/downloads
+      - ${QBIT_CONFIG_DIR:-./data/qbittorrent}:/config:z
+      - ${DOWNLOADS_STAGING_DIR:-./data/downloads}:/downloads:z
     restart: unless-stopped

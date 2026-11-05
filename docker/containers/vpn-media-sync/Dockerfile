@@ -4,16 +4,16 @@
 # Stage 2: Minimal Alpine runtime with rsync, openssh-client, ffprobe, & iproute2
 # ==============================================================================
 
-# Stage 1: .NET 10 Native AOT Builder (Unconfigured / Ready for src/ scaffolding)
+# Stage 1: .NET 10 Native AOT Builder
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS builder
 RUN apk add --no-cache clang build-base zlib-dev
 WORKDIR /src
 
-# Placeholder until .NET 10 project (src/VpnMediaSync) is scaffolded:
-# COPY src/VpnMediaSync/VpnMediaSync.csproj ./
-# RUN dotnet restore -r linux-musl-x64
-# COPY src/VpnMediaSync/ ./
-# RUN dotnet publish -c Release -r linux-musl-x64 -o /out
+COPY src/VpnMediaSync/VpnMediaSync.csproj ./src/VpnMediaSync/
+RUN dotnet restore ./src/VpnMediaSync/VpnMediaSync.csproj -r linux-musl-x64
+
+COPY src/VpnMediaSync/ ./src/VpnMediaSync/
+RUN dotnet publish ./src/VpnMediaSync/VpnMediaSync.csproj -c Release -r linux-musl-x64 -o /out
 
 # Stage 2: Minimal Alpine Runtime (UID 1000 matching homelab & micro-nas)
 FROM alpine:3.21
@@ -29,7 +29,7 @@ RUN apk add --no-cache \
     && chown -R appuser:appuser /app /state /downloads /home/appuser/.ssh
 
 WORKDIR /app
-# COPY --from=builder /out/VpnMediaSync /usr/local/bin/vpn-media-sync
+COPY --from=builder /out/vpn-media-sync /usr/local/bin/vpn-media-sync
 
 USER appuser
-ENTRYPOINT ["/bin/sh", "-c", "echo 'vpn-media-sync container unconfigured (awaiting .NET 10 binary)'; sleep infinity"]
+ENTRYPOINT ["/usr/local/bin/vpn-media-sync", "--daemon", "--config", "/app/config.json"]

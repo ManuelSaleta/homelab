@@ -35,17 +35,46 @@ data:
     discovery.kubernetes "pods" {
       role = "pod"
     }
+
+    // Extract standard Kubernetes labels (namespace, pod, container, app, node)
+    discovery.relabel "pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app", "__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+        separator     = ";"
+        regex         = "^;*([^;]+).*$"
+        replacement   = "$1"
+        target_label  = "app"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_node_name"]
+        target_label  = "node"
+      }
+    }
     
     // Collect logs from those pods
     loki.source.kubernetes "pods" {
-      targets    = discovery.kubernetes.pods.targets
+      targets    = discovery.relabel.pods.output
       forward_to = [loki.write.endpoint.receiver]
     }
     
     // Ship them to Loki
     loki.write "endpoint" {
       endpoint {
-        url = "http://my-loki-gateway.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        url = "http://my-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
       }
     }
 ---

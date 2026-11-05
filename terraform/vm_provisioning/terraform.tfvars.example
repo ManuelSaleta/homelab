@@ -49,3 +49,10 @@ grafana_api_key             = "your-grafana-service-account-api-key"
 karakeep_meili_master_key   = "your-meilisearch-master-key"
 karakeep_nextauth_secret    = "your-nextauth-secret-string"
 plex_claim_token            = ""
+
+# Media Acquisition Pipeline (Prowlarr + NordVPN + Rsync)
+nordlynx_private_key           = "your-nordlynx-wireguard-private-key"
+prowlarr_api_key               = "your-prowlarr-api-key"
+qbit_password                  = "your-qbittorrent-password"
+mediasync_ssh_private_key_path = "~/.ssh/id_ed25519_mediasync"
+

@@ -7,10 +7,14 @@
 # ==============================================================================
 services:
   nordlynx:
-    image: ghcr.io/bubuntux/nordlynx:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: homelab/nordlynx:latest
     container_name: media-nordlynx
     cap_add:
       - NET_ADMIN
+      - NET_RAW
     devices:
       - /dev/net/tun:/dev/net/tun
     sysctls:

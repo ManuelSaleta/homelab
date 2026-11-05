@@ -1,0 +1,466 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+# ==============================================================================
+# Persistent Volumes & Claims for Isolated Media Sync Stack
+# ==============================================================================
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prowlarr-config-pv
+  labels:
+    type: nfs
+    app: media-sync
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.1.250
+    path: /mnt/export/storage/media-sync/prowlarr
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prowlarr-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: prowlarr-config-pv
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: qbit-config-pv
+  labels:
+    type: nfs
+    app: media-sync
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.1.250
+    path: /mnt/export/storage/media-sync/qbittorrent
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qbit-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: qbit-config-pv
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mediasync-state-pv
+  labels:
+    type: nfs
+    app: media-sync
+spec:
+  capacity:
+    storage: 2Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.1.250
+    path: /mnt/export/storage/media-sync/state
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mediasync-state-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: mediasync-state-pv
+---
+# ==============================================================================
+# Declarative ConfigMap for vpn-media-sync (.NET 10 Orchestrator)
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: media-sync-config
+  namespace: media
+data:
+  config.json: |
+    {
+      "schedule": {
+        "intervalMinutes": 30,
+        "cronExpression": "*/30 * * * *",
+        "lockFile": "/tmp/vpn-media-sync.lock",
+        "webhookPort": 5050,
+        "webhookSecretToken": "UNCONFIGURED_WEBHOOK_SECRET_TOKEN",
+        "stateFilePath": "/state/state.json"
+      },
+      "vpn": {
+        "provider": "nordlynx",
+        "requiredInterface": "wg0",
+        "pauseTorrentsWhenDisconnected": true
+      },
+      "trending": {
+        "enabled": true,
+        "popularMoviesUrl": "https://popular-movies-data.stevenlu.com/movies.json",
+        "customQueries": []
+      },
+      "indexer": {
+        "type": "prowlarr",
+        "baseUrl": "http://127.0.0.1:9696",
+        "apiKey": "UNCONFIGURED_PROWLARR_API_KEY",
+        "minSeeders": 50,
+        "maxGrabPerRun": 3
+      },
+      "filters": {
+        "movies": {
+          "categoryIds": [2000, 2040, 2045],
+          "minSizeMb": 1500,
+          "maxSizeMb": 16000,
+          "allowedPatterns": ["1080p", "2160p", "x265", "HEVC", "WEB-DL", "BluRay"],
+          "blockedPatterns": ["CAM", "HDCAM", "TS", "TELESYNC", "\\.exe$", "\\.scr$", "\\.rar$", "\\.zip$", "\\.lnk$"]
+        },
+        "tv": {
+          "categoryIds": [5000, 5040, 5045],
+          "minSizeMb": 250,
+          "maxSizeMb": 6000,
+          "allowedPatterns": ["1080p", "x265", "HEVC", "WEB-DL"],
+          "blockedPatterns": ["CAM", "TS", "\\.exe$", "\\.scr$", "\\.rar$", "\\.zip$"]
+        }
+      },
+      "downloader": {
+        "client": "qbittorrent",
+        "baseUrl": "http://127.0.0.1:8080",
+        "username": "admin",
+        "password": "UNCONFIGURED_QBIT_PASSWORD",
+        "stagingDir": "/downloads",
+        "ratioLimit": 1.0,
+        "seedingTimeLimitMinutes": 1440
+      },
+      "rsync": {
+        "enabled": true,
+        "verifyWithFfprobe": true,
+        "sshUser": "gman",
+        "sshHost": "192.168.1.250",
+        "sshKey": "/home/appuser/.ssh/id_ed25519_mediasync",
+        "destMoviesDir": "Movies",
+        "destTvDir": "TV Shows",
+        "chown": "1000:1000",
+        "removeLocalAfterSync": false
+      }
+    }
+---
+# ==============================================================================
+# Multi-Container Deployment: Isolated VPN Gateway + Media Acquisition Stack
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-acquisition-pod
+  namespace: media
+  labels:
+    app: media-acquisition
+    app.kubernetes.io/name: media-sync
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: media-acquisition
+  template:
+    metadata:
+      labels:
+        app: media-acquisition
+        app.kubernetes.io/name: media-sync
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      # Disable IPv6 inside the Pod network namespace to prevent IPv6 swarm leaks
+      securityContext:
+        fsGroup: 1000
+        sysctls:
+          - name: net.ipv6.conf.all.disable_ipv6
+            value: "1"
+      containers:
+        # 1. Dedicated NordVPN WireGuard Container & Killswitch Owner (Only container with NET_ADMIN)
+        - name: nordlynx
+          image: ghcr.io/bubuntux/nordlynx:latest
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          env:
+            - name: PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: media-sync-secrets
+                  key: nordlynx-private-key
+            - name: QUERY
+              value: "filters\\[servers_groups\\]\\[identifier\\]=legacy_p2p"
+            - name: NET_LOCAL
+              value: "192.168.1.0/24,10.42.0.0/16,10.43.0.0/16"
+            - name: TZ
+              value: "America/New_York"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "32Mi"
+            limits:
+              cpu: "300m"
+              memory: "128Mi"
+          volumeMounts:
+            - name: tun-device
+              mountPath: /dev/net/tun
+
+        # 2. Prowlarr Indexer Proxy (Shares Pod network -> 127.0.0.1:9696)
+        - name: prowlarr
+          image: lscr.io/linuxserver/prowlarr:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/New_York"
+          ports:
+            - containerPort: 9696
+              name: prowlarr-http
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "192Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: prowlarr-config
+              mountPath: /config
+
+        # 3. qBittorrent-nox (Shares Pod network -> 127.0.0.1:8080, stages to local emptyDir)
+        - name: qbittorrent
+          image: lscr.io/linuxserver/qbittorrent:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/New_York"
+            - name: WEBUI_PORT
+              value: "8080"
+          ports:
+            - containerPort: 8080
+              name: qbit-http
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
+          volumeMounts:
+            - name: qbit-config
+              mountPath: /config
+            - name: local-torrent-staging
+              mountPath: /downloads
+
+        # 4. Custom .NET 10 Orchestrator (PID 1 Daemon -> Queries Prowlarr, Verifies w/ ffprobe, Rsyncs to micro-nas)
+        - name: vpn-media-sync
+          image: ghcr.io/manuelsaleta/vpn-media-sync:latest
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: TZ
+              value: "America/New_York"
+            - name: CONFIG_PATH
+              value: "/app/config.json"
+            - name: PROWLARR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: media-sync-secrets
+                  key: prowlarr-api-key
+            - name: QBIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: media-sync-secrets
+                  key: qbit-password
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "32Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+          volumeMounts:
+            - name: local-torrent-staging
+              mountPath: /downloads
+            - name: sync-state-db
+              mountPath: /state
+            - name: mediasync-ssh-key
+              mountPath: /home/appuser/.ssh
+              readOnly: true
+            - name: mediasync-config
+              mountPath: /app/config.json
+              subPath: config.json
+              readOnly: true
+      volumes:
+        - name: tun-device
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+        - name: local-torrent-staging
+          emptyDir:
+            sizeLimit: 40Gi
+        - name: prowlarr-config
+          persistentVolumeClaim:
+            claimName: prowlarr-config-pvc
+        - name: qbit-config
+          persistentVolumeClaim:
+            claimName: qbit-config-pvc
+        - name: sync-state-db
+          persistentVolumeClaim:
+            claimName: mediasync-state-pvc
+        - name: mediasync-ssh-key
+          secret:
+            secretName: media-sync-ssh-secret
+            defaultMode: 0600
+        - name: mediasync-config
+          configMap:
+            name: media-sync-config
+---
+# ==============================================================================
+# Services for Prowlarr and qBittorrent WebUIs
+# ==============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr-service
+  namespace: media
+  labels:
+    app: media-acquisition
+spec:
+  type: ClusterIP
+  selector:
+    app: media-acquisition
+  ports:
+    - port: 9696
+      targetPort: 9696
+      protocol: TCP
+      name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent-service
+  namespace: media
+  labels:
+    app: media-acquisition
+spec:
+  type: ClusterIP
+  selector:
+    app: media-acquisition
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+---
+# ==============================================================================
+# LAN Ingress (Homepage Auto-Discovery & Traefik Routing)
+# Protected by Threat Model Rule 4: Never routed via public Cloudflare Tunnel
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prowlarr-ingress
+  namespace: media
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Prowlarr"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "prowlarr"
+    gethomepage.dev/href: "https://prowlarr.${DOMAIN_NAME}/"
+    gethomepage.dev/pod-selector: "app=media-acquisition"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: prowlarr.${DOMAIN_NAME}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prowlarr-service
+                port:
+                  number: 9696
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: qbittorrent-ingress
+  namespace: media
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "qBittorrent"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "qbittorrent"
+    gethomepage.dev/href: "https://qbit.${DOMAIN_NAME}/"
+    gethomepage.dev/pod-selector: "app=media-acquisition"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: qbit.${DOMAIN_NAME}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: qbittorrent-service
+                port:
+                  number: 8080
