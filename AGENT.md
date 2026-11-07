@@ -51,6 +51,7 @@ This file serves as the system instruction context and prime directive for AI co
 │   └── applications/              # Workload manifests grouped by application folder
 │       ├── homepage/              # Homepage dashboard & RBAC auto-discovery
 │       ├── karakeep/              # Karakeep bookmark manager, Meilisearch, Browserless
+│       ├── media-sync/            # NordVPN WireGuard, Prowlarr, qBittorrent & .NET 10 orchestrator
 │       ├── monitoring/            # Prometheus Stack, Loki, Alloy Helm values
 │       ├── navidrome/             # Navidrome music server & NFS volume claims
 │       ├── pihole/                # Pi-hole DNS server & local dnsmasq overrides
@@ -100,11 +101,15 @@ Persistent data is mounted under `/mnt/export/storage` on `micro-nas` (`192.168.
 | **Navidrome (Music)** | `/mnt/export/storage/navidrome/music` | `navidrome-music-pv` | `navidrome-music-pvc` | `ReadOnlyMany` | Audio library files (MP3, FLAC, AAC) |
 | **Plex (Config & DB)** | `/mnt/export/storage/plex/config` | `plex-config-pv` | `plex-config-pvc` | `ReadWriteOnce` | Server metadata, preferences, media database (20Gi) |
 | **Plex (Media)** | `/mnt/export/storage/plex/media` | `plex-media-pv` | `plex-media-pvc` | `ReadOnlyMany` | Video library (500Gi, read-only to prevent deletion) |
+| **Media-Sync (Prowlarr)** | `/mnt/export/storage/media-sync/prowlarr` | `prowlarr-config-pv` | `prowlarr-config-pvc` | `ReadWriteOnce` | Indexer proxy state & DB (5Gi) |
+| **Media-Sync (qBit)** | `/mnt/export/storage/media-sync/qbittorrent` | `qbit-config-pv` | `qbit-config-pvc` | `ReadWriteOnce` | Client preferences & state (5Gi) |
+| **Media-Sync (State)** | `/mnt/export/storage/media-sync/state` | `mediasync-state-pv` | `mediasync-state-pvc` | `ReadWriteOnce` | Orchestrator JSON history store (2Gi) |
 | **Obsidian Vault** | `/mnt/export/storage/obsidian` | *N/A (Syncthing)* | *N/A* | User Space | Markdown notes synchronized via Syncthing over Tailscale |
 
 ### Ephemeral Scratch Spaces
 
 - **Plex Transcoding**: Transcoding must **never** write to NFS shares (to avoid saturating network I/O). Always mount a dedicated ephemeral `emptyDir: {}` volume to `/transcode`.
+- **Media-Sync Staging**: Incomplete BitTorrent downloads must **never** write to NFS shares. Stage downloads locally via ephemeral `emptyDir: { sizeLimit: 40Gi }` on worker node NVMe, and let `.NET` `vpn-media-sync` `rsync` completed verified files to `/mnt/export/storage/plex/media`.
 
 ### Non-NFS Exceptions
 

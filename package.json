@@ -1,0 +1,15 @@
+{
+  "name": "homelab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Homelab infrastructure, Kubernetes manifests, Terraform IaC, and media pipeline automation",
+  "scripts": {
+    "prepare": "husky",
+    "secret:check": "gitleaks protect --staged --verbose",
+    "secret:scan": "gitleaks detect --verbose",
+    "test": "npm run secret:check"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

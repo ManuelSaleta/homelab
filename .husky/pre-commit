@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# Ensure local bin is on PATH in case of non-standard environment
+export PATH="$HOME/.local/bin:$PATH"
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "❌ [husky/pre-commit] Error: 'gitleaks' binary not found on PATH."
+  echo "👉 Please install gitleaks (e.g. run 'make gitleaks-install' or download from https://github.com/gitleaks/gitleaks)."
+  exit 1
+fi
+
+echo "🔍 [husky/pre-commit] Scanning staged changes for plaintext secrets with Gitleaks..."
+gitleaks protect --staged --verbose
+
+STATUS=$?
+if [ $STATUS -ne 0 ]; then
+  echo ""
+  echo "🚨 [husky/pre-commit] Gitleaks detected secrets in staged files! Commit rejected."
+  echo "👉 Remove the secret(s), unstage the sensitive file, or add false positives to .gitleaksignore."
+  exit 1
+fi
+
+echo "✅ [husky/pre-commit] Secret scan passed. Staged files are clean."

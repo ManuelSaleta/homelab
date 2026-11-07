@@ -1,0 +1,11 @@
+# ==============================================================================
+# Root Docker Compose Orchestrator for Homelab Media Acquisition Stack
+# Includes modular container definitions from ../containers/*
+# ==============================================================================
+name: homelab-media-sync
+
+include:
+  - ../containers/nordlynx/compose.yaml
+  - ../containers/prowlarr/compose.yaml
+  - ../containers/qbittorrent/compose.yaml
+  - ../containers/vpn-media-sync/compose.yaml

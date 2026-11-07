@@ -245,3 +245,31 @@ variable "homelab_domain" {
   default     = "example.com"
 }
 
+variable "nordlynx_private_key" {
+  type        = string
+  description = "WireGuard / NordLynx private key for the isolated media acquisition VPN container"
+  default     = ""
+  sensitive   = true
+}
+
+variable "prowlarr_api_key" {
+  type        = string
+  description = "API key for Prowlarr indexer proxy"
+  default     = ""
+  sensitive   = true
+}
+
+variable "qbit_password" {
+  type        = string
+  description = "WebUI admin password for qBittorrent"
+  default     = ""
+  sensitive   = true
+}
+
+variable "mediasync_ssh_private_key_path" {
+  type        = string
+  description = "Path to the dedicated restricted rrsync SSH private key for media sync"
+  default     = "~/.ssh/id_ed25519_mediasync"
+}
+
+

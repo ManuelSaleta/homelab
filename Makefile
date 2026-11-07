@@ -44,9 +44,10 @@ DELETE_YAML = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) envsubst 
 .PHONY: p-init p-validate p-build p-debug p-clean
 .PHONY: t-init t-validate t-clean t-plan-infra t-apply-infra t-plan-k3s t-apply-k3s
 .PHONY: infra-up infra-down infra-status disable-servicelb
-.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down plex-up plex-down jellyfin-up jellyfin-down uptime-kuma-up uptime-kuma-down
+.PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down plex-up plex-down jellyfin-up jellyfin-down uptime-kuma-up uptime-kuma-down media-sync-up media-sync-down
 .PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all drain-worker-02
 .PHONY: install-loki install-alloy install-promstack grafana-pass promstack-install-all promstack-clean
+.PHONY: secrets-check secrets-scan gitleaks-install husky-install
 
 # ==============================================================================
 # 📋 HELP MENU SYSTEM
@@ -92,6 +93,7 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make navidrome-up/down     - Target deployment specifically for Navidrome Music Server"
 	@echo "  make plex-up/down          - Target deployment specifically for Plex Media Server"
 	@echo "  make jellyfin-up/down      - Target deployment specifically for Jellyfin Media Server"
+	@echo "  make media-sync-up/down    - Target deployment specifically for Media Acquisition Pipeline"
 	@echo ""
 	@echo "Cluster Lifecycle Control Matrix:"
 	@echo "  make deploy-all            - Orchestrate full stack: compute provisioning up to configs"
@@ -195,6 +197,8 @@ K3S_TARGETS   := kubernetes_secret_v1.vaultwarden_secret \
                  kubernetes_secret_v1.promstack_grafana_secret \
                  kubernetes_secret_v1.karakeep_secret \
                  kubernetes_secret_v1.plex_secret \
+                 kubernetes_secret_v1.media_sync_secrets \
+                 kubernetes_secret_v1.media_sync_ssh_secret \
                  kubernetes_secret_v1.tailscale_secret \
                  kubernetes_secret_v1.homepage_background \
                  kubernetes_config_map_v1.homepage_config
@@ -353,12 +357,20 @@ uptime-kuma-down:
 	$(call DELETE_YAML,$(APPS_DIR)/uptime-kuma/uptime-kuma-deployment.yaml)
 
 grafana-up:
-	@echo "📊 Deploying Grafana Exposure Layer..."
-	kubectl apply -f $(APPS_DIR)/monitoring/prometheus-stack.yaml
+	@echo "📊 Deploying Grafana & Logging Stack (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/monitoring/prometheus-stack.yaml)
+	kubectl apply -f $(APPS_DIR)/monitoring/loki.yaml
+	kubectl apply -f $(APPS_DIR)/monitoring/alloy.yaml
+	kubectl apply -f $(APPS_DIR)/monitoring/log-dashboards.yaml
+	kubectl apply -f $(APPS_DIR)/monitoring/media-acquisition-dashboard.yaml
 
 grafana-down:
-	@echo "💥 Removing Grafana Exposure Layer..."
-	kubectl delete -f $(APPS_DIR)/monitoring/prometheus-stack.yaml --ignore-not-found
+	@echo "💥 Removing Grafana & Logging Stack..."
+	kubectl delete -f $(APPS_DIR)/monitoring/media-acquisition-dashboard.yaml --ignore-not-found
+	kubectl delete -f $(APPS_DIR)/monitoring/log-dashboards.yaml --ignore-not-found
+	kubectl delete -f $(APPS_DIR)/monitoring/alloy.yaml --ignore-not-found
+	kubectl delete -f $(APPS_DIR)/monitoring/loki.yaml --ignore-not-found
+	$(call DELETE_YAML,$(APPS_DIR)/monitoring/prometheus-stack.yaml)
 
 navidrome-up:
 	@echo "🎵 Deploying Navidrome Music Server (Domain: $(HOMELAB_DOMAIN))..."
@@ -384,13 +396,21 @@ jellyfin-down:
 	@echo "💥 Removing Jellyfin Media Server Deployment..."
 	$(call DELETE_YAML,$(APPS_DIR)/jellyfin/jellyfin-deployment.yaml)
 
-apps-up: pihole-up homepage-up vaultwarden-up karakeep-up uptime-kuma-up navidrome-up plex-up jellyfin-up ## Deploy all applications at once
+media-sync-up:
+	@echo "⚡ Deploying Media Acquisition & VPN Sync Pipeline (Domain: $(HOMELAB_DOMAIN))..."
+	$(call APPLY_YAML,$(APPS_DIR)/media-sync/media-sync-deployment.yaml)
+
+media-sync-down:
+	@echo "💥 Removing Media Acquisition & VPN Sync Pipeline..."
+	$(call DELETE_YAML,$(APPS_DIR)/media-sync/media-sync-deployment.yaml)
+
+apps-up: pihole-up homepage-up vaultwarden-up karakeep-up uptime-kuma-up navidrome-up plex-up jellyfin-up media-sync-up ## Deploy all applications at once
 	@echo "✅ All applications applied successfully with domain: $(HOMELAB_DOMAIN)."
 
 apps-down: ## Tear down all cluster workloads with a safety step
 	@echo "🛑 WARNING: You are about to wipe all apps. Press Ctrl+C to abort, or Enter to continue..."
 	@read _
-	$(MAKE) pihole-down homepage-down vaultwarden-down karakeep-down uptime-kuma-down navidrome-down plex-down jellyfin-down
+	$(MAKE) pihole-down homepage-down vaultwarden-down karakeep-down uptime-kuma-down navidrome-down plex-down jellyfin-down media-sync-down
 
 apps-status:
 	@echo "🔍 Checking Application Status..."
@@ -431,3 +451,31 @@ promstack-clean:
 
 grafana-pass:
 	@echo "Grafana Admin Password: $(shell kubectl get secret --namespace $(NAMESPACE) promstack-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo)"
+
+# ==============================================================================
+# 🔒 SECURITY & SECRETS AUTOMATION (Gitleaks + Husky)
+# ==============================================================================
+
+GITLEAKS_VERSION ?= 8.30.1
+
+secrets-check: ## Scan staged git changes for plaintext secrets with Gitleaks
+	@echo "🔍 Scanning staged changes with Gitleaks..."
+	@gitleaks protect --staged --verbose
+
+secrets-scan: ## Scan entire repository git history for secrets with Gitleaks
+	@echo "🔍 Scanning full git history with Gitleaks..."
+	@gitleaks detect --verbose
+
+gitleaks-install: ## Download and install Gitleaks standalone binary into ~/.local/bin
+	@echo "📦 Installing Gitleaks v$(GITLEAKS_VERSION) into $(HOME)/.local/bin..."
+	@mkdir -p $(HOME)/.local/bin
+	@curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v$(GITLEAKS_VERSION)/gitleaks_$(GITLEAKS_VERSION)_linux_x64.tar.gz | tar -xz -C $(HOME)/.local/bin gitleaks
+	@chmod +x $(HOME)/.local/bin/gitleaks
+	@echo "✅ Gitleaks installed successfully: $$($(HOME)/.local/bin/gitleaks version)"
+
+husky-install: ## Install npm dependencies and initialize Husky git hooks
+	@echo "📦 Initializing Husky git hooks..."
+	@npm install
+	@npx husky
+	@echo "✅ Husky pre-commit hooks configured."
+

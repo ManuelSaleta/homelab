@@ -3,6 +3,7 @@
 *.tfvars.json
 *.pkrvars.hcl
 *.tfvars.hcl
+*.env
 
 # Local Terraform execution cache and plugin binaries
 .terraform/
@@ -25,3 +26,18 @@ downloaded_iso_path/
 
 # Local backup archives
 backup/
+
+# Node.js dependencies and logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker local secrets, runtime state, and staging data
+docker/**/.env
+docker/**/data/
+docker/**/config.json
+docker/**/config.local.json
+docker/**/docker-compose.local.yaml
+docker/**/bin/
+docker/**/obj/

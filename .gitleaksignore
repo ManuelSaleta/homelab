@@ -1,0 +1,7 @@
+# Historical commits baseline
+67fb291e64f4211747b0afd71771e7b0c2113097:terraform/vm_provisioning/configs/traefik.yml:jwt:28
+bd926b829ba09439dd542982b0f5b7e988e7dde2:vm_provisioning/main.tf:generic-api-key:13
+83954fa32e8e87a225dc07769f2cc79cf0291c0b:kubernetes/applications/monitoring/prometheus-stack.yaml:generic-api-key:105
+83954fa32e8e87a225dc07769f2cc79cf0291c0b:kubernetes/applications/monitoring/prometheus-stack.yaml:generic-api-key:1713
+4eb757910a38b85c3d57c18c9833d361a4471e4b:kubernetes/applications/monitoring/prometheus-stack.yaml:generic-api-key:105
+4eb757910a38b85c3d57c18c9833d361a4471e4b:kubernetes/applications/monitoring/prometheus-stack.yaml:generic-api-key:1713

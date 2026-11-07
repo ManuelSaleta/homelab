@@ -173,3 +173,32 @@ resource "kubernetes_secret_v1" "plex_secret" {
     PLEX_CLAIM = var.plex_claim_token
   }
 }
+
+resource "kubernetes_secret_v1" "media_sync_secrets" {
+  metadata {
+    name      = "media-sync-secrets"
+    namespace = "media"
+  }
+
+  type = "Opaque"
+
+  data = {
+    "nordlynx-private-key" = var.nordlynx_private_key
+    "prowlarr-api-key"     = var.prowlarr_api_key
+    "qbit-password"        = var.qbit_password
+  }
+}
+
+resource "kubernetes_secret_v1" "media_sync_ssh_secret" {
+  metadata {
+    name      = "media-sync-ssh-secret"
+    namespace = "media"
+  }
+
+  type = "Opaque"
+
+  data = {
+    "id_ed25519_mediasync" = fileexists(pathexpand(var.mediasync_ssh_private_key_path)) ? file(pathexpand(var.mediasync_ssh_private_key_path)) : ""
+  }
+}
+

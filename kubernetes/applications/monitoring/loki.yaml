@@ -54,6 +54,8 @@ metadata:
 data:
   config.yaml: |
     
+    analytics:
+      reporting_enabled: false
     auth_enabled: false
     bloom_build:
       builder:
@@ -138,7 +140,7 @@ data:
         index_gateway_client:
           server_address: ""
       filesystem:
-        directory: /data/loki
+        directory: /var/loki/chunks
       hedging:
         at: 250ms
         max_per_second: 20
