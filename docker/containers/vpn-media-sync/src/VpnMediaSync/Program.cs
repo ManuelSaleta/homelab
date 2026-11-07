@@ -9,27 +9,7 @@ using VpnMediaSync.Services;
 using VpnMediaSync.Workers;
 
 var configPath = Environment.GetEnvironmentVariable("CONFIG_PATH") ?? "/app/config.json";
-var runOnce = false;
-var dryRun = false;
 
-for (var i = 0; i < args.Length; i++)
-{
-    switch (args[i])
-    {
-        case "--config" or "-c" when i + 1 < args.Length:
-            configPath = args[++i];
-            break;
-        case "--once" or "run-once":
-            runOnce = true;
-            break;
-        case "--dry-run":
-            dryRun = true;
-            break;
-        case "--daemon" or "daemon":
-            runOnce = false;
-            break;
-    }
-}
 
 if (!File.Exists(configPath))
 {
@@ -113,6 +93,9 @@ builder.Services.AddHttpClient<TrendingFeedClient>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(20);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("VpnMediaSync/1.0");
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    AutomaticDecompression = DecompressionMethods.All
 });
 
 builder.Services.AddHttpClient<ProwlarrClient>(client =>
@@ -131,28 +114,8 @@ builder.Services.AddHttpClient<QBitClient>(client =>
 
 builder.Services.AddSingleton<RsyncTransferService>();
 builder.Services.AddScoped<SyncOrchestrator>();
-
-if (!runOnce)
-{
-    builder.Services.AddHostedService<SyncSchedulerWorker>();
-}
+builder.Services.AddHostedService<SyncSchedulerWorker>();
 
 using var host = builder.Build();
-
-if (runOnce)
-{
-    await using var scope = host.Services.CreateAsyncScope();
-    var orchestrator = scope.ServiceProvider.GetRequiredService<SyncOrchestrator>();
-    using var cts = new CancellationTokenSource();
-    Console.CancelKeyPress += (_, e) =>
-    {
-        e.Cancel = true;
-        cts.Cancel();
-    };
-
-    await orchestrator.RunCycleAsync(dryRun, cts.Token);
-    return 0;
-}
-
 await host.RunAsync();
 return 0;

@@ -27,11 +27,25 @@ public sealed record ProwlarrRelease(
 }
 
 public sealed record TrendingMovieItem(
-    string Title,
+    string? Title,
+    string? Name,
     string? Imdb_Id,
     string? Poster_Url
 )
 {
+    public string EffectiveTitle => !string.IsNullOrWhiteSpace(Title) ? Title : (Name ?? string.Empty);
+    public string? ImdbId => Imdb_Id;
+    public string? PosterUrl => Poster_Url;
+}
+
+public sealed record TrendingTvItem(
+    string? Title,
+    string? Name,
+    string? Imdb_Id,
+    string? Poster_Url
+)
+{
+    public string EffectiveTitle => !string.IsNullOrWhiteSpace(Title) ? Title : (Name ?? string.Empty);
     public string? ImdbId => Imdb_Id;
     public string? PosterUrl => Poster_Url;
 }

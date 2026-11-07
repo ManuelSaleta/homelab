@@ -132,7 +132,14 @@ data:
       "trending": {
         "enabled": true,
         "popularMoviesUrl": "https://popular-movies-data.stevenlu.com/movies.json",
-        "customQueries": []
+        "movieFeedUrls": [
+          "https://popular-movies-data.stevenlu.com/movies.json",
+          "https://s3.amazonaws.com/popular-movies/movies.json"
+        ],
+        "popularTvUrl": null,
+        "tvFeedUrls": [],
+        "customQueries": [],
+        "customTvQueries": []
       },
       "indexer": {
         "type": "prowlarr",
@@ -146,15 +153,39 @@ data:
           "categoryIds": [2000, 2040, 2045],
           "minSizeMb": 1500,
           "maxSizeMb": 16000,
-          "allowedPatterns": ["1080p", "2160p", "x265", "HEVC", "WEB-DL", "BluRay"],
-          "blockedPatterns": ["CAM", "HDCAM", "TS", "TELESYNC", "\\.exe$", "\\.scr$", "\\.rar$", "\\.zip$", "\\.lnk$"]
+          "allowedPatterns": ["1080p", "2160p", "4K"],
+          "blockedPatterns": [
+            "720p",
+            "480p",
+            "576p",
+            "CAM",
+            "HDCAM",
+            "TS",
+            "TELESYNC",
+            "\\.exe$",
+            "\\.scr$",
+            "\\.rar$",
+            "\\.zip$",
+            "\\.lnk$"
+          ]
         },
         "tv": {
           "categoryIds": [5000, 5040, 5045],
           "minSizeMb": 250,
-          "maxSizeMb": 6000,
-          "allowedPatterns": ["1080p", "x265", "HEVC", "WEB-DL"],
-          "blockedPatterns": ["CAM", "TS", "\\.exe$", "\\.scr$", "\\.rar$", "\\.zip$"]
+          "maxSizeMb": 35000,
+          "preferSeasonPacks": true,
+          "allowedPatterns": ["1080p", "2160p", "4K"],
+          "blockedPatterns": [
+            "720p",
+            "480p",
+            "576p",
+            "CAM",
+            "TS",
+            "\\.exe$",
+            "\\.scr$",
+            "\\.rar$",
+            "\\.zip$"
+          ]
         }
       },
       "downloader": {

@@ -90,7 +90,7 @@ public sealed class RsyncTransferService(
         return true;
     }
 
-    public async Task<bool> TransferAsync(QBitTorrentItem torrent, bool dryRun, CancellationToken ct)
+    public async Task<bool> TransferAsync(QBitTorrentItem torrent, CancellationToken ct)
     {
         if (!_rsyncConfig.Enabled)
         {
@@ -170,21 +170,14 @@ public sealed class RsyncTransferService(
         args.Add("--exclude=*");
         args.Add("-e");
         args.Add(sshCmd);
-
-        if (dryRun)
-        {
-            args.Insert(0, "--dry-run");
-        }
-
         args.Add("--");
         args.Add(sourcePath);
         args.Add(destination);
 
         _logger.LogInformation(
-            "Starting rsync transfer for '{Name}' -> '{Destination}' (dryRun={DryRun}).",
+            "Starting rsync transfer for '{Name}' -> '{Destination}'.",
             torrent.Name,
-            destination,
-            dryRun);
+            destination);
 
         var result = await Cli.Wrap("rsync")
             .WithArguments(args)
@@ -207,29 +200,123 @@ public sealed class RsyncTransferService(
 
     public void CleanupLocalStaging(QBitTorrentItem torrent)
     {
+        CleanupLocalStagingAsync(torrent, CancellationToken.None).GetAwaiter().GetResult();
+    }
+
+    public async Task CleanupLocalStagingAsync(QBitTorrentItem torrent, CancellationToken ct = default)
+    {
         var rawPath = torrent.ContentPath ?? torrent.SavePath;
         if (string.IsNullOrWhiteSpace(rawPath))
         {
             return;
         }
 
+        string sourcePath;
         try
         {
-            var sourcePath = ResolveLocalSourcePath(rawPath);
-            if (File.Exists(sourcePath))
-            {
-                File.Delete(sourcePath);
-                _logger.LogInformation("Cleaned up local staging file '{SourcePath}'.", sourcePath);
-            }
-            else if (Directory.Exists(sourcePath))
-            {
-                Directory.Delete(sourcePath, recursive: true);
-                _logger.LogInformation("Cleaned up local staging directory '{SourcePath}'.", sourcePath);
-            }
+            sourcePath = ResolveLocalSourcePath(rawPath);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to clean up local staging path '{RawPath}'.", rawPath);
+            _logger.LogWarning(ex, "Failed to resolve local staging path '{RawPath}' for cleanup.", rawPath);
+            return;
+        }
+
+        // Allow a brief settle window for qBittorrent to complete its background file deletion if deleteFiles was requested
+        for (var i = 0; i < 5; i++)
+        {
+            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
+            {
+                _logger.LogDebug("Local staging path '{SourcePath}' already removed.", sourcePath);
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(200, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
+            {
+                return;
+            }
+
+            try
+            {
+                if (File.Exists(sourcePath))
+                {
+                    File.SetAttributes(sourcePath, FileAttributes.Normal);
+                    File.Delete(sourcePath);
+                    _logger.LogInformation("Cleaned up local staging file '{SourcePath}'.", sourcePath);
+                    return;
+                }
+
+                if (Directory.Exists(sourcePath))
+                {
+                    ResetFileAttributes(new DirectoryInfo(sourcePath));
+                    Directory.Delete(sourcePath, recursive: true);
+                    _logger.LogInformation("Cleaned up local staging directory '{SourcePath}'.", sourcePath);
+                    return;
+                }
+            }
+            catch (Exception ex) when (ex is DirectoryNotFoundException or FileNotFoundException)
+            {
+                // Removed concurrently (e.g. by qBittorrent)
+                _logger.LogDebug("Local staging path '{SourcePath}' was removed concurrently.", sourcePath);
+                return;
+            }
+            catch (Exception ex) when (attempt < 3)
+            {
+                _logger.LogDebug(ex, "Transient error cleaning up '{SourcePath}' (attempt {Attempt}/3), retrying...", sourcePath, attempt);
+                try
+                {
+                    await Task.Delay(500, ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                // If it was removed during our attempts, do not warn
+                if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
+                {
+                    return;
+                }
+
+                _logger.LogWarning(ex, "Failed to clean up local staging path '{RawPath}'.", rawPath);
+            }
+        }
+    }
+
+    private static void ResetFileAttributes(DirectoryInfo directory)
+    {
+        try
+        {
+            directory.Attributes = FileAttributes.Normal;
+            foreach (var file in directory.EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    file.Attributes = FileAttributes.Normal;
+                }
+                catch
+                {
+                    // Ignore individual attribute reset failures
+                }
+            }
+        }
+        catch
+        {
+            // Directory may have been removed concurrently
         }
     }
 

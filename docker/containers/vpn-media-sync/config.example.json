@@ -15,7 +15,14 @@
   "trending": {
     "enabled": true,
     "popularMoviesUrl": "https://popular-movies-data.stevenlu.com/movies.json",
-    "customQueries": []
+    "movieFeedUrls": [
+      "https://popular-movies-data.stevenlu.com/movies.json",
+      "https://s3.amazonaws.com/popular-movies/movies.json"
+    ],
+    "popularTvUrl": null,
+    "tvFeedUrls": [],
+    "customQueries": [],
+    "customTvQueries": []
   },
   "indexer": {
     "type": "prowlarr",
@@ -36,12 +43,12 @@
       "allowedPatterns": [
         "1080p",
         "2160p",
-        "x265",
-        "HEVC",
-        "WEB-DL",
-        "BluRay"
+        "4K"
       ],
       "blockedPatterns": [
+        "720p",
+        "480p",
+        "576p",
         "CAM",
         "HDCAM",
         "TS",
@@ -60,14 +67,17 @@
         5045
       ],
       "minSizeMb": 250,
-      "maxSizeMb": 6000,
+      "maxSizeMb": 35000,
+      "preferSeasonPacks": true,
       "allowedPatterns": [
         "1080p",
-        "x265",
-        "HEVC",
-        "WEB-DL"
+        "2160p",
+        "4K"
       ],
       "blockedPatterns": [
+        "720p",
+        "480p",
+        "576p",
         "CAM",
         "TS",
         "\\.exe$",

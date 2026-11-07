@@ -14,6 +14,16 @@ public sealed class ProwlarrClient(
 {
     private static readonly ConcurrentDictionary<string, Regex> RegexCache = new(StringComparer.Ordinal);
     private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
+
+    private static readonly Regex SoloEpisodeRegex = new(
+        @"\b(S\d{1,2}\s*E\d{1,3}|\d{1,2}x\d{1,3}|E(pisode)?\s*\d{1,3})\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+        RegexTimeout);
+
+    private static readonly Regex SeasonPackRegex = new(
+        @"\b(Season\s*\d+|Seasons|Complete|S\d{1,2}(?!\s*E\d+)|S\d{1,2}\s*-\s*S?\d{1,2})\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+        RegexTimeout);
     private readonly ILogger<ProwlarrClient> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IndexerConfig _config = indexerOptions?.Value ?? throw new ArgumentNullException(nameof(indexerOptions));
 
@@ -58,19 +68,31 @@ public sealed class ProwlarrClient(
             .Where(r => r.Size >= minBytes && r.Size <= maxBytes)
             .Where(r => allowedRegexes.Length == 0 || allowedRegexes.Any(rx => rx.IsMatch(r.Title)))
             .Where(r => !blockedRegexes.Any(rx => rx.IsMatch(r.Title)))
-            .OrderByDescending(r => r.Seeders ?? 0)
+            .OrderByDescending(r => GetSeasonPackScore(r.Title, filter.PreferSeasonPacks))
+            .ThenByDescending(r => r.Seeders ?? 0)
             .FirstOrDefault();
 
         if (best is null) return null;
 
         _logger.LogInformation(
-            "Matched release '{Title}' ({Seeders} seeders, {SizeMb} MB) for query '{Query}'.",
+            "Matched release '{Title}' ({Seeders} seeders, {SizeMb} MB, seasonPackScore: {Score}) for query '{Query}'.",
             best.Title,
             best.Seeders ?? 0,
             best.Size / (1024 * 1024),
+            GetSeasonPackScore(best.Title, filter.PreferSeasonPacks),
             query);
 
         return best;
+    }
+
+    private static int GetSeasonPackScore(string title, bool preferSeasonPacks)
+    {
+        if (!preferSeasonPacks) return 0;
+        var isSolo = SoloEpisodeRegex.IsMatch(title);
+        var isSeason = SeasonPackRegex.IsMatch(title) && !isSolo;
+        if (isSeason) return 2;
+        if (!isSolo) return 1;
+        return 0;
     }
 
     private static Regex GetOrCompileRegex(string pattern) =>

@@ -16,7 +16,7 @@ public sealed class SyncOrchestrator(
 {
     private readonly AppConfig _config = options?.Value ?? throw new ArgumentNullException(nameof(options));
 
-    public async Task RunCycleAsync(bool dryRun, CancellationToken ct)
+    public async Task RunCycleAsync(CancellationToken ct)
     {
         await using var lockStream = TryAcquireLockFile(_config.Schedule.LockFile);
         if (lockStream is null)
@@ -31,7 +31,7 @@ public sealed class SyncOrchestrator(
         var vpnConnected = await vpnGuard.IsVpnConnectedAsync(ct);
         if (!vpnConnected)
         {
-            if (_config.Vpn.PauseTorrentsWhenDisconnected && !dryRun)
+            if (_config.Vpn.PauseTorrentsWhenDisconnected)
             {
                 await qBitClient.PauseAllAsync(ct);
             }
@@ -74,12 +74,6 @@ public sealed class SyncOrchestrator(
                 continue;
             }
 
-            if (dryRun)
-            {
-                logger.LogInformation("[DRY-RUN] Would dispatch '{Title}' to qBittorrent.", bestRelease.Title);
-                grabbedCount++;
-                continue;
-            }
 
             if (await qBitClient.AddTorrentQuarantinedAsync(downloadUri, candidate.Category, ct))
             {
@@ -108,12 +102,9 @@ public sealed class SyncOrchestrator(
 
             if (!isSynced)
             {
-                if (await rsyncService.TransferAsync(torrent, dryRun, ct))
+                if (await rsyncService.TransferAsync(torrent, ct))
                 {
-                    if (!dryRun)
-                    {
-                        await stateStore.MarkSyncedAsync(torrent.Hash, torrent.Name, category, ct);
-                    }
+                    await stateStore.MarkSyncedAsync(torrent.Hash, torrent.Name, category, ct);
                     isSynced = true;
                 }
             }
@@ -131,24 +122,14 @@ public sealed class SyncOrchestrator(
 
             if (shouldCleanup)
             {
-                if (dryRun)
-                {
-                    logger.LogInformation(
-                        "[DRY-RUN] Would clean up synced torrent '{Name}' and local staging files (ratio: {Ratio:F2}, seeded: {Minutes:F0}m).",
-                        torrent.Name,
-                        torrent.Ratio,
-                        seedingTimeMinutes);
-                }
-                else
-                {
-                    await qBitClient.DeleteTorrentAsync(torrent.Hash, deleteFiles: true, ct);
-                    rsyncService.CleanupLocalStaging(torrent);
-                    logger.LogInformation(
-                        "Cleaned up synced torrent '{Name}' and local staging files (ratio: {Ratio:F2}, seeded: {Minutes:F0}m).",
-                        torrent.Name,
-                        torrent.Ratio,
-                        seedingTimeMinutes);
-                }
+                await qBitClient.DeleteTorrentAsync(torrent.Hash, deleteFiles: true, ct);
+                await rsyncService.CleanupLocalStagingAsync(torrent, ct);
+                logger.LogInformation(
+                    "Cleaned up synced torrent '{Name}' and local staging files (ratio: {Ratio:F2}, seeded: {Minutes:F0}m).",
+                    torrent.Name,
+                    torrent.Ratio,
+                    seedingTimeMinutes);
+
             }
         }
     }

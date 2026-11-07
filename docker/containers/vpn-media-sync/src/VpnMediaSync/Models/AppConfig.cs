@@ -97,7 +97,7 @@ public sealed class VpnConfig
 public sealed class TrendingConfig
 {
     /// <summary>
-    /// Flag determining whether trending movie feeds are queried during synchronization cycles.
+    /// Flag determining whether trending movie and television feeds are queried during synchronization cycles.
     /// </summary>
     public bool Enabled { get; set; } = true;
 
@@ -107,9 +107,30 @@ public sealed class TrendingConfig
     public string PopularMoviesUrl { get; set; } = "https://popular-movies-data.stevenlu.com/movies.json";
 
     /// <summary>
+    /// Optional list of additional HTTP endpoints delivering movie title feeds in JSON format.
+    /// </summary>
+    public List<string>? MovieFeedUrls { get; set; } = null;
+
+    /// <summary>
+    /// Optional HTTP endpoint delivering trending popular television title feeds in JSON format.
+    /// </summary>
+    public string? PopularTvUrl { get; set; } = null;
+
+    /// <summary>
+    /// Optional list of additional HTTP endpoints delivering television title feeds in JSON format.
+    /// </summary>
+    public List<string>? TvFeedUrls { get; set; } = null;
+
+    /// <summary>
     /// Optional list of user-defined search queries to query indexers for alongside trending feeds.
+    /// Supports optional prefix "tv:" (e.g. "tv:Severance") or "movie:" (e.g. "movie:Inception"). Defaults to "movies" if no prefix is given.
     /// </summary>
     public List<string>? CustomQueries { get; set; } = null;
+
+    /// <summary>
+    /// Optional list of user-defined television search queries to query indexers for alongside trending feeds.
+    /// </summary>
+    public List<string>? CustomTvQueries { get; set; } = null;
 }
 
 public sealed class IndexerConfig
@@ -150,7 +171,7 @@ public sealed class FiltersConfig
     /// <summary>
     /// Category filtering parameters and size thresholds applied to television torrent candidates.
     /// </summary>
-    public CategoryFilterConfig Tv { get; set; } = new();
+    public CategoryFilterConfig Tv { get; set; } = new() { PreferSeasonPacks = true };
 }
 
 public sealed class CategoryFilterConfig
@@ -179,6 +200,11 @@ public sealed class CategoryFilterConfig
     /// List of regex patterns or tokens that will disqualify candidate release titles if matched.
     /// </summary>
     public List<string> BlockedPatterns { get; set; } = [];
+
+    /// <summary>
+    /// Flag indicating whether multi-episode season packs or complete series releases should be prioritized over solo episodes.
+    /// </summary>
+    public bool PreferSeasonPacks { get; set; } = false;
 }
 
 public sealed class DownloaderConfig
@@ -296,6 +322,7 @@ public sealed record SyncStateDocument(
 [JsonSerializable(typeof(SyncStateDocument))]
 [JsonSerializable(typeof(List<ProwlarrRelease>))]
 [JsonSerializable(typeof(List<TrendingMovieItem>))]
+[JsonSerializable(typeof(List<TrendingTvItem>))]
 [JsonSerializable(typeof(List<QBitTorrentItem>))]
 [JsonSerializable(typeof(List<QBitTorrentFileItem>))]
 [JsonSerializable(typeof(QBitTorrentFileItem))]

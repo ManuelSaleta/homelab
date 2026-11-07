@@ -1,9 +1,6 @@
 using System.Net;
 using System.Text;
 using System.Threading.Channels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
 using VpnMediaSync.Services;
@@ -83,7 +80,7 @@ public sealed class SyncSchedulerWorker(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var orchestrator = scope.ServiceProvider.GetRequiredService<SyncOrchestrator>();
-            await orchestrator.RunCycleAsync(dryRun: false, ct);
+            await orchestrator.RunCycleAsync(ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

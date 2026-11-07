@@ -19,54 +19,172 @@ public sealed class TrendingFeedClient(
     {
         var results = new List<DiscoveryCandidate>();
 
-        // 1. Add user-defined custom queries first
+        // 1. Add user-defined custom queries (supports "tv:Title" or "movie:Title" prefixes)
         if (_config.CustomQueries is { Count: > 0 })
         {
-            foreach (var query in _config.CustomQueries)
+            foreach (var rawQuery in _config.CustomQueries)
             {
+                if (string.IsNullOrWhiteSpace(rawQuery))
+                {
+                    continue;
+                }
+
+                var trimmed = rawQuery.Trim();
+                var category = "movies";
+                var query = trimmed;
+
+                if (trimmed.StartsWith("tv:", StringComparison.OrdinalIgnoreCase))
+                {
+                    category = "tv";
+                    query = trimmed[3..].Trim();
+                }
+                else if (trimmed.StartsWith("movie:", StringComparison.OrdinalIgnoreCase))
+                {
+                    category = "movies";
+                    query = trimmed[6..].Trim();
+                }
+                else if (trimmed.StartsWith("movies:", StringComparison.OrdinalIgnoreCase))
+                {
+                    category = "movies";
+                    query = trimmed[7..].Trim();
+                }
+
                 if (string.IsNullOrWhiteSpace(query))
                 {
                     continue;
                 }
 
-                var externalId = $"custom:{query.Trim().ToLowerInvariant()}";
-                if (!stateStore.IsExternalIdProcessed(externalId))
+                var externalId = $"custom:{category}:{query.ToLowerInvariant()}";
+                var legacyExternalId = $"custom:{query.ToLowerInvariant()}";
+                if (!stateStore.IsExternalIdProcessed(externalId) && !stateStore.IsExternalIdProcessed(legacyExternalId))
                 {
-                    results.Add(new DiscoveryCandidate(externalId, query.Trim(), "movies"));
+                    results.Add(new DiscoveryCandidate(externalId, query, category));
                 }
             }
         }
 
-        // 2. Fetch popular movies JSON feed if enabled
-        if (_config.Enabled && !string.IsNullOrWhiteSpace(_config.PopularMoviesUrl))
+        // 2. Add user-defined custom TV queries
+        if (_config.CustomTvQueries is { Count: > 0 })
         {
-            try
+            foreach (var rawQuery in _config.CustomTvQueries)
             {
-                var movies = await httpClient.GetFromJsonAsync(
-                    _config.PopularMoviesUrl,
-                    AppJsonSerializerContext.Default.ListTrendingMovieItem,
-                    ct) ?? [];
-
-                foreach (var movie in movies)
+                if (string.IsNullOrWhiteSpace(rawQuery))
                 {
-                    if (string.IsNullOrWhiteSpace(movie.Title))
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    var externalId = !string.IsNullOrWhiteSpace(movie.ImdbId)
-                        ? movie.ImdbId
-                        : $"title:{movie.Title.Trim().ToLowerInvariant()}";
+                var query = rawQuery.Trim();
+                var externalId = $"custom:tv:{query.ToLowerInvariant()}";
+                if (!stateStore.IsExternalIdProcessed(externalId))
+                {
+                    results.Add(new DiscoveryCandidate(externalId, query, "tv"));
+                }
+            }
+        }
 
-                    if (!stateStore.IsExternalIdProcessed(externalId))
+        // 3. Fetch popular movies JSON feeds if enabled
+        if (_config.Enabled)
+        {
+            var movieUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrWhiteSpace(_config.PopularMoviesUrl))
+            {
+                movieUrls.Add(_config.PopularMoviesUrl.Trim());
+            }
+            if (_config.MovieFeedUrls is { Count: > 0 })
+            {
+                foreach (var url in _config.MovieFeedUrls)
+                {
+                    if (!string.IsNullOrWhiteSpace(url))
                     {
-                        results.Add(new DiscoveryCandidate(externalId, movie.Title.Trim(), "movies"));
+                        movieUrls.Add(url.Trim());
                     }
                 }
             }
-            catch (Exception ex)
+
+            foreach (var url in movieUrls)
             {
-                logger.LogWarning(ex, "Failed to fetch popular movies feed from {Url}.", _config.PopularMoviesUrl);
+                try
+                {
+                    var movies = await httpClient.GetFromJsonAsync(
+                        url,
+                        AppJsonSerializerContext.Default.ListTrendingMovieItem,
+                        ct) ?? [];
+
+                    foreach (var movie in movies)
+                    {
+                        var title = movie.EffectiveTitle;
+                        if (string.IsNullOrWhiteSpace(title))
+                        {
+                            continue;
+                        }
+
+                        var externalId = !string.IsNullOrWhiteSpace(movie.ImdbId)
+                            ? movie.ImdbId
+                            : $"title:{title.Trim().ToLowerInvariant()}";
+
+                        if (!stateStore.IsExternalIdProcessed(externalId))
+                        {
+                            results.Add(new DiscoveryCandidate(externalId, title.Trim(), "movies"));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to fetch popular movies feed from {Url}.", url);
+                }
+            }
+        }
+
+        // 4. Fetch popular TV shows JSON feeds if enabled and configured
+        if (_config.Enabled)
+        {
+            var tvUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrWhiteSpace(_config.PopularTvUrl))
+            {
+                tvUrls.Add(_config.PopularTvUrl.Trim());
+            }
+            if (_config.TvFeedUrls is { Count: > 0 })
+            {
+                foreach (var url in _config.TvFeedUrls)
+                {
+                    if (!string.IsNullOrWhiteSpace(url))
+                    {
+                        tvUrls.Add(url.Trim());
+                    }
+                }
+            }
+
+            foreach (var url in tvUrls)
+            {
+                try
+                {
+                    var shows = await httpClient.GetFromJsonAsync(
+                        url,
+                        AppJsonSerializerContext.Default.ListTrendingTvItem,
+                        ct) ?? [];
+
+                    foreach (var show in shows)
+                    {
+                        var title = show.EffectiveTitle;
+                        if (string.IsNullOrWhiteSpace(title))
+                        {
+                            continue;
+                        }
+
+                        var externalId = !string.IsNullOrWhiteSpace(show.ImdbId)
+                            ? show.ImdbId
+                            : $"title:tv:{title.Trim().ToLowerInvariant()}";
+
+                        if (!stateStore.IsExternalIdProcessed(externalId))
+                        {
+                            results.Add(new DiscoveryCandidate(externalId, title.Trim(), "tv"));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to fetch popular TV feed from {Url}.", url);
+                }
             }
         }
 
