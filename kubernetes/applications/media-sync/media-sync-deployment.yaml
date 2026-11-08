@@ -357,6 +357,10 @@ spec:
                 secretKeyRef:
                   name: media-sync-secrets
                   key: qbit-password
+          ports:
+            - containerPort: 5050
+              name: webhook
+              protocol: TCP
           resources:
             requests:
               cpu: "25m"
@@ -452,6 +456,7 @@ metadata:
     gethomepage.dev/name: "Prowlarr"
     gethomepage.dev/group: "Media"
     gethomepage.dev/icon: "prowlarr"
+    gethomepage.dev/description: "Torrent Indexer Manager"
     gethomepage.dev/href: "https://prowlarr.${DOMAIN_NAME}/"
     gethomepage.dev/pod-selector: "app=media-acquisition"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
@@ -479,6 +484,7 @@ metadata:
     gethomepage.dev/name: "qBittorrent"
     gethomepage.dev/group: "Media"
     gethomepage.dev/icon: "qbittorrent"
+    gethomepage.dev/description: "BitTorrent Download Client"
     gethomepage.dev/href: "https://qbit.${DOMAIN_NAME}/"
     gethomepage.dev/pod-selector: "app=media-acquisition"
     traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
@@ -495,3 +501,48 @@ spec:
                 name: qbittorrent-service
                 port:
                   number: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-sync-service
+  namespace: media
+  labels:
+    app: media-acquisition
+spec:
+  type: ClusterIP
+  selector:
+    app: media-acquisition
+  ports:
+    - port: 5050
+      targetPort: 5050
+      protocol: TCP
+      name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: media-sync-ingress
+  namespace: media
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Media Sync"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "si-dotnet"
+    gethomepage.dev/description: ".NET 10 Media Acquisition Worker"
+    gethomepage.dev/href: "https://sync.${DOMAIN_NAME}/"
+    gethomepage.dev/pod-selector: "app=media-acquisition"
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: sync.${DOMAIN_NAME}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: media-sync-service
+                port:
+                  number: 5050

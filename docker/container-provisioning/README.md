@@ -16,3 +16,14 @@ This directory orchestrates the containerized media acquisition pipeline defined
    make config
    make up
    ```
+
+## Homepage Dashboard Auto-Discovery
+
+All containers declare declarative `homepage.*` labels in their respective `compose.yaml` definitions:
+
+- **NordLynx VPN**: Group `Network`, icon `nordvpn`
+- **Prowlarr**: Group `Media`, icon `prowlarr`, href `http://localhost:9696`
+- **qBittorrent**: Group `Media`, icon `qbittorrent`, href `http://localhost:8080`
+- **Media Sync**: Group `Media`, icon `si-dotnet`, description `.NET 10 Acquisition & Sync Worker`
+
+When deploying to Kubernetes (`kubernetes/applications/media-sync/`), Homepage auto-discovers Prowlarr, qBittorrent, and Media Sync natively via cluster Ingress annotations (`gethomepage.dev/enabled: "true"` and `gethomepage.dev/pod-selector: "app=media-acquisition"`).
