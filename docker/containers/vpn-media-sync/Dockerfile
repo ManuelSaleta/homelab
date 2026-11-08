@@ -1,12 +1,11 @@
 # ==============================================================================
-# Multi-Stage Dockerfile for vpn-media-sync (.NET 10 Native AOT + Alpine)
-# Stage 1: Compiles the .NET 10 orchestrator into a self-contained musl binary
+# Multi-Stage Dockerfile for vpn-media-sync (.NET 10 Single-File + Alpine)
+# Stage 1: Compiles the .NET 10 orchestrator into a self-contained single-file musl binary
 # Stage 2: Minimal Alpine runtime with rsync, openssh-client, ffprobe, & iproute2
 # ==============================================================================
 
-# Stage 1: .NET 10 Native AOT Builder
+# Stage 1: .NET 10 Builder
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS builder
-RUN apk add --no-cache clang build-base zlib-dev
 WORKDIR /src
 
 COPY src/VpnMediaSync/VpnMediaSync.csproj ./src/VpnMediaSync/
@@ -30,6 +29,7 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 COPY --from=builder /out/vpn-media-sync /usr/local/bin/vpn-media-sync
+COPY --from=builder /out/appsettings.json /app/appsettings.json
 
 USER appuser
-ENTRYPOINT ["/usr/local/bin/vpn-media-sync", "--daemon", "--config", "/app/config.json"]
+ENTRYPOINT ["/usr/local/bin/vpn-media-sync"]

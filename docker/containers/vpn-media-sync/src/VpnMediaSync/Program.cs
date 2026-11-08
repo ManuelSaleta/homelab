@@ -1,54 +1,42 @@
 using System.Net;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
+using VpnMediaSync.Models.Options;
 using VpnMediaSync.Services;
 using VpnMediaSync.Workers;
-
-var configPath = Environment.GetEnvironmentVariable("CONFIG_PATH") ?? "/app/config.json";
-
-
-if (!File.Exists(configPath))
-{
-    var candidates = new[]
-    {
-        "config.local.json",
-        "config.json",
-        "../config.local.json",
-        "../config.json",
-        "../../config.local.json",
-        "../../config.json",
-        "docker/containers/vpn-media-sync/config.local.json",
-        "docker/containers/vpn-media-sync/config.json",
-        Path.Combine(AppContext.BaseDirectory, "config.local.json"),
-        Path.Combine(AppContext.BaseDirectory, "config.json")
-    };
-
-    var fallback = candidates.FirstOrDefault(File.Exists);
-    if (fallback != null)
-    {
-        configPath = Path.GetFullPath(fallback);
-    }
-}
-
-if (!File.Exists(configPath))
-{
-    Console.Error.WriteLine($"Configuration file not found at '{configPath}'.");
-    return 1;
-}
-
-configPath = Path.GetFullPath(configPath);
-Console.WriteLine($"Loaded configuration from '{configPath}'.");
 
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
     Args = args
 });
 
-builder.Configuration.AddJsonFile(configPath, optional: false, reloadOnChange: true);
+// Optionally load explicit CONFIG_PATH or local configuration overlay if present
+var customConfigPath = Environment.GetEnvironmentVariable("CONFIG_PATH");
+if (string.IsNullOrWhiteSpace(customConfigPath))
+{
+    var candidates = new[]
+    {
+        "appsettings.local.json",
+        "../appsettings.local.json",
+        "../../appsettings.local.json",
+        "docker/containers/vpn-media-sync/src/VpnMediaSync/appsettings.local.json",
+        Path.Combine(AppContext.BaseDirectory, "appsettings.local.json")
+    };
+
+    customConfigPath = candidates.FirstOrDefault(File.Exists);
+}
+
+if (!string.IsNullOrWhiteSpace(customConfigPath) && File.Exists(customConfigPath))
+{
+    customConfigPath = Path.GetFullPath(customConfigPath);
+    Console.WriteLine($"Loaded external configuration overlay from '{customConfigPath}'.");
+    builder.Configuration.AddJsonFile(customConfigPath, optional: true, reloadOnChange: true);
+}
 
 // Map conventional flat container / Kubernetes env vars to standard hierarchical options
 var flatEnvMappings = new Dictionary<string, string?>
@@ -77,14 +65,36 @@ builder.Logging.AddSimpleConsole(options =>
 });
 
 // Configure strongly-typed options
-builder.Services.Configure<AppConfig>(builder.Configuration);
-builder.Services.Configure<ScheduleConfig>(builder.Configuration.GetSection("Schedule"));
-builder.Services.Configure<VpnConfig>(builder.Configuration.GetSection("Vpn"));
-builder.Services.Configure<TrendingConfig>(builder.Configuration.GetSection("Trending"));
-builder.Services.Configure<IndexerConfig>(builder.Configuration.GetSection("Indexer"));
-builder.Services.Configure<FiltersConfig>(builder.Configuration.GetSection("Filters"));
-builder.Services.Configure<DownloaderConfig>(builder.Configuration.GetSection("Downloader"));
-builder.Services.Configure<RsyncConfig>(builder.Configuration.GetSection("Rsync"));
+builder.Services.AddOptions<SchedulingConfigOpts>()
+    .BindConfiguration(SchedulingConfigOpts.SectionName);
+
+builder.Services.AddOptions<VpnConfigOpts>()
+    .BindConfiguration(VpnConfigOpts.SectionName);
+
+builder.Services.AddOptions<TrendingConfigOpts>()
+    .BindConfiguration(TrendingConfigOpts.SectionName);
+
+builder.Services.AddOptions<IndexerConfigOpts>()
+    .BindConfiguration(IndexerConfigOpts.SectionName);
+
+builder.Services.AddOptions<FiltersConfigOpts>()
+    .BindConfiguration(FiltersConfigOpts.SectionName);
+
+builder.Services.AddOptions<DownloaderConfigOpts>()
+    .BindConfiguration(DownloaderConfigOpts.SectionName);
+
+builder.Services.AddOptions<RsyncConfigOpts>()
+    .BindConfiguration(RsyncConfigOpts.SectionName);
+
+var jsonSerializerOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true,
+    ReadCommentHandling = JsonCommentHandling.Skip,
+    AllowTrailingCommas = true,
+    WriteIndented = true
+};
+builder.Services.AddSingleton(jsonSerializerOptions);
 
 builder.Services.AddSingleton<VpnGuardService>();
 builder.Services.AddSingleton<JsonStateStore>();
@@ -112,7 +122,7 @@ builder.Services.AddHttpClient<QBitClient>(client =>
     CookieContainer = new CookieContainer()
 });
 
-builder.Services.AddSingleton<RsyncTransferService>();
+builder.Services.AddSingleton<MediaTransferService>();
 builder.Services.AddScoped<SyncOrchestrator>();
 builder.Services.AddHostedService<SyncSchedulerWorker>();
 

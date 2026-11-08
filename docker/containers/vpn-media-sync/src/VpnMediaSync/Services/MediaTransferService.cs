@@ -6,16 +6,22 @@ using VpnMediaSync.Models;
 
 namespace VpnMediaSync.Services;
 
-public sealed class RsyncTransferService(
-    IOptions<RsyncConfig> rsyncOptions,
-    IOptions<DownloaderConfig> downloaderOptions,
-    ILogger<RsyncTransferService> logger)
+/// <summary>
+/// Transfers allowed media type (TV, Movies) from A to B. Using 'rsync'
+/// </summary>
+/// <param name="rsyncOptions"></param>
+/// <param name="downloaderOptions"></param>
+/// <param name="logger"></param>
+public sealed class MediaTransferService(
+    IOptions<RsyncConfigOpts> rsyncOptions,
+    IOptions<DownloaderConfigOpts> downloaderOptions,
+    ILogger<MediaTransferService> logger)
 {
     private static readonly string[] AllowedVideoExtensions = [".mkv", ".mp4", ".mov", ".avi", ".webm"];
     private static readonly string[] AllowedMediaFormats = ["matroska", "mp4", "mov", "avi", "webm"];
-    private readonly ILogger<RsyncTransferService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly RsyncConfig _rsyncConfig = rsyncOptions?.Value ?? throw new ArgumentNullException(nameof(rsyncOptions));
-    private readonly DownloaderConfig _downloaderConfig = downloaderOptions?.Value ?? throw new ArgumentNullException(nameof(downloaderOptions));
+    private readonly ILogger<MediaTransferService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly RsyncConfigOpts _rsyncConfig = rsyncOptions?.Value ?? throw new ArgumentNullException(nameof(rsyncOptions));
+    private readonly DownloaderConfigOpts _downloaderConfig = downloaderOptions?.Value ?? throw new ArgumentNullException(nameof(downloaderOptions));
 
     public async Task<bool> ValidateMediaWithFfprobeAsync(string contentPath, CancellationToken ct)
     {

@@ -2,14 +2,22 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
+using VpnMediaSync.Models.Options;
 
 namespace VpnMediaSync.Services;
 
-public sealed class JsonStateStore(IOptions<ScheduleConfig> scheduleOptions, ILogger<JsonStateStore> logger)
+public sealed class JsonStateStore(
+    IOptions<SchedulingConfigOpts> scheduleOptions,
+    JsonSerializerOptions jsonOptions,
+    ILogger<JsonStateStore> logger)
 {
-    private readonly ScheduleConfig _scheduleConfig = scheduleOptions?.Value ?? throw new ArgumentNullException(nameof(scheduleOptions));
-    private readonly SemaphoreSlim _fileLock = new(1, 1);
-    private readonly object _stateLock = new();
+    private readonly SchedulingConfigOpts _scheduleConfig = scheduleOptions?.Value ?? throw new ArgumentNullException(nameof(scheduleOptions));
+    private readonly JsonSerializerOptions _jsonOptions = jsonOptions ?? throw new ArgumentNullException(nameof(jsonOptions));
+
+    private const int InitialRequestCount = 1;
+    private const int MaxRequestCount = 1;
+    private readonly SemaphoreSlim _fileLock = new(InitialRequestCount, MaxRequestCount);
+    private readonly Lock _stateLock = new();
     private SyncStateDocument _state = new([]);
 
     public async Task InitializeAsync(CancellationToken ct)
@@ -28,9 +36,9 @@ public sealed class JsonStateStore(IOptions<ScheduleConfig> scheduleOptions, ILo
             if (File.Exists(path))
             {
                 await using var stream = File.OpenRead(path);
-                loaded = await JsonSerializer.DeserializeAsync(
+                loaded = await JsonSerializer.DeserializeAsync<SyncStateDocument>(
                     stream,
-                    AppJsonSerializerContext.Default.SyncStateDocument,
+                    _jsonOptions,
                     ct) ?? new([]);
             }
             else
@@ -173,7 +181,7 @@ public sealed class JsonStateStore(IOptions<ScheduleConfig> scheduleOptions, ILo
             await JsonSerializer.SerializeAsync(
                 stream,
                 state,
-                AppJsonSerializerContext.Default.SyncStateDocument,
+                _jsonOptions,
                 ct);
         }
 

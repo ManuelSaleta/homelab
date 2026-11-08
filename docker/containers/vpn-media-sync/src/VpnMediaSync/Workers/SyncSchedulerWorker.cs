@@ -8,11 +8,11 @@ using VpnMediaSync.Services;
 namespace VpnMediaSync.Workers;
 
 public sealed class SyncSchedulerWorker(
-    IOptions<ScheduleConfig> scheduleOptions,
+    IOptions<SchedulingConfigOpts> scheduleOptions,
     IServiceScopeFactory scopeFactory,
     ILogger<SyncSchedulerWorker> logger) : BackgroundService
 {
-    private readonly ScheduleConfig _config = scheduleOptions?.Value ?? throw new ArgumentNullException(nameof(scheduleOptions));
+    private readonly SchedulingConfigOpts _config = scheduleOptions?.Value ?? throw new ArgumentNullException(nameof(scheduleOptions));
 
     private readonly Channel<string> _triggerChannel = Channel.CreateBounded<string>(new BoundedChannelOptions(1)
     {
@@ -23,13 +23,13 @@ public sealed class SyncSchedulerWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var interval = TimeSpan.FromMinutes(Math.Max(1, _config.IntervalMinutes));
+
+        // Start webhook listener if configured
+        if (_config.WebhookPort > 0)
         logger.LogInformation(
             "Starting vpn-media-sync daemon loop (interval: {Minutes} minutes, webhook port: {WebhookPort}).",
             interval.TotalMinutes,
             _config.WebhookPort);
-
-        // Start webhook listener if configured
-        if (_config.WebhookPort > 0)
         {
             _ = RunWebhookListenerAsync(_config.WebhookPort, stoppingToken);
         }

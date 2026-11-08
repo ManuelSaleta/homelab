@@ -1,7 +1,9 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
+using VpnMediaSync.Models.Options;
 
 namespace VpnMediaSync.Services;
 
@@ -9,11 +11,13 @@ public sealed record DiscoveryCandidate(string ExternalId, string SearchQuery, s
 
 public sealed class TrendingFeedClient(
     HttpClient httpClient,
-    IOptions<TrendingConfig> trendingOptions,
+    IOptions<TrendingConfigOpts> trendingOptions,
     JsonStateStore stateStore,
+    JsonSerializerOptions jsonOptions,
     ILogger<TrendingFeedClient> logger)
 {
-    private readonly TrendingConfig _config = trendingOptions?.Value ?? throw new ArgumentNullException(nameof(trendingOptions));
+    private readonly TrendingConfigOpts _config = trendingOptions?.Value ?? throw new ArgumentNullException(nameof(trendingOptions));
+    private readonly JsonSerializerOptions _jsonOptions = jsonOptions ?? throw new ArgumentNullException(nameof(jsonOptions));
 
     public async Task<IReadOnlyList<DiscoveryCandidate>> GetUnseenCandidatesAsync(CancellationToken ct)
     {
@@ -105,9 +109,9 @@ public sealed class TrendingFeedClient(
             {
                 try
                 {
-                    var movies = await httpClient.GetFromJsonAsync(
+                    var movies = await httpClient.GetFromJsonAsync<List<TrendingMovieItem>>(
                         url,
-                        AppJsonSerializerContext.Default.ListTrendingMovieItem,
+                        _jsonOptions,
                         ct) ?? [];
 
                     foreach (var movie in movies)
@@ -158,9 +162,9 @@ public sealed class TrendingFeedClient(
             {
                 try
                 {
-                    var shows = await httpClient.GetFromJsonAsync(
+                    var shows = await httpClient.GetFromJsonAsync<List<TrendingTvItem>>(
                         url,
-                        AppJsonSerializerContext.Default.ListTrendingTvItem,
+                        _jsonOptions,
                         ct) ?? [];
 
                     foreach (var show in shows)

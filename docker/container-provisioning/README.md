@@ -10,7 +10,7 @@ This directory orchestrates the containerized media acquisition pipeline defined
 ## Initial Setup (Unconfigured by Default)
 
 1. Copy `.env.example` to `.env` and populate `NORDLYNX_PRIVATE_KEY`.
-2. Copy `../containers/vpn-media-sync/config.example.json` to `../containers/vpn-media-sync/config.json` and configure your Prowlarr API key, qBittorrent password, and restricted SSH key path (`id_ed25519_mediasync`).
+2. Copy `../containers/vpn-media-sync/appsettings.example.json` to `../containers/vpn-media-sync/appsettings.json` and configure your Prowlarr API key, qBittorrent password, and restricted SSH key path (`id_ed25519_mediasync`).
 3. Validate or launch the stack:
    ```bash
    make config

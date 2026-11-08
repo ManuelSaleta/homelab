@@ -5,23 +5,33 @@ using VpnMediaSync.Models;
 namespace VpnMediaSync.Services;
 
 public sealed class SyncOrchestrator(
-    IOptions<AppConfig> options,
+    IOptions<SchedulingConfigOpts> scheduleOptions,
+    IOptions<VpnConfigOpts> vpnOptions,
+    IOptions<IndexerConfigOpts> indexerOptions,
+    IOptions<FiltersConfigOpts> filtersOptions,
+    IOptions<DownloaderConfigOpts> downloaderOptions,
+    IOptions<RsyncConfigOpts> rsyncOptions,
     VpnGuardService vpnGuard,
     JsonStateStore stateStore,
     TrendingFeedClient trendingClient,
     ProwlarrClient prowlarrClient,
     QBitClient qBitClient,
-    RsyncTransferService rsyncService,
+    MediaTransferService rsyncService,
     ILogger<SyncOrchestrator> logger)
 {
-    private readonly AppConfig _config = options?.Value ?? throw new ArgumentNullException(nameof(options));
+    private readonly SchedulingConfigOpts _scheduleConfig = scheduleOptions?.Value ?? throw new ArgumentNullException(nameof(scheduleOptions));
+    private readonly VpnConfigOpts _vpnConfig = vpnOptions?.Value ?? throw new ArgumentNullException(nameof(vpnOptions));
+    private readonly IndexerConfigOpts _indexerConfig = indexerOptions?.Value ?? throw new ArgumentNullException(nameof(indexerOptions));
+    private readonly FiltersConfigOpts _filtersConfig = filtersOptions?.Value ?? throw new ArgumentNullException(nameof(filtersOptions));
+    private readonly DownloaderConfigOpts _downloaderConfig = downloaderOptions?.Value ?? throw new ArgumentNullException(nameof(downloaderOptions));
+    private readonly RsyncConfigOpts _rsyncConfig = rsyncOptions?.Value ?? throw new ArgumentNullException(nameof(rsyncOptions));
 
     public async Task RunCycleAsync(CancellationToken ct)
     {
-        await using var lockStream = TryAcquireLockFile(_config.Schedule.LockFile);
+        await using var lockStream = TryAcquireLockFile(_scheduleConfig.LockFile);
         if (lockStream is null)
         {
-            logger.LogWarning("Another vpn-media-sync cycle is already holding lock '{LockFile}'; skipping.", _config.Schedule.LockFile);
+            logger.LogWarning("Another vpn-media-sync cycle is already holding lock '{LockFile}'; skipping.", _scheduleConfig.LockFile);
             return;
         }
 
@@ -31,7 +41,7 @@ public sealed class SyncOrchestrator(
         var vpnConnected = await vpnGuard.IsVpnConnectedAsync(ct);
         if (!vpnConnected)
         {
-            if (_config.Vpn.PauseTorrentsWhenDisconnected)
+            if (_vpnConfig.PauseTorrentsWhenDisconnected)
             {
                 await qBitClient.PauseAllAsync(ct);
             }
@@ -44,14 +54,14 @@ public sealed class SyncOrchestrator(
 
         foreach (var candidate in candidates)
         {
-            if (grabbedCount >= _config.Indexer.MaxGrabPerRun)
+            if (grabbedCount >= _indexerConfig.MaxGrabPerRun)
             {
                 break;
             }
 
             var filter = string.Equals(candidate.Category, "tv", StringComparison.OrdinalIgnoreCase)
-                ? _config.Filters.Tv
-                : _config.Filters.Movies;
+                ? _filtersConfig.Tv
+                : _filtersConfig.Movies;
 
             var bestRelease = await prowlarrClient.SearchBestReleaseAsync(candidate.SearchQuery, filter, ct);
             if (bestRelease is null)
@@ -116,9 +126,9 @@ public sealed class SyncOrchestrator(
 
             // Evaluate cleanup criteria for synced torrents
             var seedingTimeMinutes = torrent.SeedingTimeSeconds / 60.0;
-            var ratioSatisfied = _config.Downloader.RatioLimit > 0 && torrent.Ratio >= _config.Downloader.RatioLimit;
-            var seedingTimeSatisfied = _config.Downloader.SeedingTimeLimitMinutes > 0 && seedingTimeMinutes >= _config.Downloader.SeedingTimeLimitMinutes;
-            var shouldCleanup = _config.Rsync.RemoveLocalAfterSync || ratioSatisfied || seedingTimeSatisfied;
+            var ratioSatisfied = _downloaderConfig.RatioLimit > 0 && torrent.Ratio >= _downloaderConfig.RatioLimit;
+            var seedingTimeSatisfied = _downloaderConfig.SeedingTimeLimitMinutes > 0 && seedingTimeMinutes >= _downloaderConfig.SeedingTimeLimitMinutes;
+            var shouldCleanup = _rsyncConfig.RemoveLocalAfterSync || ratioSatisfied || seedingTimeSatisfied;
 
             if (shouldCleanup)
             {
