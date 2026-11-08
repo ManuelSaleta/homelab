@@ -13,6 +13,12 @@ services:
       - nordlynx
     security_opt:
       - no-new-privileges:true
+    labels:
+      - "homepage.group=Media"
+      - "homepage.name=Prowlarr"
+      - "homepage.icon=prowlarr"
+      - "homepage.href=http://localhost:9696"
+      - "homepage.description=Torrent Indexer Manager"
     environment:
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}

@@ -22,6 +22,11 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
     security_opt:
       - no-new-privileges:true
+    labels:
+      - "homepage.group=Network"
+      - "homepage.name=NordLynx VPN"
+      - "homepage.icon=nordvpn"
+      - "homepage.description=WireGuard VPN Gateway & Killswitch"
     ports:
       # WebUIs for containers sharing this network namespace (bound strictly to localhost)
       - "127.0.0.1:${PROWLARR_PORT:-9696}:9696"

@@ -22,6 +22,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    labels:
+      - "homepage.group=Media"
+      - "homepage.name=Media Sync"
+      - "homepage.icon=si-dotnet"
+      - "homepage.description=.NET 10 Acquisition & Sync Worker"
     environment:
       - TZ=${TZ:-America/New_York}
       - CONFIG_PATH=/app/appsettings.json

@@ -13,6 +13,12 @@ services:
       - nordlynx
     security_opt:
       - no-new-privileges:true
+    labels:
+      - "homepage.group=Media"
+      - "homepage.name=qBittorrent"
+      - "homepage.icon=qbittorrent"
+      - "homepage.href=http://localhost:8080"
+      - "homepage.description=BitTorrent Client"
     environment:
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
