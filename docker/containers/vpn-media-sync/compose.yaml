@@ -24,13 +24,13 @@ services:
       - no-new-privileges:true
     environment:
       - TZ=${TZ:-America/New_York}
-      - CONFIG_PATH=/app/config.json
+      - CONFIG_PATH=/app/appsettings.json
       - PROWLARR_API_KEY=${PROWLARR_API_KEY:-}
       - QBIT_PASSWORD=${QBIT_PASSWORD:-}
     volumes:
       - ${SYNC_STATE_DIR:-./data/sync-state}:/state:z
       - ${DOWNLOADS_STAGING_DIR:-./data/downloads}:/downloads:z
-      - ${SYNC_CONFIG_FILE:-./config.example.json}:/app/config.json:ro,z
+      - ${SYNC_CONFIG_FILE:-./appsettings.example.json}:/app/appsettings.json:ro,z
       - ${MEDIASYNC_SSH_KEY_PATH:-/home/gman/.ssh/id_ed25519_mediasync}:/home/appuser/.ssh/id_ed25519_mediasync:ro,z
       - ${SSH_KNOWN_HOSTS_PATH:-/home/gman/.ssh/known_hosts}:/home/appuser/.ssh/known_hosts:ro,z
     restart: unless-stopped

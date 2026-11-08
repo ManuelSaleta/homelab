@@ -1,18 +1,22 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
+using VpnMediaSync.Models.Options;
 
 namespace VpnMediaSync.Services;
 
 public sealed class QBitClient(
     HttpClient httpClient,
-    IOptions<DownloaderConfig> downloaderOptions,
+    IOptions<DownloaderConfigOpts> downloaderOptions,
+    JsonSerializerOptions jsonOptions,
     ILogger<QBitClient> logger)
 {
-    private readonly DownloaderConfig _config = downloaderOptions?.Value ?? throw new ArgumentNullException(nameof(downloaderOptions));
+    private readonly DownloaderConfigOpts _config = downloaderOptions?.Value ?? throw new ArgumentNullException(nameof(downloaderOptions));
+    private readonly JsonSerializerOptions _jsonOptions = jsonOptions ?? throw new ArgumentNullException(nameof(jsonOptions));
     private bool _authenticated;
 
     public bool IsConfigured =>
@@ -129,9 +133,9 @@ public sealed class QBitClient(
 
         try
         {
-            var files = await httpClient.GetFromJsonAsync(
+            var files = await httpClient.GetFromJsonAsync<List<QBitTorrentFileItem>>(
                 $"{BaseUrl}/api/v2/torrents/files?hash={hash}",
-                AppJsonSerializerContext.Default.ListQBitTorrentFileItem,
+                _jsonOptions,
                 ct);
 
             return files ?? [];
@@ -281,9 +285,9 @@ public sealed class QBitClient(
         try
         {
             // Inspect torrents currently in paused/stopped state
-            var pausedTorrents = await httpClient.GetFromJsonAsync(
+            var pausedTorrents = await httpClient.GetFromJsonAsync<List<QBitTorrentItem>>(
                 $"{BaseUrl}/api/v2/torrents/info?filter=paused",
-                AppJsonSerializerContext.Default.ListQBitTorrentItem,
+                _jsonOptions,
                 ct) ?? [];
 
             foreach (var torrent in pausedTorrents)
@@ -308,9 +312,9 @@ public sealed class QBitClient(
             return [];
         }
 
-        var items = await httpClient.GetFromJsonAsync(
+        var items = await httpClient.GetFromJsonAsync<List<QBitTorrentItem>>(
             $"{BaseUrl}/api/v2/torrents/info?filter=completed",
-            AppJsonSerializerContext.Default.ListQBitTorrentItem,
+            _jsonOptions,
             ct);
 
         return items ?? [];

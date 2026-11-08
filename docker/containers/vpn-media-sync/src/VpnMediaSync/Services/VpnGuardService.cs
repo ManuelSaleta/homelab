@@ -8,9 +8,9 @@ using VpnMediaSync.Models;
 
 namespace VpnMediaSync.Services;
 
-public sealed class VpnGuardService(IOptions<VpnConfig> options, ILogger<VpnGuardService> logger)
+public sealed class VpnGuardService(IOptions<VpnConfigOpts> options, ILogger<VpnGuardService> logger)
 {
-    private readonly VpnConfig _options = options.Value ?? throw new ArgumentNullException(nameof(options));
+    private readonly VpnConfigOpts _options = options.Value ?? throw new ArgumentNullException(nameof(options));
 
     public async Task<bool> IsVpnConnectedAsync(CancellationToken ct)
     {

@@ -114,7 +114,7 @@ metadata:
   name: media-sync-config
   namespace: media
 data:
-  config.json: |
+  appsettings.json: |
     {
       "schedule": {
         "intervalMinutes": 30,
@@ -346,7 +346,7 @@ spec:
             - name: TZ
               value: "America/New_York"
             - name: CONFIG_PATH
-              value: "/app/config.json"
+              value: "/app/appsettings.json"
             - name: PROWLARR_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -373,8 +373,8 @@ spec:
               mountPath: /home/appuser/.ssh
               readOnly: true
             - name: mediasync-config
-              mountPath: /app/config.json
-              subPath: config.json
+              mountPath: /app/appsettings.json
+              subPath: appsettings.json
               readOnly: true
       volumes:
         - name: tun-device

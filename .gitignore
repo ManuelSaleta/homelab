@@ -38,6 +38,7 @@ docker/**/.env
 docker/**/data/
 docker/**/config.json
 docker/**/config.local.json
+docker/**/appsettings.local.json
 docker/**/docker-compose.local.yaml
 docker/**/bin/
 docker/**/obj/

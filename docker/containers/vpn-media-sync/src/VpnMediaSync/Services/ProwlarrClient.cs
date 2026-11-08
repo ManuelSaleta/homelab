@@ -1,15 +1,18 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
+using VpnMediaSync.Models.Options;
 
 namespace VpnMediaSync.Services;
 
 public sealed class ProwlarrClient(
     HttpClient httpClient,
-    IOptions<IndexerConfig> indexerOptions,
+    IOptions<IndexerConfigOpts> indexerOptions,
+    JsonSerializerOptions jsonOptions,
     ILogger<ProwlarrClient> logger)
 {
     private static readonly ConcurrentDictionary<string, Regex> RegexCache = new(StringComparer.Ordinal);
@@ -25,7 +28,8 @@ public sealed class ProwlarrClient(
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         RegexTimeout);
     private readonly ILogger<ProwlarrClient> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly IndexerConfig _config = indexerOptions?.Value ?? throw new ArgumentNullException(nameof(indexerOptions));
+    private readonly IndexerConfigOpts _config = indexerOptions?.Value ?? throw new ArgumentNullException(nameof(indexerOptions));
+    private readonly JsonSerializerOptions _jsonOptions = jsonOptions ?? throw new ArgumentNullException(nameof(jsonOptions));
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(_config.ApiKey) &&
@@ -33,7 +37,7 @@ public sealed class ProwlarrClient(
 
     public async Task<ProwlarrRelease?> SearchBestReleaseAsync(
         string query,
-        CategoryFilterConfig filter,
+        CategoryFilterConfigOpts filter,
         CancellationToken ct)
     {
         if (!IsConfigured)
@@ -52,8 +56,8 @@ public sealed class ProwlarrClient(
         using var resp = await httpClient.SendAsync(req, ct);
         resp.EnsureSuccessStatusCode();
 
-        var releases = await resp.Content.ReadFromJsonAsync(
-            AppJsonSerializerContext.Default.ListProwlarrRelease,
+        var releases = await resp.Content.ReadFromJsonAsync<List<ProwlarrRelease>>(
+            _jsonOptions,
             ct) ?? [];
 
         var minBytes = filter.MinSizeMb * 1024L * 1024L;
