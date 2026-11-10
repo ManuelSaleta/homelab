@@ -1,12 +1,7 @@
 using System.Net;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using VpnMediaSync.Models;
-using VpnMediaSync.Models.Options;
+using Plex.Core.Http;
+using Plex.Core.Http.Extensions;
 using VpnMediaSync.Services;
 using VpnMediaSync.Workers;
 
@@ -86,6 +81,9 @@ builder.Services.AddOptions<DownloaderConfigOpts>()
 builder.Services.AddOptions<RsyncConfigOpts>()
     .BindConfiguration(RsyncConfigOpts.SectionName);
 
+builder.Services.AddOptions<PlexClientOptions>()
+.BindConfiguration("PlexClientOptions");
+
 var jsonSerializerOptions = new JsonSerializerOptions
 {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -98,6 +96,15 @@ builder.Services.AddSingleton(jsonSerializerOptions);
 
 builder.Services.AddSingleton<VpnGuardService>();
 builder.Services.AddSingleton<JsonStateStore>();
+
+builder.Services.AddPlexClient(options =>
+{
+    options.ServerUrl = builder.Configuration["Plex:ServerUrl"] ?? "http://192.168.1.100:32400";
+    options.Token = builder.Configuration["Plex:Token"] ?? "YOUR_PLEX_TOKEN";
+    options.ClientIdentifier = "media-sync-client";
+    options.Product = "Mothership";
+    options.Version = "1.0.0";
+});
 
 builder.Services.AddHttpClient<TrendingFeedClient>(client =>
 {
