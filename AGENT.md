@@ -11,10 +11,11 @@ This file serves as the system instruction context and prime directive for AI co
 2. **Cluster & Storage Decoupling**: Compute is transient; persistent data is static. Sensitive and stateful data lives **outside** the K3s cluster lifecycle on dedicated infrastructure (`micro-nas` LXC container `CT 250` at `192.168.1.250`).
 3. **NFS Over Local Storage**: Stateful workloads in K3s must consume remote NFS exports from `micro-nas` rather than `hostPath` or local volumes to guarantee cross-node workload mobility and zero data loss on cluster teardown.
 4. **Strict Namespace Isolation**: Workloads must be isolated by functional domain:
-   - `media`: Plex Media Server, Navidrome Music Server.
+   - `media`: Plex Media Server, Navidrome Music Server, Media-Sync (`Sync.Sharp`).
    - `networking`: Pi-hole DNS, Cloudflared Tunnel, Homepage Dashboard, Karakeep, Uptime Kuma, Vaultwarden.
    - `monitoring`: Kube-Prometheus-Stack, Grafana, Loki, Alloy.
-5. **Dynamic Domain Parameterization**: **Never hardcode static root domains** (e.g., `example.com`, `freesalty.com`) into Kubernetes manifests or ingress rules. Always use `${DOMAIN_NAME}` or `${HOMELAB_DOMAIN}`, which the root `Makefile` dynamically populates via `envsubst` from `terraform.tfvars`.
+   - `test-networking` / `test-media`: Isolated staging/test namespaces governed by `ResourceQuota` ceilings and decoupled storage (`emptyDir` or `/mnt/export/storage/test/<app>`); see [ADR 001](docs/adr/001-test-subdomain-environment.md).
+5. **Dynamic Domain Parameterization**: **Never hardcode static root domains** (e.g., `example.com`, `freesalty.com`) into Kubernetes manifests or ingress rules. Always use `${DOMAIN_NAME}` or `${HOMELAB_DOMAIN}` (and `${TEST_DOMAIN_NAME}` / `test.${DOMAIN_NAME}` for LAN-only test sub-zone routing), which the root `Makefile` dynamically populates via `envsubst` from `terraform.tfvars`.
 6. **Strict Resource Budgeting**: The physical Proxmox host (`mothership`) has **16 GB of physical RAM**. Memory allocations prioritize guest compute (13.5 GB allocated across VMs/LXC: 2 GB Control, 10 GB Worker, 1.5 GB Micro-NAS), reserving ~2.5 GB host headroom for Proxmox VE, QEMU overhead, and Linux page cache.
 
 ---
@@ -41,6 +42,8 @@ This file serves as the system instruction context and prime directive for AI co
 ├── README.md                      # Human-facing master workspace documentation
 ├── Makefile                       # Centralized build, apply, destroy & lifecycle automation
 ├── loki.yaml                      # Loki logging configuration reference
+├── docs/
+│   └── adr/                       # Architectural Decision Records (e.g., ADR 001 test subdomain)
 ├── docker/
 │   └── container-provisioning/    # Standalone Docker container orchestration (future/edge)
 ├── kubernetes/
