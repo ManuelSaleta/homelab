@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
@@ -17,6 +18,7 @@ public sealed class SyncOrchestrator(
     ProwlarrClient prowlarrClient,
     QBitClient qBitClient,
     MediaTransferService rsyncService,
+    MediaPollingService plexPollingService,
     ILogger<SyncOrchestrator> logger)
 {
     private readonly SchedulingConfigOpts _scheduleConfig = scheduleOptions?.Value ?? throw new ArgumentNullException(nameof(scheduleOptions));
@@ -25,7 +27,6 @@ public sealed class SyncOrchestrator(
     private readonly FiltersConfigOpts _filtersConfig = filtersOptions?.Value ?? throw new ArgumentNullException(nameof(filtersOptions));
     private readonly DownloaderConfigOpts _downloaderConfig = downloaderOptions?.Value ?? throw new ArgumentNullException(nameof(downloaderOptions));
     private readonly RsyncConfigOpts _rsyncConfig = rsyncOptions?.Value ?? throw new ArgumentNullException(nameof(rsyncOptions));
-
     public async Task RunCycleAsync(CancellationToken ct)
     {
         await using var lockStream = TryAcquireLockFile(_scheduleConfig.LockFile);
@@ -84,6 +85,24 @@ public sealed class SyncOrchestrator(
                 continue;
             }
 
+
+            var movies = await plexPollingService.GetCollectionAsync("My Movies", ct);
+            object[] movieTitles = [.. movies!.Select(plexItem => new { title = plexItem.Title ?? plexItem.OriginalTitle ?? plexItem.ParentTitle })];
+            logger.LogDebug("Total movies count: {count}", movieTitles.Length);
+
+            var shows = await plexPollingService.GetCollectionAsync("My Tv Shows", ct);
+            object[] tvTitles = [.. shows!.Select(plexItem => new { title = plexItem.Title ?? plexItem.OriginalTitle ?? plexItem.ParentTitle })];
+
+            foreach (var t in movieTitles)
+            {
+                logger.LogDebug("Existing movie title: {title}", t);
+            }
+
+
+            foreach (var t in tvTitles)
+            {
+                logger.LogDebug("Existing tv title: {title}", t);
+            }
 
             if (await qBitClient.AddTorrentQuarantinedAsync(downloadUri, candidate.Category, ct))
             {

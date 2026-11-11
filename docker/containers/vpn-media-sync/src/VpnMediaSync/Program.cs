@@ -42,7 +42,9 @@ var flatEnvMappings = new Dictionary<string, string?>
     ["Downloader:Password"] = Environment.GetEnvironmentVariable("QBIT_PASSWORD"),
     ["Downloader:Username"] = Environment.GetEnvironmentVariable("QBIT_USERNAME"),
     ["Downloader:BaseUrl"] = Environment.GetEnvironmentVariable("QBIT_BASE_URL"),
-    ["Schedule:WebhookSecretToken"] = Environment.GetEnvironmentVariable("WEBHOOK_SECRET_TOKEN")
+    ["Schedule:WebhookSecretToken"] = Environment.GetEnvironmentVariable("WEBHOOK_SECRET_TOKEN"),
+    ["PlexClientOptions:ServerUrl"] = Environment.GetEnvironmentVariable("PLEX_SERVER_URL"),
+    ["PlexClientOptions:Token"] = Environment.GetEnvironmentVariable("PLEX_TOKEN")
 };
 
 var activeOverrides = flatEnvMappings
@@ -85,13 +87,17 @@ builder.Services.AddOptions<RsyncConfigOpts>()
 builder.Services.AddOptions<PlexClientOptions>()
 .BindConfiguration("PlexClientOptions");
 
+var flexibleStringConverter = new FlexibleStringJsonConverter();
+PlexClient.DefaultJsonOptions.Converters.Add(flexibleStringConverter);
+
 var jsonSerializerOptions = new JsonSerializerOptions
 {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     PropertyNameCaseInsensitive = true,
     ReadCommentHandling = JsonCommentHandling.Skip,
     AllowTrailingCommas = true,
-    WriteIndented = true
+    WriteIndented = true,
+    Converters = { flexibleStringConverter }
 };
 builder.Services.AddSingleton(jsonSerializerOptions);
 
@@ -100,10 +106,19 @@ builder.Services.AddSingleton<JsonStateStore>();
 
 builder.Services.AddPlexClient(options =>
 {
+    var serverUrl = builder.Configuration["PlexClientOptions:ServerUrl"];
+    if (!string.IsNullOrWhiteSpace(serverUrl))
+    {
+        options.ServerUrl = serverUrl;
+    }
 
-    options.ServerUrl = builder.Configuration["PlexClientOptions:Token"];
-    options.Token = builder.Configuration["PlexClientOptions:Token"];
-    options.ClientIdentifier = "plex-media-polling-client";
+    var token = builder.Configuration["PlexClientOptions:Token"];
+    if (!string.IsNullOrWhiteSpace(token))
+    {
+        options.Token = token;
+    }
+
+    options.ClientIdentifier = builder.Configuration["PlexClientOptions:ClientIdentifier"] ?? "plex-media-polling-client";
     options.Product = "Homelab";
     options.Version = "1.0.0";
 });
@@ -132,6 +147,8 @@ builder.Services.AddHttpClient<QBitClient>(client =>
 });
 
 builder.Services.AddSingleton<MediaTransferService>();
+builder.Services.AddSingleton<MediaPollingService>();
+builder.Services.AddSingleton<IMediaPollingService>(sp => sp.GetRequiredService<MediaPollingService>());
 builder.Services.AddScoped<SyncOrchestrator>();
 builder.Services.AddHostedService<SyncSchedulerWorker>();
 
