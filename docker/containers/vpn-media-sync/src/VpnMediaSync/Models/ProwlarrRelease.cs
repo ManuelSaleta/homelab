@@ -39,13 +39,16 @@ public sealed record TrendingMovieItem(
 }
 
 public sealed record TrendingTvItem(
-    string? Title,
-    string? Name,
-    string? Imdb_Id,
-    string? Poster_Url
+    string? Title = null,
+    string? Name = null,
+    [property: JsonPropertyName("show_name")] string? ShowName = null,
+    string? Imdb_Id = null,
+    string? Poster_Url = null
 )
 {
-    public string EffectiveTitle => !string.IsNullOrWhiteSpace(Title) ? Title : (Name ?? string.Empty);
+    public string EffectiveTitle => !string.IsNullOrWhiteSpace(Title)
+        ? Title
+        : (!string.IsNullOrWhiteSpace(Name) ? Name : (ShowName ?? string.Empty));
     public string? ImdbId => Imdb_Id;
     public string? PosterUrl => Poster_Url;
 }

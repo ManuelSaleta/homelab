@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VpnMediaSync.Models;
+using VpnMediaSync.Models.Options;
 
 namespace VpnMediaSync.Services;
 
@@ -17,6 +18,7 @@ public sealed class SyncOrchestrator(
     ProwlarrClient prowlarrClient,
     QBitClient qBitClient,
     MediaTransferService rsyncService,
+    IMediaPollingService plexPollingService,
     ILogger<SyncOrchestrator> logger)
 {
     private readonly SchedulingConfigOpts _scheduleConfig = scheduleOptions?.Value ?? throw new ArgumentNullException(nameof(scheduleOptions));
@@ -59,6 +61,20 @@ public sealed class SyncOrchestrator(
                 break;
             }
 
+            // Early check: Skip if candidate title already exists in Plex library
+            var c = new MediaCandidate
+            {
+                Id = candidate.ExternalId,
+                Title = candidate.SearchQuery,
+                SearchQuery = candidate.SearchQuery,
+                Category = candidate.Category,
+            };
+
+            if (await IsMediaAlreadyPresent(c, ct))
+            {
+                continue;
+            }
+
             var filter = string.Equals(candidate.Category, "tv", StringComparison.OrdinalIgnoreCase)
                 ? _filtersConfig.Tv
                 : _filtersConfig.Movies;
@@ -78,12 +94,19 @@ public sealed class SyncOrchestrator(
                 continue;
             }
 
+            c.Title = bestRelease.Title;
+            c.InfoHash = infoHash;
+            // Target release check: Verify matched release does not already exist in Plex before quarantining
+            if (await IsMediaAlreadyPresent(c, ct))
+            {
+                continue;
+            }
+
             var downloadUri = bestRelease.GetBestDownloadUri();
             if (string.IsNullOrWhiteSpace(downloadUri))
             {
                 continue;
             }
-
 
             if (await qBitClient.AddTorrentQuarantinedAsync(downloadUri, candidate.Category, ct))
             {
@@ -116,6 +139,9 @@ public sealed class SyncOrchestrator(
                 {
                     await stateStore.MarkSyncedAsync(torrent.Hash, torrent.Name, category, ct);
                     isSynced = true;
+
+                    // Trigger Plex library scan for the updated category
+                    _ = plexPollingService.ForceScanLibraryAsync(category, ct);
                 }
             }
 
@@ -139,11 +165,41 @@ public sealed class SyncOrchestrator(
                     torrent.Name,
                     torrent.Ratio,
                     seedingTimeMinutes);
-
             }
         }
     }
 
+    public class MediaCandidate
+    {
+        public string? Id { get; set; } = null;
+        public string? InfoHash { get; set; } = null;
+        public string Title { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string SearchQuery { get; set; } = string.Empty;
+
+    }
+    public async Task<bool> IsMediaAlreadyPresent(MediaCandidate candidate, CancellationToken ct)
+    {
+        // Target release check: Verify matched release does not already exist in Plex before quarantining
+        if (await plexPollingService.IsMediaAlreadyPresentAsync(candidate.Title, candidate.Category, ct: ct))
+        {
+            logger.LogInformation(
+                "Skipping release '{ReleaseTitle}' for candidate '{Query}' - target media already exists in Plex server library.",
+                candidate.Title,
+                candidate.SearchQuery);
+
+            await stateStore.RecordGrabbedAsync(
+                candidate.Id,
+                candidate.InfoHash,
+                candidate.Title,
+                candidate.Category,
+                ct);
+
+            return true;
+        }
+
+        return false;
+    }
     private static FileStream? TryAcquireLockFile(string lockPath)
     {
         try
