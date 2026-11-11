@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using Plex.Core.Http;
 using Plex.Core.Http.Extensions;
 using VpnMediaSync.Services;
@@ -99,10 +100,11 @@ builder.Services.AddSingleton<JsonStateStore>();
 
 builder.Services.AddPlexClient(options =>
 {
-    options.ServerUrl = builder.Configuration["Plex:ServerUrl"] ?? "http://192.168.1.100:32400";
-    options.Token = builder.Configuration["Plex:Token"] ?? "YOUR_PLEX_TOKEN";
-    options.ClientIdentifier = "media-sync-client";
-    options.Product = "Mothership";
+
+    options.ServerUrl = builder.Configuration["PlexClientOptions:Token"];
+    options.Token = builder.Configuration["PlexClientOptions:Token"];
+    options.ClientIdentifier = "plex-media-polling-client";
+    options.Product = "Homelab";
     options.Version = "1.0.0";
 });
 
