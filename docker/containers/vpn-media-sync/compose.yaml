@@ -32,6 +32,10 @@ services:
       - CONFIG_PATH=/app/appsettings.json
       - PROWLARR_API_KEY=${PROWLARR_API_KEY:-}
       - QBIT_PASSWORD=${QBIT_PASSWORD:-}
+      - PLEX_SERVER_URL=${PLEX_SERVER_URL:-}
+      - PLEX_TOKEN=${PLEX_TOKEN:-}
+      - POPULAR_TV_URL=${POPULAR_TV_URL:-}
+      - ENABLE_TRENDING_FEEDS=${ENABLE_TRENDING_FEEDS:-true}
     volumes:
       - ${SYNC_STATE_DIR:-./data/sync-state}:/state:z
       - ${DOWNLOADS_STAGING_DIR:-./data/downloads}:/downloads:z

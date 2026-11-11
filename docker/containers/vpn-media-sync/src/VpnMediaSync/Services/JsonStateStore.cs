@@ -74,6 +74,11 @@ public sealed class JsonStateStore(
 
     public bool IsHashProcessed(string infoHash)
     {
+        if (string.IsNullOrWhiteSpace(infoHash))
+        {
+            return false;
+        }
+
         lock (_stateLock)
         {
             return _state.Items.Any(i =>
@@ -83,6 +88,11 @@ public sealed class JsonStateStore(
 
     public bool IsHashSynced(string infoHash)
     {
+        if (string.IsNullOrWhiteSpace(infoHash))
+        {
+            return false;
+        }
+
         lock (_stateLock)
         {
             return _state.Items.Any(i =>
@@ -93,7 +103,7 @@ public sealed class JsonStateStore(
 
     public async Task RecordGrabbedAsync(
         string? externalId,
-        string infoHash,
+        string? infoHash,
         string title,
         string category,
         CancellationToken ct)
@@ -103,14 +113,22 @@ public sealed class JsonStateStore(
         {
             lock (_stateLock)
             {
-                if (_state.Items.Any(i => string.Equals(i.InfoHash, infoHash, StringComparison.OrdinalIgnoreCase)))
+                if (!string.IsNullOrWhiteSpace(infoHash) &&
+                    _state.Items.Any(i => string.Equals(i.InfoHash, infoHash, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(infoHash) &&
+                    !string.IsNullOrWhiteSpace(externalId) &&
+                    _state.Items.Any(i => string.Equals(i.ExternalId, externalId, StringComparison.OrdinalIgnoreCase)))
                 {
                     return;
                 }
 
                 _state.Items.Add(new MediaHistoryEntry(
                     ExternalId: externalId,
-                    InfoHash: infoHash.ToLowerInvariant(),
+                    InfoHash: infoHash?.ToLowerInvariant() ?? string.Empty,
                     Title: title,
                     Category: category,
                     Status: "grabbed",

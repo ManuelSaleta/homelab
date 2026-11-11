@@ -44,7 +44,10 @@ var flatEnvMappings = new Dictionary<string, string?>
     ["Downloader:BaseUrl"] = Environment.GetEnvironmentVariable("QBIT_BASE_URL"),
     ["Schedule:WebhookSecretToken"] = Environment.GetEnvironmentVariable("WEBHOOK_SECRET_TOKEN"),
     ["PlexClientOptions:ServerUrl"] = Environment.GetEnvironmentVariable("PLEX_SERVER_URL"),
-    ["PlexClientOptions:Token"] = Environment.GetEnvironmentVariable("PLEX_TOKEN")
+    ["PlexClientOptions:Token"] = Environment.GetEnvironmentVariable("PLEX_TOKEN"),
+    ["Trending:Enabled"] = Environment.GetEnvironmentVariable("ENABLE_TRENDING_FEEDS"),
+    ["Trending:PopularMoviesUrl"] = Environment.GetEnvironmentVariable("POPULAR_MOVIES_URL"),
+    ["Trending:PopularTvUrl"] = Environment.GetEnvironmentVariable("POPULAR_TV_URL")
 };
 
 var activeOverrides = flatEnvMappings
