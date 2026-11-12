@@ -5,7 +5,8 @@
 # ==============================================================================
 
 # Root domain name for homelab ingress endpoints (e.g., example.com)
-homelab_domain = "example.com"
+homelab_domain   = "example.com"
+test_domain_name = "test.example.com"
 
 # Proxmox Hypervisor Connection
 proxmox_endpoint            = "https://192.168.1.200:8006/"
