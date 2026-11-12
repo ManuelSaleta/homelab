@@ -1,0 +1,76 @@
+# ==============================================================================
+# Isolated Test / Staging Namespaces & Resource Guardrails (ADR 001 / Issue #36)
+# Enforces strict CPU & RAM ceilings so staged test deployments cannot contend
+# with production workloads on the 16 GB Mothership Proxmox host.
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-networking
+  labels:
+    environment: test
+    app.kubernetes.io/part-of: homelab-staging
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: test-networking-quota
+  namespace: test-networking
+spec:
+  hard:
+    requests.cpu: "1000m"
+    requests.memory: 1Gi
+    limits.cpu: "2000m"
+    limits.memory: 2Gi
+    pods: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: test-networking-limits
+  namespace: test-networking
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "250m"
+        memory: 256Mi
+      defaultRequest:
+        cpu: "50m"
+        memory: 64Mi
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-media
+  labels:
+    environment: test
+    app.kubernetes.io/part-of: homelab-staging
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: test-media-quota
+  namespace: test-media
+spec:
+  hard:
+    requests.cpu: "1000m"
+    requests.memory: 1Gi
+    limits.cpu: "2000m"
+    limits.memory: 2Gi
+    pods: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: test-media-limits
+  namespace: test-media
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "250m"
+        memory: 256Mi
+      defaultRequest:
+        cpu: "50m"
+        memory: 64Mi

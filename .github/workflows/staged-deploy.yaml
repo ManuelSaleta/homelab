@@ -1,0 +1,172 @@
+name: Staged Deployment & Promotion Pipeline
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Target application to stage/promote (all, pihole, homepage, vaultwarden, karakeep, uptime-kuma, navidrome, plex, jellyfin, media-sync)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - pihole
+          - homepage
+          - vaultwarden
+          - karakeep
+          - uptime-kuma
+          - navidrome
+          - plex
+          - jellyfin
+          - media-sync
+      promote_to_prod:
+        description: 'Promote to production after test validation passes'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOMAIN_NAME: ${{ vars.DOMAIN_NAME || 'example.com' }}
+  TEST_DOMAIN_NAME: ${{ vars.TEST_DOMAIN_NAME || '' }}
+  TARGET_APP: ${{ inputs.app || 'all' }}
+
+jobs:
+  validate-and-stage:
+    name: "Gate 1: Secret Scan & Test Manifest Isolation"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks & Scan for Secrets
+        run: |
+          make gitleaks-install
+          export PATH="$HOME/.local/bin:$PATH"
+          gitleaks detect --verbose
+
+      - name: Validate Production & Test Sub-Zone Manifests
+        run: |
+          make test-validate APP="${TARGET_APP}"
+
+      - name: Render Staged Test Manifests Artifact
+        run: |
+          mkdir -p /tmp/staged-manifests
+          make test-render APP="${TARGET_APP}" > /tmp/staged-manifests/test-manifests.yaml
+
+      - name: Upload Rendered Test Manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: staged-test-manifests
+          path: /tmp/staged-manifests/test-manifests.yaml
+          retention-days: 7
+
+  deploy-and-verify-test:
+    name: "Gate 2: Deploy & Verify in Test Environment (*.test)"
+    needs: validate-and-stage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Cluster Connectivity Secret
+        id: cluster_check
+        env:
+          HAS_KUBECONFIG: ${{ secrets.KUBECONFIG != '' }}
+        run: |
+          echo "has_kubeconfig=${HAS_KUBECONFIG}" >> "$GITHUB_OUTPUT"
+          if [ "${HAS_KUBECONFIG}" != "true" ]; then
+            echo "::notice::KUBECONFIG secret is not set on this repository. Skipping live K3s cluster deployment (static & isolation gates passed). Run 'make promote' locally or configure KUBECONFIG secret."
+          fi
+
+      - name: Configure Kubeconfig
+        if: steps.cluster_check.outputs.has_kubeconfig == 'true'
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s\n' "${KUBECONFIG_DATA}" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Deploy Candidate Changes to Test Environment
+        if: steps.cluster_check.outputs.has_kubeconfig == 'true'
+        run: |
+          make test-up APP="${TARGET_APP}"
+
+      - name: Verify Test Pod Readiness & Ingress HTTPS Health
+        if: steps.cluster_check.outputs.has_kubeconfig == 'true'
+        run: |
+          make test-verify APP="${TARGET_APP}"
+
+      - name: Tear Down Ephemeral Test Resources
+        if: always() && steps.cluster_check.outputs.has_kubeconfig == 'true'
+        run: |
+          make test-down APP="${TARGET_APP}"
+
+  promote-production:
+    name: "Gate 3: Promote to Production (Main) with Auto-Rollback"
+    needs:
+      - validate-and-stage
+      - deploy-and-verify-test
+    if: >-
+      success() &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && inputs.promote_to_prod == true)
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Cluster Connectivity Secret
+        id: cluster_check
+        env:
+          HAS_KUBECONFIG: ${{ secrets.KUBECONFIG != '' }}
+        run: |
+          echo "has_kubeconfig=${HAS_KUBECONFIG}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure Kubeconfig
+        if: steps.cluster_check.outputs.has_kubeconfig == 'true'
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s\n' "${KUBECONFIG_DATA}" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Apply Production Manifests
+        id: prod_deploy
+        if: steps.cluster_check.outputs.has_kubeconfig == 'true'
+        run: |
+          if [ "${TARGET_APP}" = "all" ]; then
+            make apps-up
+          else
+            make "${TARGET_APP}-up"
+          fi
+
+      - name: Verify Production Rollout & Ingress Health
+        id: prod_verify
+        if: steps.cluster_check.outputs.has_kubeconfig == 'true'
+        run: |
+          ./kubernetes/scripts/stage-pipeline.sh verify-prod "${TARGET_APP}"
+
+      - name: Automated Production Rollback on Failure
+        if: failure() && steps.cluster_check.outputs.has_kubeconfig == 'true'
+        run: |
+          echo "::error::Production post-deployment verification failed! Rolling back to previous revision..."
+          make rollback-prod APP="${TARGET_APP}"

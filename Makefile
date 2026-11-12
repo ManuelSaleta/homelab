@@ -19,7 +19,7 @@ WORKER_TARGET  := proxmox_virtual_environment_vm.k3s_worker
 CONTROL_TARGET := proxmox_virtual_environment_vm.k3s_control
 
 # ==============================================================================
-# HOMELAB DOMAIN VARIABLE
+# HOMELAB DOMAIN & TEST SUB-ZONE VARIABLES
 # ==============================================================================
 # Root domain for ingress and cluster services.
 # Dynamically extracted from terraform.tfvars (checks domain_name, then homelab_domain)
@@ -30,9 +30,18 @@ DOMAIN_NAME := example.com
 endif
 HOMELAB_DOMAIN ?= $(DOMAIN_NAME)
 
-# Manifest substitution helper macros (substitutes ${DOMAIN_NAME} and ${HOMELAB_DOMAIN} safely anywhere in YAML)
-APPLY_YAML  = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) envsubst '$${DOMAIN_NAME} $${HOMELAB_DOMAIN}' < $(1) | kubectl apply -f -
-DELETE_YAML = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) envsubst '$${DOMAIN_NAME} $${HOMELAB_DOMAIN}' < $(1) | kubectl delete --ignore-not-found -f -
+# Isolated test sub-zone domain (ADR 001 / Issue #35 & #36, defaults to test.<DOMAIN_NAME>)
+TEST_DOMAIN_NAME ?= $(shell grep -E '^\s*test_domain_name\s*=' $(TERRAFORM_DIR)/terraform.tfvars 2>/dev/null | head -n 1 | cut -d'=' -f2 | tr -d ' "' || echo "")
+ifeq ($(strip $(TEST_DOMAIN_NAME)),)
+TEST_DOMAIN_NAME := test.$(DOMAIN_NAME)
+endif
+
+STAGE_SCRIPT := kubernetes/scripts/stage-pipeline.sh
+APP ?= all
+
+# Manifest substitution helper macros (substitutes ${DOMAIN_NAME}, ${HOMELAB_DOMAIN}, and ${TEST_DOMAIN_NAME} safely anywhere in YAML)
+APPLY_YAML  = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) envsubst '$${DOMAIN_NAME} $${HOMELAB_DOMAIN} $${TEST_DOMAIN_NAME}' < $(1) | kubectl apply -f -
+DELETE_YAML = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) envsubst '$${DOMAIN_NAME} $${HOMELAB_DOMAIN} $${TEST_DOMAIN_NAME}' < $(1) | kubectl delete --ignore-not-found -f -
 
 # Default goal when running 'make' without targets
 .DEFAULT_GOAL := help
@@ -47,6 +56,7 @@ DELETE_YAML = DOMAIN_NAME=$(DOMAIN_NAME) HOMELAB_DOMAIN=$(DOMAIN_NAME) envsubst 
 .PHONY: apps-up apps-down apps-status karakeep-up karakeep-down vaultwarden-up vaultwarden-down pihole-up pihole-down homepage-up homepage-down grafana-up grafana-down navidrome-up navidrome-down plex-up plex-down jellyfin-up jellyfin-down uptime-kuma-up uptime-kuma-down media-sync-up media-sync-down
 .PHONY: wait-for-cluster deploy-all redeploy-workers redeploy-all destroy-workers destroy-manager destroy-all drain-worker-02
 .PHONY: install-loki install-alloy install-promstack grafana-pass promstack-install-all promstack-clean
+.PHONY: test-render test-validate test-up test-verify test-down promote rollback-prod
 .PHONY: secrets-check secrets-scan gitleaks-install husky-install
 
 # ==============================================================================
@@ -94,6 +104,14 @@ help: ## Show this interactive help menu with descriptions
 	@echo "  make plex-up/down          - Target deployment specifically for Plex Media Server"
 	@echo "  make jellyfin-up/down      - Target deployment specifically for Jellyfin Media Server"
 	@echo "  make media-sync-up/down    - Target deployment specifically for Media Acquisition Pipeline"
+	@echo ""
+	@echo "Staged Deployment & Promotion Pipeline (Test -> Production):"
+	@echo "  make test-validate [APP=x] - Validate static YAML & test sub-zone isolation rules"
+	@echo "  make test-up [APP=x]       - Deploy workload(s) to isolated *.test.$(DOMAIN_NAME) environment"
+	@echo "  make test-verify [APP=x]   - Verify test pod rollouts and HTTPS Ingress health gates"
+	@echo "  make test-down [APP=x]     - Tear down staged test workload(s)"
+	@echo "  make promote [APP=x]       - Stage in test -> verify -> promote to prod (auto-rollback on fail)"
+	@echo "  make rollback-prod [APP=x] - Roll back production deployment(s) to previous revision"
 	@echo ""
 	@echo "Cluster Lifecycle Control Matrix:"
 	@echo "  make deploy-all            - Orchestrate full stack: compute provisioning up to configs"
@@ -282,10 +300,11 @@ destroy-all: ## Completely tear down the entire cluster infrastructure layout (W
 # ==============================================================================
 
 infra-up: ## Deploy Cluster Infrastructure Core Layers
-	@echo "🚀 Deploying Cluster Infrastructure Core Layers (Domain: $(HOMELAB_DOMAIN))..."
+	@echo "🚀 Deploying Cluster Infrastructure Core Layers (Domain: $(HOMELAB_DOMAIN), Test: $(TEST_DOMAIN_NAME))..."
 	$(call APPLY_YAML,$(INFRA_DIR)/metallb-config.yaml)
 	$(call APPLY_YAML,$(INFRA_DIR)/traefik-dns-config.yaml)
 	$(call APPLY_YAML,$(INFRA_DIR)/cloudflared-config.yaml)
+	$(call APPLY_YAML,$(INFRA_DIR)/test-namespaces.yaml)
 
 infra-down: ## Tear down Core Infrastructure Layers
 	@echo "⚠️ Tearing down Core Infrastructure Layers..."
@@ -478,4 +497,30 @@ husky-install: ## Install npm dependencies and initialize Husky git hooks
 	@npm install
 	@npx husky
 	@echo "✅ Husky pre-commit hooks configured."
+
+# ==============================================================================
+# 🚦 STAGED DEPLOYMENT & PROMOTION PIPELINE (ADR 001 / Issue #35 & #36)
+# ==============================================================================
+
+test-render: ## Render isolated test manifest(s) for APP (default: all) to stdout
+	@DOMAIN_NAME=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) $(STAGE_SCRIPT) render-test $(APP)
+
+test-validate: ## Validate YAML syntax, domain substitution, and test isolation invariants
+	@DOMAIN_NAME=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) $(STAGE_SCRIPT) validate-static $(APP)
+
+test-up: ## Deploy workload(s) to isolated test-* namespaces and *.$(TEST_DOMAIN_NAME)
+	@DOMAIN_NAME=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) $(STAGE_SCRIPT) test-up $(APP)
+
+test-verify: ## Run pod readiness and HTTPS Ingress health verification against test environment
+	@DOMAIN_NAME=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) $(STAGE_SCRIPT) test-verify $(APP)
+
+test-down: ## Tear down staged test workload(s) in test-* namespaces
+	@DOMAIN_NAME=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) $(STAGE_SCRIPT) test-down $(APP)
+
+promote: ## Stage in test -> verify health gates -> promote to production (auto-rollback on failure)
+	@DOMAIN_NAME=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) $(STAGE_SCRIPT) promote $(APP)
+
+rollback-prod: ## Roll back production deployment(s) for APP to previous revision
+	@DOMAIN_NAME=$(DOMAIN_NAME) TEST_DOMAIN_NAME=$(TEST_DOMAIN_NAME) $(STAGE_SCRIPT) rollback-prod $(APP)
+
 

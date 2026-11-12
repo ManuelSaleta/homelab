@@ -25,9 +25,14 @@ spec:
               - "1.1.1.1:53"
               - "8.8.8.8:53"
 
-    # 3. Clear the explicit domain index arrays to fix the collision
+    # 3. Enable TLS and request wildcard SANs for production and test sub-zone
     additionalArguments:
       - "--entryPoints.websecure.http.tls=true"
+      - "--entryPoints.websecure.http.tls.certResolver=le-resolver"
+      - "--entryPoints.websecure.http.tls.domains[0].main=${DOMAIN_NAME}"
+      - "--entryPoints.websecure.http.tls.domains[0].sans=*.${DOMAIN_NAME}"
+      - "--entryPoints.websecure.http.tls.domains[1].main=${TEST_DOMAIN_NAME}"
+      - "--entryPoints.websecure.http.tls.domains[1].sans=*.${TEST_DOMAIN_NAME}"
 
     # 4. Storage configuration
     persistence:

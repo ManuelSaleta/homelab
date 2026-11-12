@@ -269,3 +269,9 @@ Always prefer Makefile targets over raw CLI invocations:
 | `make redeploy-workers` | Safely teardown and rebuild worker compute nodes |
 | `make deploy-all` | Full end-to-end orchestration (VM apply -> health check -> K3s apply) |
 | `make destroy-all` | Fully tear down the compute cluster (Micro-NAS data remains safe) |
+| `make test-validate [APP=x]` | Validate static YAML syntax, domain substitution, and `*.test.${DOMAIN_NAME}` isolation rules |
+| `make test-up [APP=x]` | Deploy workload(s) to isolated `test-networking` / `test-media` namespaces and `*.test.${DOMAIN_NAME}` |
+| `make test-verify [APP=x]` | Verify test pod rollout readiness and HTTPS Ingress health checks |
+| `make test-down [APP=x]` | Tear down staged test workload(s) |
+| `make promote [APP=x]` | Stage in test -> verify health gates -> promote to production (with auto-rollback on failure) |
+| `make rollback-prod [APP=x]` | Roll back production deployment(s) via `kubectl rollout undo` |

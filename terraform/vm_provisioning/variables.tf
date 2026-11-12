@@ -245,6 +245,12 @@ variable "homelab_domain" {
   default     = "example.com"
 }
 
+variable "test_domain_name" {
+  type        = string
+  description = "Optional override for the test subdomain environment (defaults to test.<homelab_domain> in Makefile)."
+  default     = ""
+}
+
 variable "nordlynx_private_key" {
   type        = string
   description = "WireGuard / NordLynx private key for the isolated media acquisition VPN container"
