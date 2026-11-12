@@ -42,3 +42,9 @@ docker/**/appsettings.local.json
 docker/**/docker-compose.local.yaml
 docker/**/bin/
 docker/**/obj/
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/

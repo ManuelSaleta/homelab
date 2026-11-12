@@ -1,0 +1,38 @@
+# Grafana Unified Alerting Contact Point & Notification Policy for #homelab-alerts
+# Target: promstack-grafana (monitoring namespace)
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: slack-homelab-alerts
+    receivers:
+      - uid: slack_homelab_alerts_cp
+        type: slack
+        settings:
+          recipient: "#homelab-alerts"
+          token: "${SLACK_BOT_TOKEN}"
+          username: "Grafana Homelab Alerting"
+          icon_emoji: ":rotating_light:"
+          title: |
+            [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+          text: |
+            {{ range .Alerts -}}
+            *Alert:* {{ .Annotations.summary }}
+            *Description:* {{ .Annotations.description }}
+            namespace={{ .Labels.namespace }} deployment={{ .Labels.deployment }} pod={{ .Labels.pod }}
+            {{ end -}}
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: slack-homelab-alerts
+    group_by:
+      - alertname
+      - namespace
+    routes:
+      - receiver: slack-homelab-alerts
+        object_matchers:
+          - ["namespace", "=~", "media|monitoring|infrastructure|utilities"]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
