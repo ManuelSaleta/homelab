@@ -27,7 +27,8 @@ A live inspection of the running environment revealed key active signals and rea
   k3s[3868389]: I1114 15:51:15.122758 image_gc_manager.go:395] "Disk usage on image filesystem is over the high threshold, trying to free bytes down to the low threshold" usage=85 highThreshold=85 amountToFree=1514694246 lowThreshold=80
   k3s[3868389]: E1114 15:51:15.123178 kubelet.go:1721] "Image garbage collection failed multiple times in a row" err="Insufficient free disk space on the node's image filesystem (85% of 29.4 GiB used)..."
   ```
-* **Root Cause**: `/var/lib/rancher/k3s/agent/containerd` accounts for 16 GB of the 24 GB used on `k3s-worker-01`'s 30 GB root volume.
+* **Root Cause**: `/var/lib/rancher/k3s/agent/containerd` accounts for 16 GB of the 24 GB used on `k3s-worker-01`'s initial 30 GB root volume.
+* **Resolution**: Live expanded `scsi0` online from 30 GB to 60 GB via Proxmox (`qm resize 210 scsi0 60G`) and guest `growpart` + `resize2fs`, bringing utilization down to **42% (33 GB free)** and clearing Kubelet GC warnings.
 * **Alert Priority**: **HIGH / WARNING** (Approaching `DiskPressure` eviction threshold at 90%).
 
 ### B. Ingress Abrupt Disconnection During Pod Rollouts

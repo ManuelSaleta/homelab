@@ -88,7 +88,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
   disk {
     datastore_id = "local-lvm"
     interface    = "scsi0"
-    size         = 30 # Feel free to increase this if workers need more than the template default
+    size         = 60 # Increased from 30GB to provide headroom for containerd images & workloads
     discard      = "on"
   }
 
