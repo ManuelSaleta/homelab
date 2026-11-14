@@ -1,4 +1,6 @@
 title: "Gman's Homelab"
 background: "/images/homepage_background.webp"
-cardBlur: sm
+theme: dark
+color: slate
+cardBlur: md
 description: "A collection of applications and services running in my homelab Kubernetes cluster."

@@ -42,3 +42,14 @@ docker/**/appsettings.local.json
 docker/**/docker-compose.local.yaml
 docker/**/bin/
 docker/**/obj/
+
+# Python bytecode cache
+__pycache__/
+*.py[cod]
+
+# Homepage local runtime generated files and logs
+kubernetes/applications/homepage/config/logs/
+kubernetes/applications/homepage/config/custom.js
+kubernetes/applications/homepage/config/docker.yaml
+kubernetes/applications/homepage/config/proxmox.yaml
+
