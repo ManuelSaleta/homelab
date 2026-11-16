@@ -1847,6 +1847,9 @@ spec:
               subPath: provider.yaml
             - name: sc-datasources-volume
               mountPath: "/etc/grafana/provisioning/datasources"
+            - name: loki-alerts
+              mountPath: "/etc/grafana/provisioning/alerting/loki-alerts.yaml"
+              subPath: loki-alerts.yaml
           ports:
             - name: grafana
               containerPort: 3000
@@ -1912,6 +1915,9 @@ spec:
             name: promstack-grafana-config-dashboards
         - name: sc-datasources-volume
           emptyDir: {}
+        - name: loki-alerts
+          configMap:
+            name: grafana-loki-alerts
 ---
 # Source: kube-prometheus-stack/charts/kube-state-metrics/templates/deployment.yaml
 apiVersion: apps/v1
