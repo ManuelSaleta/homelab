@@ -1,0 +1,16 @@
+[Unit]
+Description=Lightweight systemd journal to Loki forwarder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/journal-to-loki.py
+Environment=LOKI_URL=http://192.168.1.210:31310/loki/api/v1/push
+Restart=always
+RestartSec=5
+MemoryMax=32M
+CPUQuota=10%
+
+[Install]
+WantedBy=multi-user.target

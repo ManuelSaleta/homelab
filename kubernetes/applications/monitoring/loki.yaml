@@ -1253,3 +1253,25 @@ spec:
         resources:
           requests:
             storage: "10Gi"
+---
+# NodePort service for lightweight external host log ingestion (mothership, micro-nas)
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-loki-ingest
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/instance: my-loki
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/component: single-binary
+    app.kubernetes.io/instance: my-loki
+    app.kubernetes.io/name: loki
+  ports:
+    - name: http-metrics
+      port: 3100
+      targetPort: 3100
+      nodePort: 31310
+      protocol: TCP
