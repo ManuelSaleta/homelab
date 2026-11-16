@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Jarvis.Sharp/Jarvis.Sharp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Jarvis.Sharp.Tests/Jarvis.Sharp.Tests.csproj" />
+  </Folder>
+</Solution>
