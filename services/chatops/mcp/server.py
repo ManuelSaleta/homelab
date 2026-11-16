@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import subprocess
 import urllib.error
 import urllib.parse
@@ -25,6 +26,7 @@ from services.chatops.gateway.security import (
     InputValidationError,
     compute_webhook_signature,
     validate_k8s_identifier,
+    validate_logql_query,
     validate_namespace,
     validate_node_ip,
 )
@@ -409,6 +411,120 @@ def ssh_node_health_check(node_ip: str, ssh_user: str | None = None) -> dict[str
         "node_ip": clean_ip,
         "healthy": proc.returncode == 0,
         "output": (proc.stdout or proc.stderr).strip(),
+    }
+
+
+@mcp.tool()
+def query_grafana_logs(
+    query: str,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    limit: int = 100,
+    grafana_url: str | None = None,
+    grafana_token: str | None = None,
+    datasource_uid: str | None = None,
+    insecure_skip_verify: bool = True,
+) -> dict[str, Any]:
+    """Query Loki logs through the Grafana Data Source Proxy API using a read-only token (Issue #50).
+
+    Args:
+        query: Valid LogQL stream query (e.g. '{namespace="monitoring"} |= "error"').
+        start_time: Optional start timestamp (Unix epoch ns or RFC3339).
+        end_time: Optional end timestamp (Unix epoch ns or RFC3339).
+        limit: Max log lines to return (1-1000, default 100).
+        grafana_url: Base URL of Grafana (defaults to GRAFANA_URL env var or https://grafana.freesalty.com).
+        grafana_token: Read-only Service Account bearer token (defaults to GRAFANA_TOKEN env var).
+        datasource_uid: UID of the Loki datasource in Grafana (defaults to 'loki').
+        insecure_skip_verify: Skip TLS verification for internal homelab self-signed certificates.
+    """
+    clean_query = validate_logql_query(query)
+    safe_limit = max(1, min(int(limit), 1000))
+
+    base_url = (
+        grafana_url
+        if grafana_url is not None
+        else os.environ.get("GRAFANA_URL", "https://grafana.freesalty.com")
+    ).rstrip("/")
+    token = (
+        grafana_token
+        if grafana_token is not None
+        else os.environ.get("GRAFANA_TOKEN", "")
+    ).strip()
+    ds_uid = (
+        datasource_uid
+        if datasource_uid is not None
+        else os.environ.get("GRAFANA_LOKI_DATASOURCE_UID", "loki")
+    ).strip()
+
+    if not base_url:
+        raise InputValidationError("GRAFANA_URL must not be empty.")
+    if not token:
+        raise InputValidationError(
+            "GRAFANA_TOKEN is required for authenticated read-only log querying."
+        )
+
+    params: dict[str, str] = {
+        "query": clean_query,
+        "limit": str(safe_limit),
+        "direction": "backward",
+    }
+    if start_time:
+        params["start"] = str(start_time).strip()
+    if end_time:
+        params["end"] = str(end_time).strip()
+
+    endpoint = f"{base_url}/api/datasources/proxy/uid/{ds_uid}/loki/api/v1/query_range?{urllib.parse.urlencode(params)}"
+    req = urllib.request.Request(
+        endpoint,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; HomelabFastMCP/1.0)",
+        },
+        method="GET",
+    )
+
+    ctx: ssl.SSLContext | None = None
+    if insecure_skip_verify and endpoint.startswith("https://"):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+            raw_body = resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(
+            f"Grafana Loki query returned HTTP {exc.code}: {exc.reason}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            f"Failed to reach Grafana at {base_url}: {exc.reason}"
+        ) from exc
+
+    data = json.loads(raw_body) if raw_body else {}
+    results = data.get("data", {}).get("result", [])
+
+    lines: list[dict[str, Any]] = []
+    for stream_entry in results:
+        labels = stream_entry.get("stream", {})
+        for val in stream_entry.get("values", []):
+            if isinstance(val, (list, tuple)) and len(val) >= 2:
+                lines.append(
+                    {
+                        "timestamp": val[0],
+                        "message": str(val[1]).rstrip("\r\n"),
+                        "labels": labels,
+                    }
+                )
+
+    lines.sort(key=lambda item: item["timestamp"], reverse=True)
+
+    return {
+        "status": data.get("status", "unknown"),
+        "total_lines": len(lines),
+        "query": clean_query,
+        "lines": lines[:safe_limit],
     }
 
 
