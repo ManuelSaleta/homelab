@@ -167,6 +167,9 @@ spec:
             - name: config-volume
               mountPath: /app/config/bookmarks.yaml
               subPath: bookmarks.yaml
+            - name: config-volume
+              mountPath: /app/config/custom.css
+              subPath: custom.css
             - name: logs
               mountPath: /app/config/logs
             - name: bg-volume

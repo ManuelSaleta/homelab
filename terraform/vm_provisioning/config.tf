@@ -11,6 +11,7 @@ resource "kubernetes_config_map_v1" "homepage_config" {
     "kubernetes.yaml" = file("${path.module}/../../kubernetes/applications/homepage/config/kubernetes.yaml")
     "widgets.yaml"    = file("${path.module}/../../kubernetes/applications/homepage/config/widgets.yaml")
     "bookmarks.yaml"  = file("${path.module}/../../kubernetes/applications/homepage/config/bookmarks.yaml")
+    "custom.css"      = file("${path.module}/../../kubernetes/applications/homepage/config/custom.css")
   }
 }
 

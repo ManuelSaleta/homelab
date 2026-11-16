@@ -48,3 +48,9 @@ __pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
+
+# Homepage local runtime generated files and logs
+kubernetes/applications/homepage/config/logs/
+kubernetes/applications/homepage/config/custom.js
+kubernetes/applications/homepage/config/docker.yaml
+kubernetes/applications/homepage/config/proxmox.yaml
