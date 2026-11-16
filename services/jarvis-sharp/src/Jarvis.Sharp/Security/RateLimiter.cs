@@ -2,6 +2,11 @@ namespace Jarvis.Sharp.Security;
 
 using System.Collections.Concurrent;
 
+public class RateLimitExceededException : InvalidOperationException
+{
+    public RateLimitExceededException(string message) : base(message) { }
+}
+
 public class RateLimiter
 {
     private readonly int _maxRequests;
@@ -39,7 +44,7 @@ public class RateLimiter
 
             if (queue.Count >= _maxRequests)
             {
-                throw new InvalidOperationException(
+                throw new RateLimitExceededException(
                     $"Rate limit exceeded for user '{userId}' ({_maxRequests} requests per {(int)_window.TotalSeconds}s).");
             }
 

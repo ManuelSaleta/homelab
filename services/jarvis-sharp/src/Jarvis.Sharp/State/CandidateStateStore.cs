@@ -51,6 +51,8 @@ public class CandidateStateStore
         return null;
     }
 
+    public CandidateBatch? GetLatestBatch(DateTimeOffset? now = null) => GetBatch(null, now);
+
     public IReadOnlyList<CandidateItem> ResolveIndices(string? batchId, IEnumerable<int> indices, DateTimeOffset? now = null)
     {
         var batch = GetBatch(batchId, now);
