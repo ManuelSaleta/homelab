@@ -18,6 +18,7 @@ from services.chatops.gateway.security import (
     RateLimitExceededError,
     compute_webhook_signature,
     validate_k8s_identifier,
+    validate_logql_query,
     validate_namespace,
     validate_node_ip,
     verify_webhook_signature,
@@ -33,6 +34,7 @@ from services.chatops.mcp.server import (
     k8s_get_pod_diagnostics,
     k8s_restart_deployment,
     list_media_sync_candidates,
+    query_grafana_logs,
     query_plex_library,
     set_state_store,
     ssh_node_health_check,
@@ -84,6 +86,19 @@ class SecurityTests(unittest.TestCase):
         self.assertTrue(sig.startswith("sha256="))
         self.assertTrue(verify_webhook_signature(secret, payload, sig))
         self.assertFalse(verify_webhook_signature("wrong-secret", payload, sig))
+
+    def test_logql_validator(self) -> None:
+        valid_query = '{namespace="monitoring"} |= "error"'
+        self.assertEqual(validate_logql_query(valid_query), valid_query)
+
+        with self.assertRaises(InputValidationError):
+            validate_logql_query("")
+        with self.assertRaises(InputValidationError):
+            validate_logql_query("not a stream selector")
+        with self.assertRaises(InputValidationError):
+            validate_logql_query('{app="test"}\nrm -rf /')
+        with self.assertRaises(InputValidationError):
+            validate_logql_query('{app="test"}', max_length=5)
 
 
 class StateAndCommandTests(unittest.TestCase):
@@ -281,6 +296,39 @@ class McpAndGatewayTests(unittest.IsolatedAsyncioTestCase):
                 value_json=json.dumps(triage["targets"]),
             )
             self.assertIn("Deployment Restart", action_res["text"])
+
+    def test_query_grafana_logs(self) -> None:
+        with self.assertRaises(InputValidationError):
+            query_grafana_logs('{app="test"}', grafana_token="")
+
+        mock_resp_data = {
+            "status": "success",
+            "data": {
+                "result": [
+                    {
+                        "stream": {"app": "test", "namespace": "monitoring"},
+                        "values": [
+                            ["1700000000000000000", "Sample log error line\n"],
+                        ],
+                    }
+                ]
+            },
+        }
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(mock_resp_data).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            res = query_grafana_logs(
+                '{namespace="monitoring"} |= "error"',
+                grafana_token="glsa_dummy",
+                grafana_url="https://grafana.example.com",
+            )
+            self.assertEqual(res["status"], "success")
+            self.assertEqual(res["total_lines"], 1)
+            self.assertEqual(res["lines"][0]["message"], "Sample log error line")
+            self.assertEqual(res["lines"][0]["labels"]["namespace"], "monitoring")
 
 
 if __name__ == "__main__":

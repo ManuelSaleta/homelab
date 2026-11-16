@@ -1,0 +1,211 @@
+# Grafana Unified Alerting Rule Definitions (Issue #50)
+# Managed by Prometheus Stack / Grafana Provisioning
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: "Kubernetes Health"
+    folder: "homelab-alerts"
+    interval: 1m
+    rules:
+      - uid: "cg4fmphomkv0ge"
+        title: "K3s Pod CrashLooping"
+        condition: "C"
+        for: "2m"
+        noDataState: "OK"
+        execErrState: "Alerting"
+        labels:
+          severity: "critical"
+          category: "kubernetes"
+        annotations:
+          summary: "Pod {{ $labels.pod }} is in CrashLoopBackOff"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is continuously restarting due to CrashLoopBackOff."
+        data:
+          - refId: "A"
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              expr: 'max_over_time(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}[5m]) >= 1'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: "A"
+          - refId: "C"
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: "threshold"
+              expression: "A"
+              refId: "C"
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: "gt"
+                  operator:
+                    type: "and"
+                  query:
+                    params: ["C"]
+                  reducer:
+                    params: []
+                    type: "last"
+                  type: "query"
+
+      - uid: "cg4fmqwikoydcc"
+        title: "Container OOMKilled"
+        condition: "C"
+        for: "0s"
+        noDataState: "OK"
+        execErrState: "Alerting"
+        labels:
+          severity: "critical"
+          category: "kubernetes"
+        annotations:
+          summary: "Container {{ $labels.container }} OOMKilled in pod {{ $labels.pod }}"
+          description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} was terminated by Linux kernel OOM killer (exit code 137)."
+        data:
+          - refId: "A"
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              expr: 'max_over_time(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[5m]) >= 1'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: "A"
+          - refId: "C"
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: "threshold"
+              expression: "A"
+              refId: "C"
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: "gt"
+                  operator:
+                    type: "and"
+                  query:
+                    params: ["C"]
+                  reducer:
+                    params: []
+                    type: "last"
+                  type: "query"
+
+  - orgId: 1
+    name: "Infrastructure Health"
+    folder: "homelab-alerts"
+    interval: 1m
+    rules:
+      - uid: "bg4fmqxoohc74b"
+        title: "Node Disk Pressure Warning"
+        condition: "C"
+        for: "5m"
+        noDataState: "OK"
+        execErrState: "Alerting"
+        labels:
+          severity: "warning"
+          category: "storage"
+        annotations:
+          summary: "Node {{ $labels.instance }} root partition has less than 20% free space"
+          description: "Root filesystem available space on {{ $labels.instance }} is under 20% of capacity."
+        data:
+          - refId: "A"
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              expr: '(node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: "A"
+          - refId: "C"
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: "threshold"
+              expression: "A"
+              refId: "C"
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: "gt"
+                  operator:
+                    type: "and"
+                  query:
+                    params: ["C"]
+                  reducer:
+                    params: []
+                    type: "last"
+                  type: "query"
+
+  - orgId: 1
+    name: "Perimeter & Ingress"
+    folder: "homelab-alerts"
+    interval: 1m
+    rules:
+      - uid: "ag4fmqypihfr4e"
+        title: "Traefik Ingress High 5xx Errors"
+        condition: "C"
+        for: "2m"
+        noDataState: "OK"
+        execErrState: "Alerting"
+        labels:
+          severity: "critical"
+          category: "ingress"
+        annotations:
+          summary: "Service {{ $labels.service }} experiencing >5% HTTP 5xx errors"
+          description: "Traefik reports high server failure rates for service {{ $labels.service }}."
+        data:
+          - refId: "A"
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              expr: '(sum by (service) (rate(traefik_service_requests_total{code=~"5.*"}[5m])) / sum by (service) (rate(traefik_service_requests_total[5m])) * 100) > 5'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: "A"
+          - refId: "C"
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: "threshold"
+              expression: "A"
+              refId: "C"
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: "gt"
+                  operator:
+                    type: "and"
+                  query:
+                    params: ["C"]
+                  reducer:
+                    params: []
+                    type: "last"
+                  type: "query"

@@ -20,6 +20,7 @@ DEFAULT_ALLOWED_NAMESPACES: frozenset[str] = frozenset(
         "media",
         "media-test",
         "monitoring",
+        "networking",
         "utilities",
         "utilities-test",
     }
@@ -27,10 +28,13 @@ DEFAULT_ALLOWED_NAMESPACES: frozenset[str] = frozenset(
 
 DEFAULT_ALLOWED_NODE_IPS: frozenset[str] = frozenset(
     {
-        "192.168.1.180",  # mothership (Proxmox VE hypervisor)
-        "192.168.1.210",  # k3s-svr-1 (Control Plane + Worker)
+        "192.168.1.50",   # micro-nas (legacy alias)
+        "192.168.1.180",  # mothership (legacy alias)
+        "192.168.1.185",  # k3s-control-01 (K3s Control Plane)
+        "192.168.1.200",  # mothership (Proxmox VE Hypervisor)
+        "192.168.1.210",  # k3s-worker-01 (Workload Node)
         "192.168.1.211",  # k3s-worker-1 (Media & Torrent Node)
-        "192.168.1.50",   # micro-nas (Storage & Utility Node)
+        "192.168.1.250",  # micro-nas (Storage & Utility Node)
     }
 )
 
@@ -172,3 +176,24 @@ def verify_webhook_signature(secret: str, payload: bytes, signature_header: str)
         return False
     expected = compute_webhook_signature(secret, payload)
     return hmac.compare_digest(expected, signature_header.strip())
+
+
+LOGQL_STREAM_SELECTOR_RE = re.compile(r"^\s*\{[^}]+\}")
+
+
+def validate_logql_query(query: str, max_length: int = 1000) -> str:
+    """Validate and sanitize a LogQL query expression to prevent injection or abuse."""
+    cleaned = (query or "").strip()
+    if not cleaned:
+        raise InputValidationError("LogQL query must not be empty.")
+    if len(cleaned) > max_length:
+        raise InputValidationError(
+            f"LogQL query exceeds maximum allowed length of {max_length} characters."
+        )
+    if not LOGQL_STREAM_SELECTOR_RE.search(cleaned):
+        raise InputValidationError(
+            f"LogQL query must begin with a stream selector (e.g. '{{namespace=\"monitoring\"}}'): '{query}'"
+        )
+    if "\n" in cleaned or "\r" in cleaned:
+        raise InputValidationError("LogQL query must not contain newline characters.")
+    return cleaned
