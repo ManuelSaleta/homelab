@@ -28,7 +28,7 @@ data:
               namespace: "networking"
             annotations:
               summary: "Vaultwarden detected >3 failed login attempts in 5m"
-              description: "Multiple authentication failures or 400/401 token responses detected in vaultwarden-engine logs."
+              description: "Multiple authentication failures or 400/401 token responses ({{ $values.A.Value }} matches) in {{ $labels.pod }}: `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -44,6 +44,20 @@ data:
                   expr: 'sum(count_over_time({namespace="networking", container="vaultwarden-engine"} |~ "(?i)(\\[WARN\\]|\\[ERROR\\]|Invalid password|POST /identity/connect/token => (400|401))"[5m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="networking", container="vaultwarden-engine"} |~ "(?i)(\\[WARN\\]|\\[ERROR\\]|Invalid password|POST /identity/connect/token => (400|401))" | regexp "(?P<log_line>.{1,250})"[5m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -51,21 +65,9 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 3) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [3]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
 
           - uid: "loki_cloudflared_err"
             title: "Cloudflare Tunnel Errors"
@@ -79,7 +81,7 @@ data:
               namespace: "networking"
             annotations:
               summary: "Cloudflare Tunnel experiencing sustained ERR logs"
-              description: "cloudflared logged >5 non-canceled ERR events in 2m; external ingress may be degraded."
+              description: "cloudflared logged {{ $values.A.Value }} non-canceled ERR events in 2m ({{ $labels.pod }}): `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -95,6 +97,20 @@ data:
                   expr: 'sum(count_over_time({namespace="networking", container="cloudflared"} |~ "(?i)\\bERR\\b" != "context canceled"[2m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 120
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="networking", container="cloudflared"} |~ "(?i)\\bERR\\b" != "context canceled" | regexp "(?P<log_line>.{1,250})"[2m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -102,21 +118,9 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 5) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [5]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
 
           - uid: "loki_traefik_acme_err"
             title: "Traefik ACME Certificate / Error"
@@ -130,7 +134,7 @@ data:
               namespace: "kube-system"
             annotations:
               summary: "Traefik logged an ACME TLS or ERR event"
-              description: "Traefik reported an error or ACME certificate renewal failure in kube-system."
+              description: "Traefik reported {{ $values.A.Value }} error/ACME event(s) in {{ $labels.pod }}: `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -146,6 +150,20 @@ data:
                   expr: 'sum(count_over_time({namespace="kube-system", container="traefik"} |~ "(?i)(Unable to obtain ACME certificate|acme: error|\\bERR\\b)"[5m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="kube-system", container="traefik"} |~ "(?i)(Unable to obtain ACME certificate|acme: error|\\bERR\\b)" | regexp "(?P<log_line>.{1,250})"[5m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -153,21 +171,9 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 0) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [0]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
 
       - orgId: 1
         name: "Application Health Logs"
@@ -186,7 +192,7 @@ data:
               namespace: "networking"
             annotations:
               summary: "Uptime Kuma reports failing service monitors"
-              description: "Uptime Kuma logged >=2 monitor failure warnings in the last 3m."
+              description: "Uptime Kuma logged {{ $values.A.Value }} monitor failure warning(s) in 3m ({{ $labels.pod }}): `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -202,6 +208,20 @@ data:
                   expr: 'sum(count_over_time({namespace="networking", container="uptime-kuma"} |~ "\\[MONITOR\\] WARN:.*Failing:"[3m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 180
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="networking", container="uptime-kuma"} |~ "\\[MONITOR\\] WARN:.*Failing:" | regexp "(?P<log_line>.{1,250})"[3m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -209,21 +229,9 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 1) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [1]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
 
           - uid: "loki_vpn_media_sync_fail"
             title: "VPN Media Sync Unhandled Exception"
@@ -237,7 +245,7 @@ data:
               namespace: "media"
             annotations:
               summary: "vpn-media-sync logged a fail/crit event"
-              description: "Unhandled exception or critical failure detected in vpn-media-sync logs."
+              description: "Unhandled exception or critical failure ({{ $values.A.Value }} event(s)) in {{ $labels.pod }}: `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -253,6 +261,20 @@ data:
                   expr: 'sum(count_over_time({namespace="media", container="vpn-media-sync"} |~ "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} (fail|crit):"[5m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="media", container="vpn-media-sync"} |~ "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} (fail|crit):" | regexp "(?P<log_line>.{1,250})"[5m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -260,21 +282,9 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 0) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [0]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
 
           - uid: "loki_karakeep_browserless_loop"
             title: "Karakeep / Browserless Crawler Failure Loop"
@@ -288,7 +298,7 @@ data:
               namespace: "networking"
             annotations:
               summary: "Karakeep/Browserless experiencing repeated Playwright disconnects or timeouts"
-              description: "More than 5 crawler disconnect/timeout events logged in 5m across karakeep-engine and browserless."
+              description: "{{ $values.A.Value }} crawler disconnect/timeout events in 5m ({{ $labels.pod }}/{{ $labels.container }}): `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -304,6 +314,20 @@ data:
                   expr: 'sum(count_over_time({namespace="networking", container=~"karakeep-engine|browserless"} |~ "(Playwright browser got disconnected|router:error Websocket job has timedout)"[5m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="networking", container=~"karakeep-engine|browserless"} |~ "(Playwright browser got disconnected|router:error Websocket job has timedout)" | regexp "(?P<log_line>.{1,250})"[5m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -311,21 +335,9 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 5) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [5]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
 
       - orgId: 1
         name: "Observability & DNS Logs"
@@ -344,7 +356,7 @@ data:
               namespace: "monitoring"
             annotations:
               summary: "Grafana Alloy is dropping log batches to Loki"
-              description: "Alloy logged >3 'dropping data' errors in 5m; log ingestion to Loki is degraded."
+              description: "Alloy logged {{ $values.A.Value }} 'dropping data' errors in 5m ({{ $labels.pod }}): `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -360,6 +372,20 @@ data:
                   expr: 'sum(count_over_time({namespace="monitoring", container="alloy"} |= "dropping data"[5m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="monitoring", container="alloy"} |= "dropping data" | regexp "(?P<log_line>.{1,250})"[5m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -367,21 +393,9 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 3) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [3]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
 
           - uid: "loki_pihole_ftl_err"
             title: "Pi-hole FTL DNS Errors"
@@ -395,7 +409,7 @@ data:
               namespace: "networking"
             annotations:
               summary: "Pi-hole FTL logged a fatal/error or DNS concurrency limit event"
-              description: "Pi-hole FTL engine logged an error (excluding benign /root/.git noise)."
+              description: "Pi-hole FTL logged {{ $values.A.Value }} error(s) in {{ $labels.pod }}: `{{ $labels.log_line }}`"
             data:
               - refId: "A"
                 queryType: "instant"
@@ -411,6 +425,20 @@ data:
                   expr: 'sum(count_over_time({namespace="networking", container="pihole-ftl-engine"} |~ "(?i)(fatal|error|Maximum number of concurrent DNS queries)" != "/root/.git"[5m]))'
                   queryType: "instant"
                   refId: "A"
+              - refId: "B"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'topk(1, sum by (log_line, pod, container) (count_over_time({namespace="networking", container="pihole-ftl-engine"} |~ "(?i)(fatal|error|Maximum number of concurrent DNS queries)" != "/root/.git" | regexp "(?P<log_line>.{1,250})"[5m])))'
+                  queryType: "instant"
+                  refId: "B"
               - refId: "C"
                 queryType: ""
                 relativeTimeRange:
@@ -418,18 +446,6 @@ data:
                   to: 0
                 datasourceUid: "-100"
                 model:
-                  type: "threshold"
-                  expression: "A"
+                  type: "math"
+                  expression: "($A > 0) && ($B >= 0)"
                   refId: "C"
-                  conditions:
-                    - evaluator:
-                        params: [0]
-                        type: "gt"
-                      operator:
-                        type: "and"
-                      query:
-                        params: ["C"]
-                      reducer:
-                        params: []
-                        type: "last"
-                      type: "query"
