@@ -363,9 +363,11 @@ grafana-up:
 	kubectl apply -f $(APPS_DIR)/monitoring/alloy.yaml
 	kubectl apply -f $(APPS_DIR)/monitoring/log-dashboards.yaml
 	kubectl apply -f $(APPS_DIR)/monitoring/media-acquisition-dashboard.yaml
+	kubectl apply -f $(APPS_DIR)/monitoring/grafana-loki-alerts.yaml
 
 grafana-down:
 	@echo "💥 Removing Grafana & Logging Stack..."
+	kubectl delete -f $(APPS_DIR)/monitoring/grafana-loki-alerts.yaml --ignore-not-found
 	kubectl delete -f $(APPS_DIR)/monitoring/media-acquisition-dashboard.yaml --ignore-not-found
 	kubectl delete -f $(APPS_DIR)/monitoring/log-dashboards.yaml --ignore-not-found
 	kubectl delete -f $(APPS_DIR)/monitoring/alloy.yaml --ignore-not-found
