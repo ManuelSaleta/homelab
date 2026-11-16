@@ -1,0 +1,435 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-loki-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: promstack
+    app.kubernetes.io/part-of: kube-prometheus-stack
+data:
+  loki-alerts.yaml: |-
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: "Security & Perimeter Logs"
+        folder: "homelab-alerts"
+        interval: 1m
+        rules:
+          - uid: "loki_vaultwarden_auth_fail"
+            title: "Vaultwarden Authentication Failures"
+            condition: "C"
+            for: "0s"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "high"
+              category: "security"
+              namespace: "networking"
+            annotations:
+              summary: "Vaultwarden detected >3 failed login attempts in 5m"
+              description: "Multiple authentication failures or 400/401 token responses detected in vaultwarden-engine logs."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="networking", container="vaultwarden-engine"} |~ "(?i)(\\[WARN\\]|\\[ERROR\\]|Invalid password|POST /identity/connect/token => (400|401))"[5m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [3]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"
+
+          - uid: "loki_cloudflared_err"
+            title: "Cloudflare Tunnel Errors"
+            condition: "C"
+            for: "2m"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "critical"
+              category: "ingress"
+              namespace: "networking"
+            annotations:
+              summary: "Cloudflare Tunnel experiencing sustained ERR logs"
+              description: "cloudflared logged >5 non-canceled ERR events in 2m; external ingress may be degraded."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 120
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="networking", container="cloudflared"} |~ "(?i)\\bERR\\b" != "context canceled"[2m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [5]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"
+
+          - uid: "loki_traefik_acme_err"
+            title: "Traefik ACME Certificate / Error"
+            condition: "C"
+            for: "0s"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "high"
+              category: "ingress"
+              namespace: "kube-system"
+            annotations:
+              summary: "Traefik logged an ACME TLS or ERR event"
+              description: "Traefik reported an error or ACME certificate renewal failure in kube-system."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="kube-system", container="traefik"} |~ "(?i)(Unable to obtain ACME certificate|acme: error|\\bERR\\b)"[5m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [0]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"
+
+      - orgId: 1
+        name: "Application Health Logs"
+        folder: "homelab-alerts"
+        interval: 1m
+        rules:
+          - uid: "loki_uptime_kuma_fail"
+            title: "Uptime Kuma Monitor Failing"
+            condition: "C"
+            for: "2m"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "high"
+              category: "availability"
+              namespace: "networking"
+            annotations:
+              summary: "Uptime Kuma reports failing service monitors"
+              description: "Uptime Kuma logged >=2 monitor failure warnings in the last 3m."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 180
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="networking", container="uptime-kuma"} |~ "\\[MONITOR\\] WARN:.*Failing:"[3m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [1]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"
+
+          - uid: "loki_vpn_media_sync_fail"
+            title: "VPN Media Sync Unhandled Exception"
+            condition: "C"
+            for: "0s"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "high"
+              category: "media"
+              namespace: "media"
+            annotations:
+              summary: "vpn-media-sync logged a fail/crit event"
+              description: "Unhandled exception or critical failure detected in vpn-media-sync logs."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="media", container="vpn-media-sync"} |~ "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} (fail|crit):"[5m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [0]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"
+
+          - uid: "loki_karakeep_browserless_loop"
+            title: "Karakeep / Browserless Crawler Failure Loop"
+            condition: "C"
+            for: "2m"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "warning"
+              category: "applications"
+              namespace: "networking"
+            annotations:
+              summary: "Karakeep/Browserless experiencing repeated Playwright disconnects or timeouts"
+              description: "More than 5 crawler disconnect/timeout events logged in 5m across karakeep-engine and browserless."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="networking", container=~"karakeep-engine|browserless"} |~ "(Playwright browser got disconnected|router:error Websocket job has timedout)"[5m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [5]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"
+
+      - orgId: 1
+        name: "Observability & DNS Logs"
+        folder: "homelab-alerts"
+        interval: 1m
+        rules:
+          - uid: "loki_alloy_dropping_data"
+            title: "Alloy Dropping Log Batches"
+            condition: "C"
+            for: "1m"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "warning"
+              category: "monitoring"
+              namespace: "monitoring"
+            annotations:
+              summary: "Grafana Alloy is dropping log batches to Loki"
+              description: "Alloy logged >3 'dropping data' errors in 5m; log ingestion to Loki is degraded."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="monitoring", container="alloy"} |= "dropping data"[5m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [3]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"
+
+          - uid: "loki_pihole_ftl_err"
+            title: "Pi-hole FTL DNS Errors"
+            condition: "C"
+            for: "0s"
+            noDataState: "OK"
+            execErrState: "Alerting"
+            labels:
+              severity: "warning"
+              category: "networking"
+              namespace: "networking"
+            annotations:
+              summary: "Pi-hole FTL logged a fatal/error or DNS concurrency limit event"
+              description: "Pi-hole FTL engine logged an error (excluding benign /root/.git noise)."
+            data:
+              - refId: "A"
+                queryType: "instant"
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: "loki"
+                model:
+                  datasource:
+                    type: "loki"
+                    uid: "loki"
+                  editorMode: "code"
+                  expr: 'sum(count_over_time({namespace="networking", container="pihole-ftl-engine"} |~ "(?i)(fatal|error|Maximum number of concurrent DNS queries)" != "/root/.git"[5m]))'
+                  queryType: "instant"
+                  refId: "A"
+              - refId: "C"
+                queryType: ""
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: "-100"
+                model:
+                  type: "threshold"
+                  expression: "A"
+                  refId: "C"
+                  conditions:
+                    - evaluator:
+                        params: [0]
+                        type: "gt"
+                      operator:
+                        type: "and"
+                      query:
+                        params: ["C"]
+                      reducer:
+                        params: []
+                        type: "last"
+                      type: "query"

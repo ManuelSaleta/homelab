@@ -20,7 +20,7 @@ contactPoints:
             {{ range .Alerts -}}
             *Alert:* {{ .Annotations.summary }}
             *Description:* {{ .Annotations.description }}
-            *Namespace:* {{ .Labels.namespace }} | *Pod:* {{ .Labels.pod }} | *Severity:* {{ .Labels.severity }}
+            *Namespace:* {{ if .Labels.namespace }}{{ .Labels.namespace }}{{ else }}N/A{{ end }}{{ if .Labels.pod }} | *Pod:* {{ .Labels.pod }}{{ else if .Labels.container }} | *Container:* {{ .Labels.container }}{{ else if .Labels.app }} | *App:* {{ .Labels.app }}{{ end }} | *Severity:* {{ if .Labels.severity }}{{ .Labels.severity }}{{ else }}info{{ end }}
             {{ end -}}
         disableResolveMessage: false
 

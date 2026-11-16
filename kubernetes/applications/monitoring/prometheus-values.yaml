@@ -55,6 +55,12 @@ grafana:
       url: http://my-loki-gateway.monitoring.svc.cluster.local
       jsonData:
         maxLines: 1000
+  extraConfigmapMounts:
+    - name: loki-alerts
+      mountPath: /etc/grafana/provisioning/alerting/loki-alerts.yaml
+      subPath: loki-alerts.yaml
+      configMap: grafana-loki-alerts
+      readOnly: true
 prometheus:
   prometheusSpec:
     affinity:
