@@ -1,0 +1,22 @@
+[Unit]
+Description=Homelab Slack Socket Mode ChatOps Gateway & Antigravity MCP Bridge
+Documentation=https://github.com/ManuelSaleta/homelab/issues/39
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/homelab
+EnvironmentFile=%h/.config/homelab-chatops/chatops.env
+ExecStart=/usr/bin/python3 -m services.chatops.gateway.app
+Restart=on-failure
+RestartSec=5s
+
+# Hardening for Fedora Workstation user service
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=%h/.local/share/homelab-chatops
+
+[Install]
+WantedBy=default.target
