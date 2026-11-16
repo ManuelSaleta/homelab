@@ -237,7 +237,7 @@ PROXMOX HOST: mothership (16 GB Physical RAM Total)
 ├── 🚀 nvme0n1 (238.5G NVMe SSD) -> VG: `pve` (Pool: `local-lvm`)
 │   ├── Host Root (`/`) & Proxmox Hypervisor Overhead
 │   ├── VM 100 [k3s-control-01]: 30G NVMe |  2,048 MB (2.0 GB) RAM (Control Plane & Core Services)
-│   ├── VM 210 [k3s-worker-01]:  30G NVMe | 10,240 MB (10.0 GB) RAM (Workloads & App Stack)
+│   ├── VM 210 [k3s-worker-01]:  60G NVMe | 10,240 MB (10.0 GB) RAM (Workloads & App Stack)
 │   ├── CT 250 [micro-nas]:      15G NVMe |  1,536 MB (1.5 GB) RAM (LXC NFS & Syncthing Engine)
 │   └── ⚡ Available Host Headroom: ~2.5 GB RAM for Proxmox VE, hypervisor overhead, and Linux page cache
 │
