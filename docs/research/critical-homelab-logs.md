@@ -165,3 +165,18 @@ Because the entire cluster shares the 16 GB physical RAM envelope of `mothership
 
 1. **Issue #50 Action**: Provision the Grafana Service Account (`Viewer` / `datasources:read`) and import the LogQL alert rules above into `services/chatops/grafana/contact-point-slack.yaml`.
 2. **Issue #39 Action**: Wire the ChatOps FastMCP server (`services/chatops/mcp/server.py`) to parse incoming Slack alert payloads from these queries and automatically fetch the surrounding ±5 minute log context.
+
+---
+
+## 7. Missing Stream Investigation & Fixes (Issue #58)
+
+### Root Causes
+1. **`nordlynx` (`media/media-acquisition-pod`)**: `bubuntux/nordlynx` runs `wg-quick up wg0` once on startup and then executes `sleep infinity`, emitting zero stdout/stderr lines after initial connection (and nothing on silent tunnel drops).
+2. **`qbittorrent` (`media/media-acquisition-pod`)**: `linuxserver/qbittorrent` only prints its s6-overlay startup banner to stdout; runtime logs (WebAPI logins, torrent completions, tracker/stall errors) are written to `/config/qBittorrent/logs/qbittorrent.log` (`0600`, UID `1000`), which `loki.source.kubernetes` cannot read.
+3. **Host OS & Systemd Logs**: `my-alloy` lacked control-plane `NoSchedule` tolerations (running only on `k3s-worker-01`), had no `loki.source.journal` configuration or `/var/log/journal` mount, and external hosts (`mothership`, `micro-nas`) had no forwarder to Loki.
+
+### Implemented Fixes
+- **`nordlynx`**: Added `nordlynx-healthcheck-script` ConfigMap in [media-sync-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/media-sync/media-sync-deployment.yaml) (`99-wg-healthlog.sh` polling `wg show wg0 dump` every 60s to `/proc/1/fd/1` on state changes/errors + 15m heartbeat; `20-inet6` override for IPv4-only pod networking).
+- **`qbittorrent`**: Added `qbittorrent-log` (`busybox:1.36`, UID `1000`) sidecar in [media-sync-deployment.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/media-sync/media-sync-deployment.yaml) tailing `/config/qBittorrent/logs/qbittorrent.log` to stdout (`{namespace="media", container="qbittorrent-log"}`).
+- **K3s Nodes (`k3s-control-01`, `k3s-worker-01`)**: Updated [alloy.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/alloy.yaml) and [alloy-values.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/alloy-values.yaml) with control-plane tolerations, `/var/log/journal` + `/etc/machine-id` mounts, and `loki.source.journal` + `loki.relabel` keeping `PRIORITY <= 4` or `sshd`/`sudo`/`su`/`login` (`job="systemd-journal"`), plus `fs.inotify.max_user_instances=512` on `k3s-worker-01`.
+- **External Hosts (`mothership`, `micro-nas`)**: Added `my-loki-ingest` NodePort (`31310`) in [loki.yaml](file:///home/gman/Projects/homelab/kubernetes/applications/monitoring/loki.yaml) and deployed [journal-to-loki.py](file:///home/gman/Projects/homelab/scripts/monitoring/journal-to-loki.py) + [journal-to-loki.service](file:///home/gman/Projects/homelab/scripts/monitoring/journal-to-loki.service) (`MemoryMax=32M`, `PRIORITY <= 4` + `sshd`/`sudo`/`su`/`login`) on both hosts.

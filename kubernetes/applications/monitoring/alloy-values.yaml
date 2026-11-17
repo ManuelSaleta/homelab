@@ -54,6 +54,43 @@ alloy:
         forward_to = [loki.write.endpoint.receiver]
       }
 
+      loki.relabel "journal" {
+        forward_to = []
+
+        rule {
+          source_labels = ["__journal_priority", "__journal__comm"]
+          separator     = ";"
+          regex         = "^([0-4];.*|[5-7];(sshd|sudo|su|login))$"
+          action        = "keep"
+        }
+        rule {
+          source_labels = ["__journal__hostname"]
+          target_label  = "node"
+        }
+        rule {
+          source_labels = ["__journal__systemd_unit"]
+          target_label  = "unit"
+        }
+        rule {
+          source_labels = ["__journal__comm"]
+          target_label  = "comm"
+        }
+        rule {
+          source_labels = ["__journal_priority"]
+          target_label  = "priority"
+        }
+      }
+
+      loki.source.journal "host" {
+        path          = "/var/log/journal"
+        max_age       = "24h"
+        relabel_rules = loki.relabel.journal.rules
+        labels        = {
+          job = "systemd-journal",
+        }
+        forward_to    = [loki.write.endpoint.receiver]
+      }
+
       loki.write "endpoint" {
         endpoint {
           url = "http://my-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"

@@ -211,6 +211,52 @@ data:
     }
 ---
 # ==============================================================================
+# NordLynx WireGuard Health Logger (emits periodic status & disconnect alerts)
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nordlynx-healthcheck-script
+  namespace: media
+data:
+  20-inet6: |
+    #!/usr/bin/with-contenv bash
+    echo "[$(date -Iseconds)] Skipping IPv6 ip6tables (IPv4-only pod network)"
+    exit 0
+  99-wg-healthlog.sh: |
+    #!/usr/bin/env bash
+    (
+      sleep 15
+      heartbeat_counter=0
+      last_state="unknown"
+      while true; do
+        now=$(date +%s)
+        dump=$(wg show wg0 dump 2>/dev/null | tail -n +2 | head -n 1)
+        if [[ -z "${dump}" ]]; then
+          echo "[$(date -Iseconds)] [nordlynx-health] ERROR: wg0 interface down or WireGuard disconnected"
+          last_state="down"
+        else
+          IFS=$'\t' read -r _psk _preshared endpoint _allowed handshake rx tx _keepalive <<< "${dump}"
+          if [[ -z "${handshake}" || "${handshake}" == "0" ]]; then
+            echo "[$(date -Iseconds)] [nordlynx-health] WARN: WireGuard handshake failed / no handshake yet (endpoint=${endpoint})"
+            last_state="stale"
+          else
+            age=$((now - handshake))
+            if (( age > 180 )); then
+              echo "[$(date -Iseconds)] [nordlynx-health] WARN: WireGuard handshake stale (age=${age}s endpoint=${endpoint})"
+              last_state="stale"
+            elif [[ "${last_state}" != "up" ]] || (( heartbeat_counter % 15 == 0 )); then
+              echo "[$(date -Iseconds)] [nordlynx-health] OK: wg0 up endpoint=${endpoint} handshake_age=${age}s rx=${rx} tx=${tx}"
+              last_state="up"
+            fi
+          fi
+        fi
+        heartbeat_counter=$((heartbeat_counter + 1))
+        sleep 60
+      done
+    ) >/proc/1/fd/1 2>&1 &
+---
+# ==============================================================================
 # Multi-Container Deployment: Isolated VPN Gateway + Media Acquisition Stack
 # ==============================================================================
 apiVersion: apps/v1
@@ -241,12 +287,8 @@ spec:
               - matchExpressions:
                   - key: node-role.kubernetes.io/control-plane
                     operator: DoesNotExist
-      # Disable IPv6 inside the Pod network namespace to prevent IPv6 swarm leaks
       securityContext:
         fsGroup: 1000
-        sysctls:
-          - name: net.ipv6.conf.all.disable_ipv6
-            value: "1"
       containers:
         # 1. Dedicated NordVPN WireGuard Container & Killswitch Owner (Only container with NET_ADMIN)
         - name: nordlynx
@@ -276,6 +318,14 @@ spec:
           volumeMounts:
             - name: tun-device
               mountPath: /dev/net/tun
+            - name: nordlynx-healthcheck
+              mountPath: /custom-cont-init.d/99-wg-healthlog.sh
+              subPath: 99-wg-healthlog.sh
+              readOnly: true
+            - name: nordlynx-healthcheck
+              mountPath: /etc/cont-init.d/20-inet6
+              subPath: 20-inet6
+              readOnly: true
 
         # 2. Prowlarr Indexer Proxy (Shares Pod network -> 127.0.0.1:9696)
         - name: prowlarr
@@ -333,9 +383,37 @@ spec:
             - name: local-torrent-staging
               mountPath: /downloads
 
+        # 3b. Lightweight Sidecar to Stream qBittorrent File Logs to Stdout for Alloy/Loki
+        - name: qbittorrent-log
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              while [ ! -f /config/qBittorrent/logs/qbittorrent.log ]; do sleep 2; done
+              exec tail -n 20 -F /config/qBittorrent/logs/qbittorrent.log
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "5m"
+              memory: "8Mi"
+            limits:
+              cpu: "50m"
+              memory: "16Mi"
+          volumeMounts:
+            - name: qbit-config
+              mountPath: /config
+              readOnly: true
+
         # 4. Custom .NET 10 Orchestrator (PID 1 Daemon -> Queries Prowlarr, Verifies w/ ffprobe, Rsyncs to micro-nas)
         - name: vpn-media-sync
           image: ghcr.io/manuelsaleta/vpn-media-sync:latest
+          imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -404,6 +482,10 @@ spec:
         - name: mediasync-config
           configMap:
             name: media-sync-config
+        - name: nordlynx-healthcheck
+          configMap:
+            name: nordlynx-healthcheck-script
+            defaultMode: 0755
 ---
 # ==============================================================================
 # Services for Prowlarr and qBittorrent WebUIs
