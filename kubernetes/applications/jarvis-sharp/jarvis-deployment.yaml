@@ -1,0 +1,183 @@
+# ==============================================================================
+# Jarvis.Sharp - Homelab SlackOps, Alert Triage & Remediation Daemon
+# ==============================================================================
+# Namespace Rationale:
+#   Deployed in `monitoring` per AGENT.md functional domain isolation, as
+#   Jarvis.Sharp primarily triages Grafana/Loki alerts and performs cluster-wide
+#   pod/deployment diagnostics. Cross-namespace integrations (media-sync webhook,
+#   Plex API) communicate over cluster-local DNS (`*.media.svc.cluster.local`).
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jarvis-sharp
+  namespace: monitoring
+  labels:
+    app: jarvis-sharp
+    app.kubernetes.io/name: jarvis-sharp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jarvis-sharp-diagnostics
+  labels:
+    app: jarvis-sharp
+    app.kubernetes.io/name: jarvis-sharp
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jarvis-sharp-diagnostics
+  labels:
+    app: jarvis-sharp
+    app.kubernetes.io/name: jarvis-sharp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: jarvis-sharp-diagnostics
+subjects:
+  - kind: ServiceAccount
+    name: jarvis-sharp
+    namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jarvis-sharp
+  namespace: monitoring
+  labels:
+    app: jarvis-sharp
+    app.kubernetes.io/name: jarvis-sharp
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: jarvis-sharp
+  template:
+    metadata:
+      labels:
+        app: jarvis-sharp
+        app.kubernetes.io/name: jarvis-sharp
+    spec:
+      serviceAccountName: jarvis-sharp
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1654
+        runAsGroup: 1654
+        fsGroup: 1654
+      containers:
+        - name: jarvis-sharp
+          image: ghcr.io/manuelsaleta/jarvis-sharp:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1654
+            runAsGroup: 1654
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "America/New_York"
+            - name: CANDIDATE_STATE_PATH
+              value: "/state/candidates.json"
+            - name: EXISTING_MOVIES_INDEX_PATH
+              value: "/state/existing-movies.json"
+            - name: MEDIA_SYNC_WEBHOOK_URL
+              value: "http://media-sync-service.media.svc.cluster.local:5050/api/v1/sync/trigger"
+            - name: PLEX_URL
+              value: "http://plex-service.media.svc.cluster.local:32400"
+            - name: GRAFANA_URL
+              value: "http://promstack-grafana.monitoring.svc.cluster.local:80"
+            - name: GRAFANA_LOKI_DATASOURCE_UID
+              value: "loki"
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: slack-bot-token
+            - name: SLACK_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: slack-app-token
+            - name: USER_WHITELIST
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: user-whitelist
+            - name: SLACK_ALERTS_CHANNEL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: slack-alerts-channel
+            - name: GRAFANA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: grafana-token
+            - name: WEBHOOK_SECRET_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: webhook-secret-token
+            - name: PLEX_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: plex-token
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "192Mi"
+          volumeMounts:
+            - name: jarvis-state
+              mountPath: /state
+      volumes:
+        # Ephemeral state for 24h candidate batches and existing-movies index cache
+        - name: jarvis-state
+          emptyDir: {}

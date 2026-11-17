@@ -57,3 +57,10 @@ qbit_password                  = "your-qbittorrent-password"
 plex_token                     = "your-plex-api-token"
 mediasync_ssh_private_key_path = "~/.ssh/id_ed25519_mediasync"
 
+# Jarvis.Sharp SlackOps & Alert Remediation Daemon
+jarvis_slack_bot_token      = "xoxb-your-slack-bot-token"
+jarvis_slack_app_token      = "xapp-your-slack-app-socket-token"
+jarvis_user_whitelist       = "U0123456789"
+jarvis_slack_alerts_channel = "C0123456789"
+jarvis_webhook_secret_token = "your-media-sync-hmac-webhook-secret"
+
