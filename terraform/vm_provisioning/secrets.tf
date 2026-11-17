@@ -203,3 +203,22 @@ resource "kubernetes_secret_v1" "media_sync_ssh_secret" {
   }
 }
 
+resource "kubernetes_secret_v1" "jarvis_secrets" {
+  metadata {
+    name      = "jarvis-secrets"
+    namespace = "monitoring"
+  }
+
+  type = "Opaque"
+
+  data = {
+    "slack-bot-token"      = var.jarvis_slack_bot_token
+    "slack-app-token"      = var.jarvis_slack_app_token
+    "user-whitelist"       = var.jarvis_user_whitelist
+    "slack-alerts-channel" = var.jarvis_slack_alerts_channel
+    "grafana-token"        = var.grafana_api_key
+    "webhook-secret-token" = var.jarvis_webhook_secret_token
+    "plex-token"           = var.plex_token
+  }
+}
+

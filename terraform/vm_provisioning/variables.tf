@@ -279,4 +279,38 @@ variable "mediasync_ssh_private_key_path" {
   default     = "~/.ssh/id_ed25519_mediasync"
 }
 
+variable "jarvis_slack_bot_token" {
+  type        = string
+  description = "Slack Bot User OAuth token (xoxb-...) for Jarvis.Sharp"
+  default     = ""
+  sensitive   = true
+}
+
+variable "jarvis_slack_app_token" {
+  type        = string
+  description = "Slack App-Level Socket Mode token (xapp-...) for Jarvis.Sharp"
+  default     = ""
+  sensitive   = true
+}
+
+variable "jarvis_user_whitelist" {
+  type        = string
+  description = "Comma-separated Slack user IDs authorized to invoke Jarvis.Sharp commands"
+  default     = ""
+  sensitive   = true
+}
+
+variable "jarvis_slack_alerts_channel" {
+  type        = string
+  description = "Slack channel ID where Grafana/Loki alerts are posted for Jarvis.Sharp triage"
+  default     = ""
+}
+
+variable "jarvis_webhook_secret_token" {
+  type        = string
+  description = "HMAC shared secret token for signing media-sync webhook requests from Jarvis.Sharp"
+  default     = ""
+  sensitive   = true
+}
+
 
