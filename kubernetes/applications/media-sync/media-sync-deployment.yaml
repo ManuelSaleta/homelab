@@ -116,6 +116,10 @@ metadata:
 data:
   appsettings.json: |
     {
+      "plexClientOptions": {
+        "serverUrl": "http://plex-service.media.svc.cluster.local:32400",
+        "clientIdentifier": "plex-media-polling-mothership"
+      },
       "schedule": {
         "intervalMinutes": 30,
         "cronExpression": "*/30 * * * *",
@@ -435,6 +439,11 @@ spec:
                 secretKeyRef:
                   name: media-sync-secrets
                   key: qbit-password
+            - name: PlexClientOptions__Token
+              valueFrom:
+                secretKeyRef:
+                  name: media-sync-secrets
+                  key: plex-token
           ports:
             - containerPort: 5050
               name: webhook
