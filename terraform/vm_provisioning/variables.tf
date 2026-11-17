@@ -266,6 +266,13 @@ variable "qbit_password" {
   sensitive   = true
 }
 
+variable "plex_token" {
+  type        = string
+  description = "X-Plex-Token for Plex Media Server library polling and deduplication"
+  default     = ""
+  sensitive   = true
+}
+
 variable "mediasync_ssh_private_key_path" {
   type        = string
   description = "Path to the dedicated restricted rrsync SSH private key for media sync"

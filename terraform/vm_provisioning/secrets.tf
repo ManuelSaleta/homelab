@@ -186,6 +186,7 @@ resource "kubernetes_secret_v1" "media_sync_secrets" {
     "nordlynx-private-key" = var.nordlynx_private_key
     "prowlarr-api-key"     = var.prowlarr_api_key
     "qbit-password"        = var.qbit_password
+    "plex-token"           = var.plex_token
   }
 }
 
