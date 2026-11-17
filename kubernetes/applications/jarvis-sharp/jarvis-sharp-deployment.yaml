@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jarvis-sharp-sa
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jarvis-sharp-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jarvis-sharp-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: jarvis-sharp-role
+subjects:
+  - kind: ServiceAccount
+    name: jarvis-sharp-sa
+    namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jarvis-sharp
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: jarvis-sharp
+    app.kubernetes.io/part-of: homelab-observability
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jarvis-sharp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jarvis-sharp
+    spec:
+      serviceAccountName: jarvis-sharp-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1654
+        fsGroup: 1654
+      containers:
+        - name: jarvis-sharp
+          image: ghcr.io/manuelsaleta/jarvis-sharp:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DOTNET_CLI_TELEMETRY_OPTOUT
+              value: "1"
+            - name: GRAFANA_URL
+              value: "http://promstack-grafana.monitoring.svc.cluster.local"
+            - name: GRAFANA_LOKI_DATASOURCE_UID
+              value: "loki"
+            - name: MEDIA_SYNC_WEBHOOK_URL
+              value: "http://media-sync-service.media.svc.cluster.local:30080/api/v1/sync/trigger"
+          envFrom:
+            - secretRef:
+                name: grafana-alerting-credentials
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
