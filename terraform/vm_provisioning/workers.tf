@@ -16,7 +16,7 @@ resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
     hostname: "k3s-worker-0${count.index + 1}"
 
     write_files:
-      - path: /etc/rancher/k3s/config.yaml
+      - path: /etc/rancher/k3s/config.yaml.cloudinit
         permissions: "0600"
         owner: "root:root"
         content: |
@@ -24,18 +24,50 @@ resource "proxmox_virtual_environment_file" "k3s_worker_cloud_config" {
           token: "${var.k3s_share_token}"
           node-name: "k3s-worker-0${count.index + 1}"
 
+      - path: /usr/local/bin/k3s-token-guard.sh
+        permissions: "0755"
+        owner: "root:root"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          CFG="/etc/rancher/k3s/config.yaml"
+          STAGED="/etc/rancher/k3s/config.yaml.cloudinit"
+          BAK="/etc/rancher/k3s/config.yaml.bak"
+          has_valid_token() {
+            local f="$1"
+            [ -s "$f" ] && grep -Eq '^token:\s*"[^"]+"' "$f"
+          }
+          if has_valid_token "$STAGED"; then
+            install -m 0600 "$STAGED" "$CFG"
+            install -m 0600 "$STAGED" "$BAK"
+          elif ! has_valid_token "$CFG" && has_valid_token "$BAK"; then
+            install -m 0600 "$BAK" "$CFG"
+          elif has_valid_token "$CFG"; then
+            install -m 0600 "$CFG" "$BAK"
+          fi
+
+      - path: /etc/systemd/system/k3s-agent.service.d/10-token-guard.conf
+        permissions: "0644"
+        owner: "root:root"
+        content: |
+          [Service]
+          ExecStartPre=/usr/local/bin/k3s-token-guard.sh
+
     runcmd:
-      # 1. Set the individual node name with restricted permissions
+      # 1. Promote staged cloud-init config safely (never overwrite a valid token with an empty one)
+      - /usr/local/bin/k3s-token-guard.sh
+
+      # 2. Set the individual node name with restricted permissions
       - install -m 0600 /dev/null /etc/systemd/system/k3s-agent.service.env
       - echo 'K3S_NODE_NAME="k3s-worker-0${count.index + 1}"' > /etc/systemd/system/k3s-agent.service.env
       
-      # 2. WAIT for the control plane to be reachable before trying to join
+      # 3. WAIT for the control plane to be reachable before trying to join
       - until curl -k -s https://${var.k3s_manager_ip}:6443/readyz; do echo "Waiting for control plane..."; sleep 5; done
       
-      # 3. Join the cluster using local baked installer (reads /etc/rancher/k3s/config.yaml without leaking token to logs)
+      # 4. Join the cluster using local baked installer (reads /etc/rancher/k3s/config.yaml without leaking token to logs)
       - if [ -x /home/gman/install.sh ]; then INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent" /home/gman/install.sh; else curl -sfL https://get.k3s.io | INSTALL_K3S_SKIP_DOWNLOAD=true INSTALL_K3S_EXEC="agent" sh -; fi
       
-      # 4. Reload and restart
+      # 5. Reload and restart
       - systemctl daemon-reload
       - systemctl restart k3s-agent
     EOF
@@ -62,7 +94,7 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
   # Hardware Layout Blocks
   cpu {
     cores = 2
-    type  = "x86-64-v2-AES"
+    type  = "Skylake-Client-noTSX-IBRS"
   }
 
   memory {
