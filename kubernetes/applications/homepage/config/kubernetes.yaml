@@ -9,6 +9,7 @@ gateway: false # Set to true if using Gateway API
 namespaces:
   - networking
   - media
+  - monitoring
 # The presence of this block often forces the provider to active state
 kubernetes:
   enabled: true
