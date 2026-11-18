@@ -89,7 +89,7 @@ spec:
       containers:
         - name: jarvis-sharp
           image: ghcr.io/manuelsaleta/jarvis-sharp:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           securityContext:
             runAsNonRoot: true
             runAsUser: 1654
