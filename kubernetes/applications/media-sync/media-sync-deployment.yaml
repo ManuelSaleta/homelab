@@ -433,7 +433,7 @@ spec:
         # 4. Custom .NET 10 Orchestrator (PID 1 Daemon -> Queries Prowlarr, Verifies w/ ffprobe, Rsyncs to micro-nas)
         - name: vpn-media-sync
           image: ghcr.io/manuelsaleta/vpn-media-sync:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -443,6 +443,8 @@ spec:
           env:
             - name: TZ
               value: "America/New_York"
+            - name: DOTNET_RUNNING_IN_CONTAINER
+              value: "true"
             - name: CONFIG_PATH
               value: "/app/appsettings.json"
             - name: PROWLARR_API_KEY
