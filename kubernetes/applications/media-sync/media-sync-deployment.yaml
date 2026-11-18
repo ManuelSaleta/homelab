@@ -117,7 +117,7 @@ data:
   appsettings.json: |
     {
       "plexClientOptions": {
-        "serverUrl": "http://plex-service.media.svc.cluster.local:32400",
+        "serverUrl": "http://192.168.1.210:32400",
         "clientIdentifier": "plex-media-polling-mothership"
       },
       "storage": {
