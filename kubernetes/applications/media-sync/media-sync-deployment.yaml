@@ -120,13 +120,29 @@ data:
         "serverUrl": "http://plex-service.media.svc.cluster.local:32400",
         "clientIdentifier": "plex-media-polling-mothership"
       },
+      "storage": {
+        "lockFile": "/tmp/vpn-media-sync.lock",
+        "stateFilePath": "/state/state.json"
+      },
       "schedule": {
         "intervalMinutes": 30,
         "cronExpression": "*/30 * * * *",
-        "lockFile": "/tmp/vpn-media-sync.lock",
-        "webhookPort": 5050,
-        "webhookSecretToken": "UNCONFIGURED_WEBHOOK_SECRET_TOKEN",
-        "stateFilePath": "/state/state.json"
+        "webhookPort": 5050
+      },
+      "discovery": {
+        "provider": "Jarvis",
+        "radarr": {
+          "baseUrl": "http://radarr-service.media.svc.cluster.local:7878",
+          "syncOnImport": true,
+          "minimumAvailability": "released"
+        },
+        "sonarr": {
+          "baseUrl": "http://sonarr-service.media.svc.cluster.local:8989",
+          "syncOnImport": true
+        },
+        "jarvis": {
+          "webhookPort": 5050
+        }
       },
       "vpn": {
         "provider": "nordlynx",
@@ -444,6 +460,16 @@ spec:
                 secretKeyRef:
                   name: media-sync-secrets
                   key: plex-token
+            - name: Discovery__Jarvis__WebhookSecret
+              valueFrom:
+                secretKeyRef:
+                  name: media-sync-secrets
+                  key: webhook-secret-token
+            - name: WEBHOOK_SECRET_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: media-sync-secrets
+                  key: webhook-secret-token
           ports:
             - containerPort: 5050
               name: webhook
