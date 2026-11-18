@@ -151,6 +151,12 @@ spec:
                 secretKeyRef:
                   name: jarvis-secrets
                   key: plex-token
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: gemini-api-key
+                  optional: true
           livenessProbe:
             httpGet:
               path: /healthz

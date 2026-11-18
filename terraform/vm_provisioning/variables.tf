@@ -291,6 +291,13 @@ variable "jarvis_slack_bot_token" {
   sensitive   = true
 }
 
+variable "jarvis_gemini_api_key" {
+  type        = string
+  description = "Google Gemini API key for Jarvis.Sharp AgentBridge direct API mode"
+  default     = ""
+  sensitive   = true
+}
+
 variable "jarvis_slack_app_token" {
   type        = string
   description = "Slack App-Level Socket Mode token (xapp-...) for Jarvis.Sharp"
