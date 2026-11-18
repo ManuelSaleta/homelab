@@ -220,6 +220,7 @@ resource "kubernetes_secret_v1" "jarvis_secrets" {
     "grafana-token"        = var.grafana_api_key
     "webhook-secret-token" = var.jarvis_webhook_secret_token
     "plex-token"           = var.plex_token
+    "gemini-api-key"       = var.jarvis_gemini_api_key
   }
 }
 
