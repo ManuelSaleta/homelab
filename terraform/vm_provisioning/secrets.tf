@@ -187,6 +187,7 @@ resource "kubernetes_secret_v1" "media_sync_secrets" {
     "prowlarr-api-key"     = var.prowlarr_api_key
     "qbit-password"        = var.qbit_password
     "plex-token"           = var.plex_token
+    "webhook-secret-token" = var.jarvis_webhook_secret_token
   }
 }
 
